@@ -1,0 +1,126 @@
+.inventory-content { padding-top:12px; }
+
+.inventory-summary { display:grid; grid-template-columns:repeat(4,minmax(140px,185px)); gap:15px; margin:8px 0 24px; }
+
+.inventory-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:82px; border:1px solid var(--border); border-radius:16px; background:#fff; }
+
+.inventory-stat span { font-size:13px; }
+
+.inventory-stat strong { font-size:25px; line-height:1.1; color:var(--dark); }
+
+.inventory-stat.stock strong { color:#16813b; }
+
+.inventory-stat.low strong { color:#ce7d16; }
+
+.inventory-stat.out strong { color:#d13232; }
+
+.inventory-tools { display:flex; justify-content:flex-end; gap:10px; margin-bottom:10px; }
+
+.inventory-search,.category-select { display:flex; align-items:center; gap:8px; height:33px; padding:0 11px; border:1px solid rgba(192,142,66,.45); border-radius:9px; background:#fff; color:#7d6f5d; }
+
+.inventory-search { width:225px; }
+
+.inventory-search input,.category-select select { width:100%; min-width:0; border:0; outline:0; background:transparent; font-size:11px; color:var(--ink); }
+
+.category-select { width:160px; }
+
+.add-product { display:flex; align-items:center; gap:7px; padding:0 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font-size:11px; font-weight:700; }
+
+.inventory-table-card { overflow:hidden; border:1px solid var(--border); border-radius:16px; background:#fff; }
+
+.table-scroll { overflow-x:auto; }
+
+.inventory-table { width:100%; min-width:880px; border-collapse:collapse; font-size:12px; }
+
+.inventory-table th { padding:11px 16px; background:#fffaf3; text-align:left; color:#15100a; font-size:11px; }
+
+.inventory-table td { padding:14px 16px; border-top:1px solid var(--border); color:#3b4659; }
+
+.inventory-table td:nth-child(3) { font-weight:700; color:#1d2734; }
+
+.stock-status { display:inline-block; padding:5px 12px; border-radius:8px; font-size:11px; font-weight:700; }
+
+.stock-status.in-stock { color:#16813b; background:#edf8e9; }
+
+.stock-status.low-stock { color:#d68113; background:#fff1d0; }
+
+.stock-status.out-of-stock { color:#c72f2f; background:#ffe2e2; }
+
+.inventory-actions { display:flex; gap:7px; }
+
+.set-stock,.add-item-stock { display:grid; place-items:center; width:25px; height:25px; border:1px solid var(--ink); border-radius:5px; background:#fff; color:var(--ink); }
+
+.add-item-stock { background:var(--tan-soft); }
+
+.inventory-empty { margin:0; padding:42px; color:var(--muted); text-align:center; }
+
+.inventory-footer { display:flex; justify-content:space-between; gap:15px; padding:12px 22px; font-size:10px; color:var(--muted); }
+@media (max-width:800px) { .inventory-summary { grid-template-columns:repeat(2,1fr); }
+
+.inventory-tools { justify-content:stretch; flex-wrap:wrap; }
+
+.inventory-search { flex:1; }
+
+.category-select { flex:1; }
+
+.inventory-footer { flex-direction:column; }
+
+.admin-content { padding:0 16px 24px; } }
+
+@media (max-width:500px) { .inventory-stat { min-height:70px; }
+
+.inventory-stat strong { font-size:21px; }
+
+.inventory-search { width:100%; flex-basis:100%; }
+
+.category-select { width:calc(100% - 104px); }
+
+.add-product { width:94px; justify-content:center; }
+
+.admin-topbar { padding:18px; } }
+
+@media (min-width: 961px) and (max-width: 1366px) {
+  .inventory-content { padding-top: 20px; }
+  .inventory-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0 0 18px; }
+  .inventory-stat { min-height: 78px; }
+  .inventory-tools { flex-wrap: wrap; margin-bottom: 14px; }
+  .inventory-search { width: 260px; height: 36px; }
+  .category-select { width: 210px; height: 36px; }
+  .add-product { min-height: 36px; }
+  .inventory-table-card .table-scroll { max-height: calc(100dvh - 336px); overflow: auto; }
+  .inventory-table { min-width: 0; table-layout: fixed; }
+  .inventory-table th, .inventory-table td { padding: 11px 12px; overflow-wrap: anywhere; }
+  .inventory-table th { position: sticky; top: 0; z-index: 1; }
+  .inventory-table th:nth-child(1) { width: 25%; }
+  .inventory-table th:nth-child(2) { width: 25%; }
+  .inventory-table th:nth-child(3) { width: 12%; }
+  .inventory-table th:nth-child(4) { width: 12%; }
+  .inventory-table th:nth-child(5) { width: 15%; }
+  .inventory-table th:nth-child(6) { width: 11%; }
+  .stock-status { padding: 5px 8px; max-width: 100%; }
+}
+/* Recipe setup follows the existing coffee-and-cream inventory palette. */
+.recipe-tools { margin-top: 16px; font-size: 12px; }
+.recipe-tools p { margin: 8px 0; color: #765427; }
+.recipe-dialog { width: min(850px, 94vw); max-height: 85dvh; overflow: auto; border: 1px solid #d8c4a5; border-radius: 14px; padding: 22px; background: #fffaf2; color: #3d2b16; }
+.recipe-dialog::backdrop { background: rgba(40, 28, 14, .45); }
+.recipe-dialog-heading { display: flex; justify-content: space-between; align-items: center; }
+.recipe-dialog h2 { font-size: 21px; margin: 0; }
+.recipe-dialog p { font-size: 12px; }
+.recipe-dialog select, .recipe-dialog input { width: 100%; min-width: 0; padding: 9px; border: 1px solid #c9b99e; border-radius: 7px; background: white; font: inherit; font-size: 12px; }
+.recipe-dialog button { cursor: pointer; }
+.recipe-dialog label { font-size: 12px; }
+.recipe-line { display: grid; grid-template-columns: minmax(0, 1fr) 100px 75px 30px; align-items: end; gap: 9px; margin: 12px 0; }
+.recipe-line button, #closeRecipes { border: 0; background: transparent; font-size: 25px; color: #825d2b; }
+#recipeIssues { color: #8c3f22; }
+@media (max-width: 600px) { .recipe-line { grid-template-columns: minmax(0, 1fr) 70px 60px 24px; gap: 4px; } .recipe-dialog { padding: 12px; } }
+.conversion-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.conversion-fields label { display: grid; gap: 6px; }
+.conversion-confirm { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.conversion-confirm input { width: auto; }
+.conversion-tag { display: inline-block; padding: 2px 6px; border-radius: 6px; background: #f6ead7; color: #6d4b20; font-size: 10px; }
+#conversionList { padding-left: 20px; font-size: 13px; line-height: 1.8; }
+.stock-movements { list-style: none; padding: 0; }
+.stock-movements li { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid #e6d9c7; }
+.stock-movements small { overflow-wrap: anywhere; color: #756958; }
+@media (max-width: 500px) { .conversion-fields { grid-template-columns: minmax(0, 1fr); } }

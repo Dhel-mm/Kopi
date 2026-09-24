@@ -1,0 +1,154 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  color: white;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(4px);
+  transform: scale(1.03);
+  z-index: -2;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.18);
+  z-index: -1;
+}
+
+.logo-image {
+  position: absolute;
+  top: 18px;
+  left: 40px;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.logo {
+  position: absolute;
+  top: 65px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.logo h2 {
+  font-size: 43px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.logo p {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.content {
+  margin-top: 20px;
+  position: relative;
+}
+
+.main-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 130px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.sub-text {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 80px;
+}
+
+.btn-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 400px; 
+  white-space: nowrap;
+}
+
+
+.btn-container a {
+  display: inline-block;
+  min-width: 155px;
+  padding: 10px 50px;
+  border: 4px solid white;
+  border-radius: 25px;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  font-weight: 700;
+  transition: 0.3s ease;
+}
+
+.btn-container a:hover {
+  background: white;
+  color: #777;
+}
+
+@media (max-width: 800px) {
+  .logo-image {
+    left: 24px;
+    width: 110px;
+    height: 110px;
+  }
+
+  .main-text {
+    font-size: 70px;
+  }
+
+  .sub-text {
+    font-size: 25px;
+  }
+}
+
+
+@media (max-width: 415px) { 
+  .logo-image {
+    width: 80px;
+    height: 80px;
+    left: 16px;
+  }
+  .main-text {
+    font-size: 50px;
+    margin-bottom: 0;
+  }
+  .sub-text {
+    font-size: 20px;
+  }
+  .btn-container {
+    top: 300px;
+  }
+  .btn-container a {
+    padding: 8px 30px;
+    font-size: 18px;
+  }
+}

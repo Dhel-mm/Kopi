@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Calamba Menu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Menu.css">
+  <link rel="icon" href="HomePic/Logo.png">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main navigation">
+      <a class="brand" href="Homepage.html"><img src="HomePic/Logo.png" alt="Kopi logo"></a>
+      <a class="location" href="https://www.google.com/maps/place/Kopi;+Calamba+Main/@14.2151839,121.1813173,273m/data=!3m1!1e3!4m15!1m8!3m7!1s0x33bd61f7b1cf1317:0x6944391c174ae7b5!2sKopi;+Calamba+Main!8m2!3d14.2151266!4d121.1814945!10e9!16s%2Fg%2F11ny11vdb_!3m5!1s0x33bd61f7b1cf1317:0x6944391c174ae7b5!8m2!3d14.2151266!4d121.1814945!16s%2Fg%2F11ny11vdb_!5m1!1e4?entry=ttu&g_ep=EgoyMDI2MDYyNC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">
+        <i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>Lingga, Calamba City</span>
+      </a>
+      <label class="search" aria-label="Search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input id="menuSearch" type="search" placeholder="Search for coffee and more">
+      </label>
+      <div class="nav-links">
+        <a class="nav-link" href="Homepage.html"><i class="bi bi-house-door-fill" aria-hidden="true"></i><span>Home</span></a>
+        <a class="nav-link active" href="Menu.html"><i class="bi bi-cup-hot" aria-hidden="true"></i><span>Menu</span></a>
+        <a class="nav-link" href="Cart.html"><i class="bi bi-cart-fill" aria-hidden="true"></i><span class="cart-count" data-cart-count>0</span><span>Cart</span></a>
+        <a class="nav-link" href="Account.html"><i class="bi bi-person-fill" aria-hidden="true"></i><span>Account</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="menu-page">
+    <!-- Tabs and products are rendered from the single menu list in Store.js. -->
+    <div class="menu-tabs" id="menuTabs" aria-label="Menu categories"></div>
+    <section id="menuSections" class="menu-sections" aria-live="polite"></section>
+  </main>
+
+  <div class="customizer" id="customizer" aria-hidden="true">
+    <div class="customizer-panel" role="dialog" aria-modal="true" aria-labelledby="customizerTitle">
+      <button class="back-btn" type="button" data-close-customizer aria-label="Close customizer"><i class="bi bi-x"></i></button>
+      <div class="customizer-content">
+        <div class="custom-image-shell"><img id="customImage" src="" alt=""></div>
+        <form class="custom-details" id="customForm">
+          <h1 id="customizerTitle">Drink name</h1>
+          <p id="customDescription">Customize your order.</p>
+          <div class="option-grid" id="customOptions"></div>
+          <div class="order-row">
+            <div class="quantity-control" aria-label="Quantity">
+              <button type="button" data-qty="minus" aria-label="Decrease quantity"><i class="bi bi-dash"></i></button>
+              <strong id="quantityValue">1</strong>
+              <button type="button" data-qty="plus" aria-label="Increase quantity"><i class="bi bi-plus"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="customizer-footer">
+        <strong class="custom-price" id="customPrice">PHP 0</strong>
+        <div class="action-row">
+          <button class="btn outline" type="button" id="buyNowBtn">Buy Now</button>
+          <button class="btn solid" type="submit" form="customForm">Add To Cart</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-main">
+      <div class="footer-brand"><img src="HomePic/Logo.png" alt="Kopi logo"></div>
+      <div class="footer-col">
+        <h3>Follow Us</h3>
+        <div class="social-links">
+          <a class="instagram" href="https://www.instagram.com/kopicalamba?utm_source=ig_web_button_share_sheet&igsi=ZDNlZDc0MzIxNw==" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+          <a class="facebook" href="https://www.facebook.com/kopicalamba" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+        </div>
+      </div>
+      <div class="footer-col"><h3>Operating Hours</h3><p>Tuesday - Sunday</p><p>4PM - 11PM</p></div>
+      <div class="footer-col"><h3>Contact Us</h3><p>0955 431 6863</p><p>kopi@email.com</p></div>
+    </div>
+    <p class="copyright">&copy; 2024 <a href="#">Kopi Calamba.</a> All Rights Reserved.</p>
+  </footer>
+
+  <script src="Catalog.js"></script>
+  <script src="Store.js"></script>
+  <script src="Menu.js"></script>
+</body>
+</html>

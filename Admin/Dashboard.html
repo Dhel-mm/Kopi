@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Admin - Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Admin.css">
+  <link rel="stylesheet" href="Dashboard.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png"/>
+</head>
+<body>
+
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <img src="../Customer/HomePic/Logo.png" alt="Kopi logo">
+        <span>Kopi;</span>
+      </div>
+
+      <nav class="admin-nav">
+        <a class="admin-nav-link active" href="Dashboard.html">
+          <i class="bi bi-house-door-fill"></i><span>Dashboard</span>
+        </a>
+        <a class="admin-nav-link" href="Orders.html">
+          <i class="bi bi-cup-hot-fill"></i><span>Orders</span>
+        </a>
+        <a class="admin-nav-link" href="Operation.html">
+          <i class="bi bi-display"></i><span>Operation</span>
+        </a>
+        <a class="admin-nav-link" href="Transactions.html">
+          <i class="bi bi-receipt"></i><span>Transactions</span>
+        </a>
+        <a class="admin-nav-link" href="Inventory.html">
+          <i class="bi bi-box-seam-fill"></i><span>Inventory</span>
+        </a>
+        <a class="admin-nav-link" href="Users.html">
+          <i class="bi bi-people-fill"></i><span>Users</span>
+        </a>
+      </nav>
+
+    </aside>
+
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-text">
+          <h1>Good morning, Admin!</h1>
+          <p>here's what's happening with Kopi; Calamba today.</p>
+        </div>
+        <a class="admin-profile" href="#" aria-label="Open administrator menu">
+          <i class="bi bi-person-circle"></i>
+          <div class="profile-text">
+            <strong>Admin</strong>
+            <span>Administrator</span>
+          </div>
+          <i class="bi bi-chevron-down"></i>
+        </a>
+      </header>
+
+      <div class="admin-content"><p id="dashboardStatus" class="report-status" role="status"></p>
+
+        <section class="stat-cards" aria-label="Today's summary">
+          <div class="stat-card">
+            <span class="stat-label">Today's sales</span>
+            <strong class="stat-value">—</strong>
+            <span class="stat-delta positive">Completed orders today</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total Orders</span>
+            <strong class="stat-value">—</strong>
+            <span class="stat-delta positive">All order statuses</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Low Stock Items</span>
+            <strong class="stat-value">—</strong>
+            <a class="stat-delta link" href="Inventory.html">View Inventory</a>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Out of Stock</span>
+            <strong class="stat-value">—</strong>
+            <span class="stat-delta danger">Out of Stock</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Served This Week</span>
+            <strong class="stat-value">—</strong>
+            <span class="stat-delta positive">Completed orders, Monday to today</span>
+          </div>
+        </section>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-main-col">
+
+            <div class="charts-row">
+              <div class="card chart-card">
+                <div class="card-head">
+                  <h2>Sales overview</h2>
+                  <select class="range-select" aria-label="Sales overview range">
+                    <option>This Week</option>
+                    <option>This Month</option>
+                  </select>
+                </div>
+                <div class="sales-chart-wrap"><canvas id="salesChart"></canvas></div>
+              </div>
+
+              <div class="card donut-card">
+                <div class="card-head">
+                  <h2>Order Summary</h2>
+                  <select class="range-select" aria-label="Order summary range">
+                    <option>This Week</option>
+                    <option>This Month</option>
+                  </select>
+                </div>
+                <div class="donut-wrap">
+                  <canvas id="orderSummaryChart" height="180"></canvas>
+                </div>
+                <ul class="donut-legend">
+                  <li><span class="dot dot-instore"></span>Dine-in Orders <strong>—</strong></li>
+                  <li><span class="dot dot-online"></span>Online Orders <strong>—</strong></li>
+                  <li><span class="dot dot-takeout"></span>Take out Orders <strong>—</strong></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card top-products-card">
+              <div class="card-head">
+                <h2>Top Selling Products</h2>
+                <select class="range-select" aria-label="Top selling products range">
+                  <option>This Week</option>
+                  <option>This Month</option>
+                </select>
+              </div>
+              <table class="top-products-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Sold</th>
+                    <th>Item Sales*</th>
+                  </tr>
+                </thead>
+                <tbody id="topProducts"><tr><td colspan="5">Loading report…</td></tr></tbody>
+              </table><small>*Completed items before order discounts and delivery fees. All report dates use Asia/Manila.</small>
+            </div>
+
+          </div>
+
+          <div class="dashboard-side-col">
+
+            <div class="card list-card">
+              <div class="card-head">
+                <h2>Recent Orders</h2>
+                <a href="Transactions.html" class="view-all-link">View all</a>
+              </div>
+              <ul class="recent-orders-list"><li>Loading orders…</li></ul>
+            </div>
+
+            <div class="card list-card">
+              <div class="card-head">
+                <h2>Low Stocks Alerts</h2>
+                <a href="Inventory.html" class="view-all-link">View all</a>
+              </div>
+              <ul class="low-stock-list"><li>Loading inventory…</li></ul>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="../Customer/Api.js"></script>
+  <script src="AdminGuard.js"></script>
+  <script src="Dashboard.js"></script>
+  <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Admin - Inventory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Admin.css"><link rel="stylesheet" href="Inventory.css"><link rel="icon" href="../Customer/HomePic/Logo.png">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
+      <nav class="admin-nav">
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a><a class="admin-nav-link" href="Orders.html"><i class="bi bi-cup-hot-fill"></i><span>Orders</span></a><a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a><a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a><a class="admin-nav-link active" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a><a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+      </nav>
+    </aside>
+    <div class="admin-main">
+      <header class="admin-topbar"><div class="topbar-text"><h1>Inventory</h1><p>Manage your ingredients, packaging, and stock levels.</p></div><a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a></header>
+      <main class="admin-content inventory-content">
+        <section class="inventory-summary"><article class="inventory-stat"><span>Total Products</span><strong id="totalProducts">0</strong></article><article class="inventory-stat stock"><span>In Stock</span><strong id="inStock">0</strong></article><article class="inventory-stat low"><span>Low Stock</span><strong id="lowStock">0</strong></article><article class="inventory-stat out"><span>Out of Stock</span><strong id="outStock">0</strong></article></section>
+        <section class="inventory-tools"><label class="inventory-search"><i class="bi bi-search"></i><input id="inventorySearch" type="search" placeholder="Search product name..."></label><label class="category-select"><i class="bi bi-funnel"></i><select id="categoryFilter"><option value="All">All Categories</option></select></label><button class="add-product" id="addProduct" type="button"><i class="bi bi-plus-lg"></i> Add Product</button></section>
+        <section class="inventory-table-card"><div class="table-scroll"><table class="inventory-table"><thead><tr><th>Product Name</th><th>Category</th><th>Stock</th><th>Measurement</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventoryRows"></tbody></table></div><p class="inventory-empty" id="inventoryEmpty" hidden>No inventory products found.</p><footer class="inventory-footer"><span id="inventoryRange"></span></footer></section>
+        <section class="recipe-tools">
+          <button class="add-product" id="openRecipes" type="button">Recipes &amp; unit setup</button>
+          <button class="add-product" id="openConversions" type="button">Measured conversions</button>
+          <p id="recipeSummary" role="status">Checking recipe setup…</p>
+          <p id="conversionSummary" role="status"></p>
+          <p>Stock amounts are the remaining g, ml, or pieces. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
+        </section>
+        <dialog id="recipeDialog" class="recipe-dialog">
+          <form id="recipeForm">
+            <div class="recipe-dialog-heading"><h2>Recipe setup</h2><button type="button" id="closeRecipes" aria-label="Close recipe setup">×</button></div>
+            <p>Resolve missing ingredients and unit differences using your measured amounts. Changes affect new orders only. Add missing stock products with Add Product first.</p>
+            <label for="recipeSelect">Product, size or modifier</label>
+            <select id="recipeSelect"></select>
+            <p id="recipeIssues" role="status"></p>
+            <div class="recipe-lines" id="recipeLines"></div>
+            <button type="button" id="addRecipeLine">Add ingredient</button>
+            <button class="add-product" type="submit" id="saveRecipe">Save recipe</button>
+          </form>
+        </dialog>
+        <dialog id="conversionDialog" class="recipe-dialog">
+          <form id="conversionForm">
+            <div class="recipe-dialog-heading"><h2>Ingredient unit conversion</h2><button type="button" id="closeConversions" aria-label="Close unit conversions">×</button></div>
+            <p>Use this when a recipe and stock use different units. Starter estimates are labeled below; replace them with your measured amounts. This never changes stock already counted or deducted.</p>
+            <label for="conversionIngredient">Ingredient</label>
+            <select id="conversionIngredient" required></select>
+            <div class="conversion-fields">
+              <label>Recipe amount<input id="conversionRecipeAmount" type="number" min="0.001" step="0.001" required></label>
+              <label>Recipe unit<select id="conversionRecipeUnit"><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select></label>
+              <label>Equals this stock amount<input id="conversionStockAmount" type="number" min="0.001" step="0.001" required></label>
+              <label>Stock unit<input id="conversionStockUnit" readonly></label>
+            </div>
+            <label class="conversion-confirm"><input id="conversionMeasured" type="checkbox" required> I measured these amounts for this ingredient.</label>
+            <p id="conversionStatus" role="status"></p>
+            <button class="add-product" type="submit" id="saveConversion">Save measured conversion</button>
+            <h3>Saved conversions</h3>
+            <ul id="conversionList"></ul>
+          </form>
+        </dialog>
+        <dialog id="movementDialog" class="recipe-dialog">
+          <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button type="button" id="closeMovements" aria-label="Close stock movements">×</button></div>
+          <p>Negative amounts are deducted or reserved. Positive amounts are added or returned. Canceling a preparing order does not return consumed ingredients.</p>
+          <div id="movementList" role="status"></div>
+        </dialog>
+      </main>
+    </div>
+  </div>
+<script src="../Customer/Api.js"></script><script src="AdminGuard.js"></script><script src="Inventory.js"></script><script src="InventorySetup.js"></script><script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+</body>
+</html>

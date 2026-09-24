@@ -1,0 +1,93 @@
+.users-content { padding-top:10px; }
+
+.users-tools { display:flex; justify-content:flex-end; gap:10px; margin:8px 0 18px; }
+
+.users-search { display:flex; align-items:center; gap:8px; width:220px; height:34px; padding:0 11px; border:1px solid rgba(192,142,66,.45); border-radius:9px; background:#fff; color:#8a7a65; }
+
+.users-search input,.users-tools select { min-width:0; border:0; outline:0; background:transparent; font-size:11px; }
+
+.users-search input { width:100%; }
+
+.users-tools select { width:105px; height:34px; padding:0 9px; border:1px solid rgba(192,142,66,.45); border-radius:9px; background:#fff; color:#716656; }
+
+.add-user { display:flex; align-items:center; gap:7px; height:34px; padding:0 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font-size:11px; font-weight:700; }
+
+.users-summary { display:grid; grid-template-columns:repeat(4,minmax(140px,1fr)); gap:13px; margin-bottom:9px; }
+
+.users-summary article { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60px; border:1px solid var(--border); border-radius:14px; background:#fff; }
+
+.users-summary span { font-size:11px; color:#1b1b1b; }
+
+.users-summary strong { font-size:21px; line-height:1.1; color:var(--dark); }
+
+.users-summary .active strong { color:#178440; }
+
+.users-summary .inactive strong { color:#d07a17; }
+
+.users-summary .admin strong { color:#193960; }
+
+.users-table-card { overflow:hidden; border:1px solid var(--border); border-radius:14px; background:#fff; }
+
+.table-scroll { overflow-x:auto; }
+
+.users-table { width:100%; min-width:800px; border-collapse:collapse; font-size:10px; }
+
+.users-table th { padding:10px 14px; background:#fffaf3; color:#17120c; text-align:left; font-size:10px; }
+
+.users-table td { padding:13px 14px; border-top:1px solid var(--border); color:#1d2838; }
+
+.users-table td:first-child,.users-table td:nth-child(6) { font-weight:800; }
+
+.role-chip { display:inline-block; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700; }
+
+.role-chip.customer { background:#eef4ff; color:#2463a9; }
+
+.role-chip.admin { background:#f6ead4; color:#734a14; }
+
+.users-empty { margin:0; padding:38px; text-align:center; color:var(--muted); }
+
+.users-footer { display:flex; justify-content:space-between; align-items:center; padding:10px 18px; font-size:10px; }
+
+.pagination { display:flex; gap:5px; }
+
+.pagination button { width:24px; height:24px; border:1px solid var(--border); border-radius:5px; background:#fff; }
+
+.pagination button.active { background:var(--tan); border-color:var(--tan); }
+
+.pagination button:disabled { color:#999; cursor:default; }
+@media (max-width:800px) { .users-tools { flex-wrap:wrap; }
+
+.users-search { flex:1; min-width:190px; }
+
+.users-summary { grid-template-columns:repeat(2,1fr); }
+
+.admin-content { padding:0 16px 24px; } }
+
+@media (max-width:500px) { .admin-topbar { padding:18px; }
+
+.users-tools select { flex:1; }
+
+.add-user { flex:1; justify-content:center; }
+
+.users-summary article { min-height:58px; } }
+
+@media (min-width: 961px) and (max-width: 1366px) {
+  .users-content { padding-top: 20px; }
+  .users-tools { flex-wrap: wrap; margin-top: 0; margin-bottom: 16px; }
+  .users-search { width: 270px; }
+  .users-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+  .users-summary article { min-height: 74px; }
+  .users-summary span { font-size: 12px; }
+  .users-table-card .table-scroll { max-height: calc(100dvh - 310px); overflow: auto; }
+  .users-table { min-width: 0; table-layout: fixed; font-size: 11px; }
+  .users-table th, .users-table td { padding: 11px 9px; overflow-wrap: anywhere; }
+  .users-table th { position: sticky; top: 0; z-index: 1; font-size: 11px; }
+  .users-table th:nth-child(1) { width: 4%; }
+  .users-table th:nth-child(2) { width: 16%; }
+  .users-table th:nth-child(3) { width: 24%; }
+  .users-table th:nth-child(4) { width: 12%; }
+  .users-table th:nth-child(5) { width: 10%; }
+  .users-table th:nth-child(6) { width: 11%; }
+  .users-table th:nth-child(7) { width: 10%; }
+  .users-table th:nth-child(8) { width: 13%; }
+}

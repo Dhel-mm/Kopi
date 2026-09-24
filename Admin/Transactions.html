@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Admin - Transactions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Admin.css">
+  <link rel="stylesheet" href="Transactions.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
+      <nav class="admin-nav">
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
+        <a class="admin-nav-link" href="Orders.html"><i class="bi bi-cup-hot-fill"></i><span>Orders</span></a>
+        <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
+        <a class="admin-nav-link active" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
+        <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
+        <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+      </nav>
+    </aside>
+
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-text"><h1>Transaction</h1><p>Home • Transaction</p></div>
+        <a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a>
+      </header>
+
+      <main class="admin-content transaction-content">
+        <section class="transaction-summary" aria-label="Sales report">
+          <article class="report-card"><span>Today's Sale</span><strong id="todaySales">₱0.00</strong><small id="todayComparison">Completed orders today</small></article>
+          <article class="report-card"><span>Total Transaction</span><strong id="transactionCount">0</strong><small id="transactionComparison">Completed and canceled records</small></article>
+          <article class="report-card"><span>Total Sales (This Month)</span><strong id="monthSales">₱0.00</strong><small id="monthComparison">Completed orders this month</small></article>
+          <div class="transaction-tools">
+            <label class="transaction-search"><i class="bi bi-search"></i><input id="transactionSearch" type="search" placeholder="Search transaction or customer ..."></label>
+            <button class="transaction-filter" id="transactionFilter" type="button"><i class="bi bi-funnel"></i>Filter</button>
+            <button class="date-button" id="dateButton" type="button" aria-label="Show all dates"><i class="bi bi-calendar3"></i></button>
+          </div>
+        </section>
+
+        <form id="reportFilters" class="report-filters" hidden>
+          <label>From (Philippine date)<input id="reportFrom" type="date"></label>
+          <label>To<input id="reportTo" type="date"></label>
+          <label>Status<select id="reportStatusFilter"><option>All</option><option>Completed</option><option>Canceled</option></select></label>
+          <label>Type<select id="reportType"><option>All</option><option>Online</option><option>Dine-in</option><option>Takeout</option></select></label>
+          <label>Payment<select id="reportPayment"><option>All</option><option>Cash</option><option>GCash</option><option>Other</option></select></label>
+          <button type="submit">Apply filters</button><button id="clearFilters" type="button">Clear</button>
+        </form>
+        <p id="reportStatus" class="report-status" role="status"></p>
+        <p><span id="filteredSales"></span> <button id="exportReport" type="button">Download CSV</button></p>
+        <section class="transaction-table-card">
+          <div class="table-scroll">
+            <table class="transaction-table">
+              <thead><tr><th>Transaction ID</th><th>Date and Time</th><th>Type</th><th>Order ID</th><th>Customer</th><th>Payment Method</th><th>Amount</th><th>Status</th><th>Cashier</th></tr></thead>
+              <tbody id="transactionRows"></tbody>
+            </table>
+          </div>
+          <p class="transaction-empty" id="transactionEmpty" hidden>No completed or canceled orders yet.</p>
+          <footer class="transaction-footer"><span id="transactionRange">Showing 0 transactions</span><div class="pagination"><button type="button" disabled><i class="bi bi-chevron-left"></i></button><button class="active" type="button">1</button><button type="button" disabled><i class="bi bi-chevron-right"></i></button></div></footer>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="../Customer/Api.js"></script>
+  <script src="AdminGuard.js"></script>
+  <script src="Transactions.js"></script>
+  <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+</body>
+</html>

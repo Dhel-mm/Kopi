@@ -1,0 +1,254 @@
+/* ---------- Stat cards ---------- */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.stat-delta {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-delta.positive { color: var(--success); }
+.stat-delta.danger { color: var(--danger); }
+.stat-delta.link { color: var(--link); text-decoration: underline; }
+
+/* ---------- Grid layout ---------- */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard-main-col,
+.dashboard-side-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+  padding: 20px 22px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.range-select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--white);
+  color: var(--ink);
+}
+
+/* ---------- Charts row ---------- */
+.charts-row {
+  display: flex;
+  gap: 20px;
+}
+
+.chart-card { flex: 1.4; min-width: 0; }
+.sales-chart-wrap { position: relative; height: 240px; min-width: 0; }
+.donut-card { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.donut-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 190px;
+  height: 190px;
+  max-width: 100%;
+  margin: 4px auto 12px;
+}
+
+.donut-wrap canvas {
+  max-width: 190px;
+  max-height: 190px;
+}
+
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.donut-legend strong { margin-left: auto; }
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-instore { background: var(--dark); }
+.dot-online { background: var(--tan); }
+.dot-takeout { background: #f3ddab; }
+
+/* ---------- Top products table ---------- */
+.top-products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.top-products-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.top-products-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.top-products-table tr:last-child td { border-bottom: 0; }
+
+.product-link {
+  color: var(--link);
+  font-weight: 700;
+}
+
+/* ---------- Side lists ---------- */
+.list-card { flex: 1; }
+
+.view-all-link {
+  color: var(--link);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recent-orders-list,
+.low-stock-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-orders-list li,
+.low-stock-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.recent-orders-list li:last-child,
+.low-stock-list li:last-child { border-bottom: 0; }
+
+.order-id { font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+.order-type { flex: 1; color: var(--muted); }
+.order-amount { font-weight: 700; }
+
+.low-stock-list li span { flex: 1; }
+.low-stock-list li strong { color: var(--ink); }
+.low-stock-list li strong.critical { color: var(--danger); }
+
+/* Compact charts and tables for the 1280 x 800 laptop workspace. */
+@media (min-width: 1101px) and (max-width: 1366px) {
+  .stat-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-card { min-width: 0; padding: 14px; gap: 6px; }
+  .stat-label { font-size: 12px; }
+  .stat-value { font-size: 23px; overflow-wrap: anywhere; }
+  .stat-delta { font-size: 10px; }
+  .dashboard-grid { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 16px; }
+  .dashboard-main-col, .dashboard-side-col, .charts-row { gap: 16px; }
+  .card { padding: 16px; }
+  .card-head { margin-bottom: 12px; gap: 8px; }
+  .card-head h2 { font-size: 13px; }
+  .range-select { padding: 5px 7px; font-size: 11px; max-width: 100%; }
+  .charts-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .sales-chart-wrap { height: 214px; }
+  .donut-wrap { width: 158px; height: 158px; }
+  .donut-wrap canvas { max-width: 100%; max-height: 100%; }
+  .donut-legend { font-size: 11px; gap: 7px; }
+  .top-products-table { font-size: 12px; }
+  .top-products-table th, .top-products-table td { padding: 7px 6px; }
+  .view-all-link { font-size: 11px; white-space: nowrap; }
+  .recent-orders-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 7px 0; font-size: 12px; }
+  .recent-orders-list .order-id { grid-column: 1 / -1; }
+  .low-stock-list li { font-size: 12px; gap: 8px; padding: 9px 0; }
+  .low-stock-list li strong { white-space: nowrap; font-size: 11px; }
+}
+
+/* Leave room for browser tabs and the address bar on an 800px-tall display. */
+@media (min-width: 1101px) and (max-width: 1366px) and (max-height: 760px) {
+  .admin-content { padding-top: 16px; padding-bottom: 10px; }
+  .stat-card { padding: 12px; gap: 5px; }
+  .card { padding: 14px; }
+  .sales-chart-wrap { height: 178px; }
+  .donut-wrap { width: 128px; height: 128px; }
+  .donut-legend { font-size: 10px; gap: 6px; }
+  .recent-orders-list li { padding: 6px 0; font-size: 11px; line-height: 1.35; }
+  .low-stock-list li { padding: 7px 0; }
+  .top-products-table th, .top-products-table td { padding-top: 6px; padding-bottom: 6px; }
+}
+
+@media (max-width: 1100px) {
+  .stat-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 960px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .charts-row { flex-direction: column; }
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+}

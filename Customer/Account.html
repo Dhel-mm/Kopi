@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Calamba Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Account.css">
+  <link rel="icon" href="HomePic/Logo.png"/>
+</head>
+<body>
+
+    <header class="site-header">
+    <nav class="navbar" aria-label="Main navigation">
+      <a class="brand" href="#">
+        <img src="HomePic/Logo.png" alt="Kopi logo">
+      </a>
+
+      <a class="location" href="https://www.google.com/maps/place/Kopi;+Calamba+Main/@14.2151839,121.1813173,273m/data=!3m1!1e3!4m15!1m8!3m7!1s0x33bd61f7b1cf1317:0x6944391c174ae7b5!2sKopi;+Calamba+Main!8m2!3d14.2151266!4d121.1814945!10e9!16s%2Fg%2F11ny11vdb_!3m5!1s0x33bd61f7b1cf1317:0x6944391c174ae7b5!8m2!3d14.2151266!4d121.1814945!16s%2Fg%2F11ny11vdb_!5m1!1e4?entry=ttu&g_ep=EgoyMDI2MDYyNC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">
+        <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+        <span>Lingga, Calamba City</span>
+      </a>
+
+      <p class="nav-tagline">Not just coffee, it's happiness</p>
+      <div class="nav-links">
+        <a class="nav-link" href="Homepage.html">
+          <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+          <span>Home</span>
+        </a>
+        <a class="nav-link" href="Menu.html">
+          <i class="bi bi-cup-hot" aria-hidden="true"></i>
+          <span>Menu</span>
+        </a>
+        <a class="nav-link" href="Cart.html">
+          <i class="bi bi-cart-fill" aria-hidden="true"></i>
+          <span class="cart-count" data-cart-count>0</span>
+          <span>Cart</span>
+        </a>
+        <a class="nav-link active" href="Account.html">
+          <i class="bi bi-person-fill" aria-hidden="true"></i>
+          <span>Account</span>
+        </a>
+      </div>
+    </nav>
+  </header>
+  
+
+  <main class="account-page">
+    <section class="account-shell" aria-labelledby="account-title">
+      <header class="account-heading">
+        <a class="close-account" href="Homepage.html" aria-label="Close account">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </a>
+
+        <h1 id="account-title">
+          <span class="desktop-title">Profile</span>
+          <span class="mobile-title">My Account</span>
+        </h1>
+        <button class="sidebar-toggle" type="button" aria-label="Show account menu" aria-controls="accountSidebar" aria-expanded="false">
+          <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+      </header>
+      <div class="account-layout">
+        <aside class="account-sidebar" id="accountSidebar" aria-label="Account navigation">
+          <nav class="account-menu">
+            <h2>Account</h2>
+            <a class="menu-item selected" href="#profile">
+              <i class="bi bi-person-circle" aria-hidden="true"></i>
+              <span>Profile</span>
+            </a>
+            <h2>Orders</h2>
+            <a class="menu-item" href="#orders">
+              <i class="bi bi-clipboard2-check" aria-hidden="true"></i>
+              <span>My Orders</span>
+            </a>
+            <h2>Need Help?</h2>
+            <a class="menu-item" href="#feedback">
+              <i class="bi bi-star" aria-hidden="true"></i>
+              <span>Feedback</span>
+            </a>
+            <a class="menu-item" href="#about">
+              <i class="bi bi-lightbulb" aria-hidden="true"></i>
+              <span>About Kopi;</span>
+            </a>
+          </nav>
+          <a class="logout-btn" href="../splash.html">Log Out</a>
+        </aside>
+        <section class="profile-panel account-panel" id="profile" aria-label="Profile details">
+          <form class="profile-form" id="profileForm">
+            <div class="photo-row">
+              <div class="profile-avatar" id="profileAvatar"><i class="bi bi-person-circle" aria-hidden="true"></i></div>
+              <div class="photo-controls">
+                <legend>Profile Picture</legend>
+                <div class="photo-actions">
+                  <button class="upload-btn" id="uploadPhoto" type="button"><i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i>Upload Image</button>
+                  <button class="outline-btn" id="removePhoto" type="button">Remove</button>
+                  <input type="file" id="profilePhotoFile" accept="image/png,image/jpeg" hidden>
+                </div>
+                <small>PNG or JPEG under 250 KB. Photos are saved to your account.</small>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>First Name<input type="text" name="firstName" required maxlength="100" autocomplete="given-name"></label>
+              <label>Last Name<input type="text" name="lastName" required maxlength="100" autocomplete="family-name"></label>
+              <label>Email<input type="email" name="email" required maxlength="254" readonly autocomplete="email"></label>
+              <div class="email-action">
+                <button class="outline-btn" id="editEmail" type="button">Edit email</button>
+              </div>
+            </div>
+            <label class="profile-phone">Phone Number<input type="tel" name="phone" pattern="09[0-9]{9}" maxlength="11" placeholder="09XX-XXX-XXXX" autocomplete="tel"></label>
+            <fieldset class="password-fields"><legend>Password</legend><label>Current password<input type="password" name="currentPassword" autocomplete="current-password"></label><label>New password<input type="password" name="newPassword" minlength="12" maxlength="72" autocomplete="new-password"></label><label>Confirm new password<input type="password" name="confirmPassword" autocomplete="new-password"></label><button class="outline-btn change-password" type="submit">Save changes</button></fieldset>
+            <p>Enter your current password to change your email or password. New passwords need at least 12 characters.</p>
+            <p id="profileStatus" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="orders-panel account-panel" id="orders" aria-label="My Orders" hidden>
+          <div id="customerOrders"></div>
+        </section>
+
+        <section class="feedback-form account-panel" id="feedback" aria-label="Feedback" hidden>
+          <div class="feedback-intro">
+            <div class="feedback-icon"><i class="bi bi-chat-dots"></i></div>
+
+            <div>
+              <h2>We value your feedback!</h2>
+              <p>
+                Your feedback helps us improve and serve you better.
+                <br>
+                Share your experience with Kopi; Calamba.
+              </p>
+            </div>
+          </div>
+
+          <form id="feedbackForm">
+            <div class="form-row">
+              <div class="form-group">
+
+                <label id="ratingLabel">How was your overall experience?</label>
+                <div class="stars" id="stars" role="radiogroup" aria-labelledby="ratingLabel">
+                  <button type="button" class="star" data-rating="1" aria-label="Rate 1 star">☆</button>
+                  <button type="button" class="star" data-rating="2" aria-label="Rate 2 stars">☆</button>
+                  <button type="button" class="star" data-rating="3" aria-label="Rate 3 stars">☆</button>
+                  <button type="button" class="star" data-rating="4" aria-label="Rate 4 stars">☆</button>
+                  <button type="button" class="star" data-rating="5" aria-label="Rate 5 stars">☆</button>
+                </div>
+                <small id="ratingText">Click a star to rate</small>
+
+                <label for="improve">What can we improve?</label>
+                <textarea id="improve" required maxlength="2000" placeholder="Ex. Food, service, cleanliness..."></textarea>
+              </div>
+
+              <div class="form-group">
+
+                <label for="love">What did you love about Kopi;?</label>
+                <textarea id="love" required maxlength="2000" placeholder="Ex. The coffee, the ambiance, the staff..."></textarea>
+
+                <label for="visit">How often do you visit us?</label>
+                <textarea id="visit" required maxlength="250" placeholder="Ex. First time, rarely, once a month, 2-3 times a month, once a week, several times a week, daily..."></textarea>
+              </div>
+
+            </div>
+
+            <div class="additional">
+              <label for="comments">Additional Comments (optional)</label>
+              <textarea id="comments" maxlength="2000" placeholder="Share more details about your experience..."></textarea>
+            </div>
+
+            <p id="errorMessage" class="error-message" role="alert" aria-live="polite"></p>
+
+            <button type="submit" class="submit-btn">Submit Feedback</button>
+          </form>
+
+          <div id="successMessage" class="success-message" role="status" aria-live="polite">
+            <i class="bi bi-check-circle-fill"></i>
+
+            <div>
+              <strong>Thank you for your feedback!</strong>
+              <p>
+                We appreciate you taking the time to share
+                your experience with us.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="about-info account-panel" id="about" aria-label="About Kopi;" hidden>
+
+          <div class="about-top">
+
+            <img src="HomePic/Logo.png" alt="Kopi; Logo" class="about-logo">
+
+            <div class="about-text">
+              <h2>Kopi; Calamba</h2>
+              <p>
+                Established on <b>February 9, 2021</b>, Kopi; Calamba
+                is your cozy neighborhood café in the heart of
+                Lingga, Calamba. We're open every
+                <b>Tuesday to Sunday, 4:00 PM to 11:00 PM.</b>
+                Visit us at <b>72 Villanueva Subdivision,
+                Camia Street, Barangay Lingga, Calamba, Laguna.</b>
+              </p>
+            </div>
+
+            <img src="AboutPic/img6.png" alt="Kopi; Calamba" class="cafe-photo">
+          </div>
+
+          <div class="online">
+
+            <h3>Find Us Online:</h3>
+            <div class="social-icons">
+              <a class="facebook" href="https://www.facebook.com/kopiest2021" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+              <a class="instagram" href="https://www.instagram.com/kopicalamba/" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+            </div>
+
+            <span>Kopi; Calamba Main</span>
+          </div>
+
+          <p class="description">
+            Whether you're looking for your favorite coffee, a refreshing
+            non-coffee drink, a creamy frappe, a soothing tea, or a fruity
+            soda, we have something to satisfy every craving. Pair your
+            favorite drink with our delicious rice meals, chicken meals,
+            and tasty snacks while enjoying our cozy ambiance. Come,
+            relax, enjoy, and discover your new favorite treats at
+            Kopi; Calamba!
+          </p>
+
+          <div class="gallery">
+            <div class="img-card">
+              <img src="AboutPic/img1.png" alt="Kopi; meal1">
+            </div>
+
+            <div class="img-card">
+              <img src="AboutPic/img2.png" alt="Kopi; meal1">
+            </div>
+
+            <div class="img-card">
+              <img src="AboutPic/img3.png" alt="Kopi;interior">
+            </div>
+
+            <div class="img-card">
+              <img src="AboutPic/img4.png" alt="Kopi; meal3">
+            </div>
+
+            <div class="img-card">
+              <img src="AboutPic/img5.png" alt="Kopi; meal4">
+            </div>
+          </div>
+
+        </section>
+      </div>
+    </section>
+    <div class="logout-toast" id="logoutToast" role="status" aria-live="polite">
+  <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+  <span>Successfully logged out</span>
+</div>
+  </main>
+  <script src="Catalog.js"></script>
+  <script src="Store.js"></script>
+  <script src="Api.js"></script>
+  <script src="ProfileTools.js"></script>
+  <script src="Account.js"></script>
+</body>
+</html>
