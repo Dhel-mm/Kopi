@@ -23,7 +23,7 @@ function validateTerms(terms, db) {
         term.amount <= 0 || term.amount > 100000 || round(term.amount) !== term.amount) {
       throw new OrderError("Enter an ingredient, unit and positive quantity (up to 3 decimal places) on each row.");
     }
-    const item = db.prepare("SELECT * FROM inventory_items WHERE sku=?").get(term.sku);
+    const item = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(term.sku);
     if (!item) throw new OrderError("Add the missing inventory product first: "+term.sku);
     try { inStockUnits(term, item, db); }
     catch (error) { throw new OrderError(error.message); }
@@ -39,7 +39,7 @@ function createInventoryService(db) {
   }
   function recipeIssues(recipe) {
     return recipe.terms.flatMap(term => {
-      const stock = db.prepare("SELECT * FROM inventory_items WHERE sku=?").get(term.sku);
+      const stock = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(term.sku);
       if (!stock) return ["Missing ingredient: "+term.sku];
       try { inStockUnits(term, stock, db); } catch (error) { return [error.message]; }
       return [];
@@ -52,7 +52,7 @@ function createInventoryService(db) {
       const issues = recipeIssues(recipe);
       if (issues.length) throw new OrderError(recipe.label+": "+issues.join(" "),409);
       for (const term of recipe.terms) {
-        const stock = db.prepare("SELECT * FROM inventory_items WHERE sku=?").get(term.sku);
+        const stock = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(term.sku);
         const amount = inStockUnits(term, stock, db) * count * (term.sku==="tube-ice" && lessIce ? 0.6 : 1);
         const previous = amounts.get(stock.id);
         amounts.set(stock.id, { ...stock, amount: (previous?.amount || 0) + amount });
@@ -79,9 +79,17 @@ function createInventoryService(db) {
   }
   function check(items, takeout) {
     const needed = requirements(items,takeout);
-    for (const item of needed) {
-      if (round(item.quantity) < item.amount) throw new OrderError(
+    const shortages = needed.filter(item => round(item.quantity) < item.amount);
+    if (shortages.length) {
+      const ids = new Set(shortages.map(item => item.id));
+      const names = [...new Set(items.filter(product =>
+        requirements([product], takeout).some(ingredient => ids.has(ingredient.id))
+      ).map(product => product.name))];
+      const item = shortages[0];
+      const error = new OrderError(
         `Not enough ${item.product_name}. Need ${item.amount} ${item.measurement}; available ${round(item.quantity)} ${item.measurement}.`,409);
+      error.customerMessage = "Not available: " + names.join(", ") + ".";
+      throw error;
     }
     return needed;
   }

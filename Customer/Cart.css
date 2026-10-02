@@ -1,3 +1,5 @@
+.summary-lines .rider-fee-note { color: #b96c03; }
+
 :root {
   --coffee: #3d2b16;
   --coffee-dark: #211508;
@@ -10,6 +12,77 @@
   --gold-deep: #df982e;
   --shadow: 0 18px 40px rgba(61, 43, 22, 0.16);
   --shadow-warm: 0 10px 26px rgba(88, 60, 24, 0.18);
+}
+
+/* Shared customer navigation motion. */
+.nav-links {
+  position: relative;
+  isolation: isolate;
+}
+
+.nav-link {
+  position: relative;
+  z-index: 1;
+  transition: color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-link i {
+  transform-origin: center;
+}
+
+.nav-link:focus-visible {
+  outline: 3px solid var(--gold, #d49b43);
+  outline-offset: 3px;
+}
+
+.nav-link-icon-clicked {
+  animation: customer-nav-icon-click 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-link-motion-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, width, height;
+  transition: transform 340ms cubic-bezier(.22, 1, .36, 1),
+    width 340ms cubic-bezier(.22, 1, .36, 1),
+    height 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-is-moving .nav-links .nav-link,
+.nav-is-moving .nav-links .nav-link i {
+  background: transparent;
+}
+
+@keyframes customer-nav-icon-click {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-3px) scale(1.08); }
+  70% { transform: translateY(1px) scale(.98); }
+}
+
+/* Keep active and inactive links the same size during page changes. */
+@media (max-width: 900px) {
+  .nav-links .nav-link { width: min(130px, 100%); }
+}
+
+@media (max-width: 500px) {
+  .nav-links .nav-link { width: min(60px, 100%); }
+  .nav-links .nav-link i {
+    width: 43px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto -2px;
+    border-radius: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link, .nav-link i, .nav-link-motion-indicator { transition: none; }
+  .nav-link-icon-clicked { animation: none; }
 }
 
 * {
@@ -191,7 +264,6 @@ input {
   font-weight: 800;
 }
 
-.x-back,
 .back-link {
   display: grid;
   place-items: center;
@@ -199,10 +271,6 @@ input {
   font-size: 25px;
 }
 
-.x-back {
-  font-size: 34px;
-  font-weight: 400;
-}
 
 .clear-btn {
   margin-left: auto;
@@ -391,7 +459,7 @@ input {
   min-height: 74px;
   display: flex;
   align-items: center;
-  gap: 48px;
+  gap: 20px;
   padding: 0 8px 0 52px;
   background: #ecc98c;
 }
@@ -420,7 +488,7 @@ input {
 #cartTotal,
 #checkoutTotal {
   color: #2d261d;
-  font-size: 28px;
+  font-size: 35px;
 }
 
 .dark-btn {
@@ -632,6 +700,7 @@ input {
 }
 
 .payment-select {
+  --payment-chevron-duration: 220ms;
   display: grid;
   grid-template-columns: 42px auto 1fr auto;
   align-items: center;
@@ -639,6 +708,12 @@ input {
   padding: 0 20px;
   text-align: left;
   cursor: pointer;
+}
+
+.payment-select .bi-chevron-down { display:inline-block; transition:transform var(--payment-chevron-duration) ease; }
+.payment-select[aria-expanded="true"] .bi-chevron-down { transform:rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .payment-select .bi-chevron-down { transition:none; }
 }
 
 .payment-select:hover,
@@ -1240,10 +1315,6 @@ input {
 
   .cart-heading h1 {
     font-size: 22px;
-  }
-
-  .x-back {
-    font-size: 26px;
   }
 
   .clear-btn {
@@ -1855,3 +1926,71 @@ input {
 .checkout-recovery { grid-column: 1 / -1; order: 4; padding: 12px; border: 1px solid #d49b43; border-radius: 10px; background: #fff5e4; font-size: 12px; }
 .checkout-recovery[hidden] { display: none; }
 .checkout-recovery .dark-btn { padding: 8px 12px; font-size: 12px; }
+
+/* Only the outer checkout view scrolls; the shell stays one connected panel. */
+.checkout-view {
+  min-height: 0;
+  max-height: calc(100dvh - 120px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.checkout-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow: clip;
+}
+.checkout-shell > .confirm-heading,
+.checkout-shell > .checkout-total-bar {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  width: 100%;
+}
+.checkout-shell > .confirmation-form {
+  flex: 1 0 auto;
+  min-height: auto;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  padding-bottom: 28px;
+}
+.payment-option-logo {
+  display: inline-block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.gcash-logo,
+.gcash-badge {
+  display: inline-block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: transparent url("HomePic/gcash.png") center / contain no-repeat;
+}
+.gcash-badge { color: transparent; font-size: 0; }
+.gcash-panel-heading .gcash-logo { width: 44px; height: 44px; flex-basis: 44px; }
+@media (max-width: 500px) {
+  .checkout-view {
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+  }
+  .checkout-shell {
+    height: auto;
+    max-height: none;
+  }
+  .checkout-shell > .confirmation-form { padding-bottom: 20px; }
+  .checkout-shell > .checkout-total-bar { min-height: 60px; }
+  .payment-option-logo,
+  .payment-select .gcash-badge,
+  .payment-choices .gcash-logo { width: 25px; height: 25px; flex-basis: 25px; }
+}

@@ -4,6 +4,7 @@ const categoryEl = document.getElementById("categoryFilter");
 
 let inventory = [];
 let query = "";
+let stockFilter = "All";
 
 function statusClass(status) {
   return status.toLowerCase().replaceAll(" ", "-");
@@ -19,8 +20,8 @@ function escapeHtml(value) {
   }[character]));
 }
 
-function displayMeasurement(item) {
-  const amount = Number(item.initialQuantity);
+function displayMeasurement(item, value = item.quantity) {
+  const amount = Number(value);
 
   if (item.measurement === "g" && amount >= 1000) {
     return `${amount / 1000} kg`;
@@ -34,17 +35,19 @@ function displayMeasurement(item) {
 }
 
 function packageStock(item) {
-  const packageCount = item.initialQuantity
-    ? Math.round(Number(item.quantity) / Number(item.initialQuantity) * 1000) / 1000
-    : 0;
-
-  return `${Number(item.quantity).toLocaleString()} ${item.measurement} available (${packageCount} package equivalent${packageCount === 1 ? "" : "s"})`;
+  const count = Number(item.quantity) / Number(item.initialQuantity);
+  const label = item.packageUnit || "package";
+  const plural = label === "batch" ? "batches" : label === "pouch" ? "pouches" : label+"s";
+  const amount = count > 0 && count < 0.001 ? "<0.001" : count.toLocaleString(undefined,{maximumFractionDigits:3});
+  return `${amount} ${count === 1 ? label : plural}`;
 }
+
+const itemCategories = item => item.category.split(",").map(value => value.trim());
 
 function filteredInventory() {
   return inventory.filter(item => {
     const categoryMatches =
-      categoryEl.value === "All" || item.category === categoryEl.value;
+      categoryEl.value === "All" || itemCategories(item).includes(categoryEl.value);
 
     const searchMatches =
       !query ||
@@ -52,7 +55,8 @@ function filteredInventory() {
         .toLowerCase()
         .includes(query);
 
-    return categoryMatches && searchMatches;
+    const stockMatches = stockFilter === "All" || item.status === stockFilter;
+    return categoryMatches && searchMatches && stockMatches;
   });
 }
 
@@ -61,7 +65,7 @@ function populateCategories() {
 
   categoryEl.innerHTML = `<option value="All">All Categories</option>`;
 
-  [...new Set(inventory.map(item => item.category))]
+  [...new Set(inventory.flatMap(itemCategories))]
     .sort()
     .forEach(category => {
       categoryEl.insertAdjacentHTML(
@@ -91,13 +95,16 @@ function render() {
   document.getElementById("inStock").textContent = counts["In Stock"];
   document.getElementById("lowStock").textContent = counts["Low Stock"];
   document.getElementById("outStock").textContent = counts["Out of Stock"];
+  document.querySelectorAll("[data-stock-filter]").forEach(card => {
+    card.setAttribute("aria-pressed", String(card.dataset.stockFilter === stockFilter));
+  });
 
   rowsEl.innerHTML = visible.map(item => `
     <tr>
       <td>${escapeHtml(item.productName)}</td>
       <td>${escapeHtml(item.category)}</td>
-      <td>${packageStock(item)}</td>
-      <td>${displayMeasurement(item)} / package</td>
+      <td>${escapeHtml(packageStock(item))}</td>
+      <td>${escapeHtml(displayMeasurement(item))}<small class="stock-pack-size">${escapeHtml(displayMeasurement(item,item.initialQuantity))} / ${escapeHtml(item.packageUnit || "package")}</small></td>
       <td>
         <span class="stock-status ${statusClass(item.status)}">
           ${escapeHtml(item.status)}
@@ -127,8 +134,9 @@ function render() {
   `).join("");
 
   document.getElementById("inventoryEmpty").hidden = visible.length !== 0;
-  document.getElementById("inventoryRange").textContent =
-    `Showing ${visible.length} of ${inventory.length} products`;
+  document.getElementById("inventoryRange").textContent = stockFilter === "All"
+    ? `Showing ${visible.length} of ${inventory.length} products`
+    : `Showing ${visible.length} ${stockFilter.toLowerCase()} ingredient${visible.length === 1 ? "" : "s"}`;
 
   rowsEl.querySelectorAll("[data-add]").forEach(button => {
     button.addEventListener("click", () => {
@@ -154,7 +162,7 @@ async function refreshInventory() {
   } catch (error) {
     rowsEl.innerHTML = "";
     document.getElementById("inventoryEmpty").hidden = false;
-    document.getElementById("inventoryEmpty").textContent = error.message;
+    KopiNotice.set(document.getElementById("inventoryEmpty"),error.message,"error");
   }
 }
 
@@ -163,8 +171,8 @@ async function addStock(id) {
   if (!item) return;
 
   const value = window.prompt(
-    `Add stock for ${item.productName} in ${item.measurement}. One package = ${item.initialQuantity} ${item.measurement}:`,
-    item.initialQuantity
+    `How many ${item.packageUnit || "package"}(s) of ${item.productName} to add? One = ${displayMeasurement(item,item.initialQuantity)}. Fractions are allowed:`,
+    "1"
   );
 
   if (value === null || !Number.isFinite(Number(value)) || Number(value) <= 0) {
@@ -175,13 +183,13 @@ async function addStock(id) {
     await KopiApi.request(`/admin/inventory/${id}/add-stock`, {
       method: "PATCH",
       body: JSON.stringify({
-        amount: Number(value)
+        amount: Math.round(Number(value) * Number(item.initialQuantity) * 1000) / 1000
       })
     });
 
     refreshInventory();
   } catch (error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
   }
 }
 
@@ -208,7 +216,7 @@ async function setStock(id) {
 
     refreshInventory();
   } catch (error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
   }
 }
 
@@ -226,8 +234,9 @@ async function addProduct() {
   const quantity = window.prompt("Starting stock quantity:", "0");
   const measurement = window.prompt("Measurement (g, ml, pcs):", "pcs") || "pcs";
   const initialQuantity = window.prompt("Amount in ONE full package, in the same unit (for example 1000 ml in a carton):", quantity || "1");
+  const packageUnit = window.prompt("Package type (bottle, bag, pack, pouch, can, jar, container, gallon, batch, tray, carton, tub, block, package):", "package");
 
-  if (quantity === null || initialQuantity === null || !Number.isFinite(Number(quantity))) return;
+  if (quantity === null || initialQuantity === null || packageUnit === null || !Number.isFinite(Number(quantity))) return;
 
   try {
     await KopiApi.request("/admin/inventory", {
@@ -239,13 +248,14 @@ async function addProduct() {
         quantity: Number(quantity),
         initialQuantity: Number(initialQuantity),
         measurement: measurement.trim(),
+        packageUnit: packageUnit.trim().toLowerCase(),
         lowStockLevel: Number(quantity) * 0.25
       })
     });
 
     refreshInventory();
   } catch (error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
   }
 }
 
@@ -255,6 +265,14 @@ searchEl.addEventListener("input", () => {
 });
 
 categoryEl.addEventListener("change", render);
+
+document.querySelectorAll("[data-stock-filter]").forEach(card => {
+  card.addEventListener("click", () => {
+    const nextFilter = card.dataset.stockFilter;
+    stockFilter = nextFilter === stockFilter ? "All" : nextFilter;
+    render();
+  });
+});
 
 document.getElementById("addProduct").addEventListener("click", addProduct);
 
@@ -277,7 +295,7 @@ async function refreshRecipes() {
     recipeSelect.innerHTML = recipes.map(recipe => `<option value="${escapeHtml(recipe.id)}">${recipe.issues.length ? "⚠ " : ""}${escapeHtml(recipe.label)}</option>`).join("");
     if (recipes.some(recipe=>recipe.id===selected)) recipeSelect.value=selected;
   } catch(error) {
-    document.getElementById("recipeSummary").textContent=error.message;
+    KopiNotice.set(document.getElementById("recipeSummary"),error.message,"error");
   }
 }
 function addRecipeRow(term = {}) {
@@ -325,6 +343,6 @@ document.getElementById("recipeForm").addEventListener("submit",async event=>{
     await refreshRecipes();
     renderRecipe();
     document.getElementById("recipeIssues").textContent="Recipe saved.";
-  } catch(error) { document.getElementById("recipeIssues").textContent=error.message; }
+  } catch(error) { KopiNotice.set(document.getElementById("recipeIssues"),error.message,"error"); }
   finally { button.disabled=false; }
 });

@@ -39,7 +39,7 @@ function checkout(request) {
       cartTotal:entries=>entries.reduce((sum,item)=>sum+item.quantity*item.price,0)
     },
     KopiApi:{getSession:()=>({user:{id:1}}),hasPendingOrder:()=>false,request},
-    alert:()=>{},navigator:{}
+    KopiNotice:{toast(){},set(element,message){element.textContent=message;}},alert:()=>{},navigator:{}
   });
   return {app,element,cash,gcash};
 }
@@ -76,10 +76,10 @@ test("a stale quote response cannot re-enable an edited checkout",async()=>{
 });
 
 test("stock or pricing rejection keeps payment and order submission blocked",async()=>{
-  const ui=checkout(async()=>{throw new Error("Not enough oat milk.");});
+  const ui=checkout(async()=>{throw new Error("Not available: Caramel Frappe.");});
   await tick();
   assert.equal(ui.element("orderNowBtn").disabled,true);
   assert.equal(ui.gcash.disabled,true);
   assert.equal(ui.element("gcashPanel").hidden,true);
-  assert.match(ui.element("checkoutQuoteStatus").textContent,/Not enough oat milk/);
+  assert.equal(ui.element("checkoutQuoteStatus").textContent,"Not available: Caramel Frappe.");
 });

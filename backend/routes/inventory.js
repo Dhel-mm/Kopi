@@ -17,10 +17,11 @@ module.exports = function inventoryRouter(db) {
   const service = createInventoryService(db);
   router.use(requireAuth,requireRole("Admin"));
   router.get("/",(req,res)=>{
-    const items = db.prepare("SELECT * FROM inventory_items ORDER BY category,product_name").all().map(item=>{
+    const items = db.prepare("SELECT * FROM inventory_items WHERE is_archived=0 ORDER BY catalog_order IS NULL,catalog_order,category,product_name").all().map(item=>{
       const low = lowStockLevel(item);
       return {id:item.id,sku:item.sku,productName:item.product_name,category:item.category,
         quantity:round(item.quantity),measurement:item.measurement,initialQuantity:item.initial_quantity,
+        packageUnit:item.package_unit,
         lowStockLevel:low,status:item.quantity<=0?"Out of Stock":item.quantity<=low?"Low Stock":"In Stock"};
     });
     res.json({items});
@@ -31,7 +32,7 @@ module.exports = function inventoryRouter(db) {
       SELECT c.inventory_item_id AS itemId, i.sku, i.product_name AS productName,
         c.recipe_unit AS recipeUnit, c.recipe_amount AS recipeAmount,
         c.stock_unit AS stockUnit, c.stock_amount AS stockAmount, c.is_estimate AS isEstimate
-      FROM inventory_unit_conversions c JOIN inventory_items i ON i.id=c.inventory_item_id
+      FROM inventory_unit_conversions c JOIN inventory_items i ON i.id=c.inventory_item_id WHERE i.is_archived=0
       ORDER BY i.product_name,c.recipe_unit
     `).all();
     res.json({conversions});
@@ -42,7 +43,7 @@ module.exports = function inventoryRouter(db) {
       const stockAmount = quantity(req.body?.stockAmount,false);
       const recipeUnit = req.params.unit;
       if (!["g","ml","pcs"].includes(recipeUnit)) throw new OrderError("Choose g, ml or pcs as the recipe unit.");
-      const item = db.prepare("SELECT * FROM inventory_items WHERE sku=?").get(req.params.sku);
+      const item = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(req.params.sku);
       if (!item) throw new OrderError("Inventory product was not found.",404);
       if (item.measurement === recipeUnit) throw new OrderError("These units already match; no conversion is needed.");
       if (req.body?.confirmedMeasured !== true) throw new OrderError("Confirm that these amounts were measured for this ingredient.");
@@ -75,7 +76,7 @@ module.exports = function inventoryRouter(db) {
     try {
       const value = quantity(mode==="add-stock"?req.body?.amount:req.body?.quantity,mode==="set-stock");
       db.transaction(()=>{
-        const item = db.prepare("SELECT * FROM inventory_items WHERE id=?").get(req.params.id);
+        const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND is_archived=0").get(req.params.id);
         if (!item) throw new OrderError("Inventory item was not found.",404);
         const next = mode==="add-stock"?round(item.quantity+value):value;
         quantity(next);
@@ -95,11 +96,13 @@ module.exports = function inventoryRouter(db) {
       if (!/^[a-z0-9-]+$/.test(b.sku) || !["g","ml","pcs"].includes(b.measurement)) throw new OrderError("Use a lowercase SKU and a stock unit of g, ml, or pcs.");
       const amount=quantity(b.quantity);
       const pack=quantity(b.initialQuantity,false);
+      const packageUnit=b.packageUnit||"package";
+      if (!["package","bottle","bag","pack","pouch","can","jar","container","gallon","batch","tray","carton","tub","block"].includes(packageUnit)) throw new OrderError("Choose a valid package type.");
       const low=lowStockLevel({sku:b.sku,initial_quantity:pack});
       const id=db.transaction(()=>{
         if (db.prepare("SELECT id FROM inventory_items WHERE sku=?").get(b.sku)) throw new OrderError("That inventory SKU already exists.",409);
-        const row=db.prepare(`INSERT INTO inventory_items(sku,product_name,category,quantity,measurement,initial_quantity,low_stock_level) VALUES(?,?,?,?,?,?,?)`)
-          .run(b.sku,b.productName.trim(),b.category.trim(),amount,b.measurement,pack,low);
+        const row=db.prepare(`INSERT INTO inventory_items(sku,product_name,category,quantity,measurement,initial_quantity,low_stock_level,package_unit) VALUES(?,?,?,?,?,?,?,?)`)
+          .run(b.sku,b.productName.trim(),b.category.trim(),amount,b.measurement,pack,low,packageUnit);
         if (amount) db.prepare("INSERT INTO inventory_transactions(inventory_item_id,change_amount,reason) VALUES(?,?,'Opening stock')")
           .run(row.lastInsertRowid,amount);
         return row.lastInsertRowid;

@@ -57,6 +57,27 @@ const KopiApi = (() => {
     finally { clearSession(); }
   }
 
+  // A visible, signed-in page checks in every 45 seconds. Closed or hidden
+  // pages become offline after the server's two-minute activity window.
+  if (typeof document !== "undefined" && typeof window.addEventListener === "function"
+      && /^\/(Customer|Admin)\//i.test(window.location.pathname || "")) {
+    let presencePending = false;
+    let lastPresence = 0;
+    async function updatePresence() {
+      if (document.visibilityState !== "visible" || !getSession()?.token
+          || presencePending || Date.now() - lastPresence < 30000) return;
+      presencePending = true;
+      lastPresence = Date.now();
+      try { await request("/me/presence", { method: "POST" }); }
+      catch { /* The next check-in retries; background notices are unnecessary. */ }
+      finally { presencePending = false; }
+    }
+    window.setInterval(updatePresence, 45000);
+    window.addEventListener("focus", updatePresence);
+    document.addEventListener("visibilitychange", updatePresence);
+    updatePresence();
+  }
+
   async function download(path, filename) {
     const response = await fetch(baseUrl + path, {headers:{Authorization:"Bearer "+(getSession()?.token||"")}});
     if (!response.ok) {

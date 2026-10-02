@@ -6,11 +6,49 @@ const {createInventoryService,lowStockLevel}=require("../services/inventory");
 const {createOrderWorkflow}=require("../services/orderWorkflow");
 const stock=(db,sku)=>db.prepare("SELECT quantity FROM inventory_items WHERE sku=?").get(sku).quantity;
 
+test("new order numbers are compact, unique, and stable on checkout retries",()=>{
+  const db=fixture(),workflow=createOrderWorkflow(db);
+  try {
+    const request=body();
+    const online=workflow.create(request,customer);
+    const pos=workflow.create(body({serviceType:"Dine-in"}),admin,true);
+    assert.equal(online.orderNumber,"KOPI-0001");
+    assert.equal(pos.orderNumber,"POS-0002");
+    assert.equal(workflow.create(request,customer).orderNumber,online.orderNumber);
+    assert.equal(workflow.recover(request.requestKey,customer).orderNumber,online.orderNumber);
+    assert.equal(workflow.cancel(online.orderId,customer).orderNumber,online.orderNumber);
+    assert.equal(workflow.create(body(),customer).orderNumber,"KOPI-0003");
+  } finally {db.close();}
+});
+
+test("compact numbers skip legacy collisions without changing historical IDs",()=>{
+  const db=fixture(),workflow=createOrderWorkflow(db);
+  try {
+    db.prepare("INSERT INTO orders(order_number,user_id) VALUES('KOPI-0002',1)").run();
+    const fresh=workflow.create(body(),customer);
+    assert.equal(fresh.orderNumber,"KOPI-0003");
+    assert.equal(db.prepare("SELECT order_number FROM orders WHERE id=1").get().order_number,"KOPI-0002");
+    assert.equal(workflow.create(body(),customer).orderNumber,"KOPI-0004");
+  } finally {db.close();}
+});
+
+test("short order numbers expand naturally after four digits",()=>{
+  const db=fixture(),workflow=createOrderWorkflow(db);
+  try {
+    db.prepare("INSERT INTO orders(id,order_number,user_id) VALUES(9999,'LEGACY-UNCHANGED',1)").run();
+    assert.equal(workflow.create(body(),customer).orderNumber,"KOPI-10000");
+    assert.equal(db.prepare("SELECT order_number FROM orders WHERE id=9999").get().order_number,"LEGACY-UNCHANGED");
+  } finally {db.close();}
+});
+
 test("server prices override browser prices, names, fees and fake voucher discounts",()=>{
   const q=quote(body({deliveryFee:999,voucherDiscount:999}));
   assert.equal(q.total,160);assert.equal(q.items[0].name,"Caramel Frappe");
   assert.equal(q.items[0].price,160);assert.equal(q.deliveryFee,0);
-  assert.equal(quote(body({voucher:"kopi10",voucherDiscount:999})).total,150);
+  const db=fixture();
+  try {
+    assert.equal(createOrderWorkflow(db).prepareQuote(body({voucher:"kopi10",voucherDiscount:999})).total,150);
+  } finally {db.close();}
   assert.throws(()=>quote(body({voucher:"FREE"})),/not valid/);
   assert.throws(()=>quote(body({discount:999}),true),/exceed/);
 });
@@ -46,7 +84,8 @@ test("hot/iced, less ice, optional add-ons, doubled chicken flavor and takeout p
     assert.equal(iced["coffee-beans"],60);assert.equal(iced["tube-ice"],144);
     assert.equal(iced["paper-bag"],1);assert.equal(iced["straws"],2);
     const oat=needed("matcha-latte",{Size:"ICED - 16oz","Add-ons (worth ₱30)":"Oat milk"});
-    assert.equal(oat["oat-milk"],60);
+    assert.equal(oat["oat-milk"],200); // 140 ml base milk + the optional 60 ml add-on.
+    assert.equal(oat["fresh-milk"],undefined);
     assert.equal(needed("lychee",{"Add-ons (worth ₱30)":"Syrup-Sauce"})["lychee-syrup"],35);
     assert.equal(needed("chicken-wings",{Pieces:"12pcs",Flavors:"Sweet Chili"})["sweet-chili"],60);
     assert.equal(needed("liempo",{},1,false)["takeout-container"],undefined);

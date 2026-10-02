@@ -6,6 +6,7 @@ module.exports = function adminOrderRouter(db) {
   const router = express.Router();
   const requireAuth = authFor(db);
   const workflow = createOrderWorkflow(db);
+  const delivery = require("../services/delivery").createDeliveryService(db);
   router.use(requireAuth,requireRole("Admin"));
   router.get("/orders/requests/:key",(request,response)=>{
     try { response.json(workflow.recover(request.params.key,request.user,true)); }
@@ -18,6 +19,9 @@ module.exports = function adminOrderRouter(db) {
         orders.payment_reference AS paymentReference,orders.payment_status AS paymentStatus,
         orders.inventory_state AS inventoryState,orders.refund_status AS refundStatus,
         orders.address,orders.phone,orders.total,
+        orders.rider_fee_cents / 100.0 AS riderFee,orders.delivery_tracking_url AS trackingUrl,
+        orders.delivery_message AS deliveryMessage,orders.delivery_revision AS deliveryRevision,
+        orders.delivery_acknowledged_at AS deliveryAcknowledgedAt,
         (SELECT COALESCE(SUM(quantity),0) FROM order_items WHERE order_id=orders.id) AS itemCount,
         orders.created_at AS createdAt,
         COALESCE(NULLIF(orders.customer_name,''),users.first_name||' '||users.last_name) AS customer
@@ -36,6 +40,10 @@ module.exports = function adminOrderRouter(db) {
   router.patch("/orders/:id/status",(request,response)=>{
     try { response.json(workflow.advance(request.params.id,request.body?.status,request.user)); }
     catch(error) { sendError(response,error); }
+  });
+  router.put("/orders/:id/delivery", (request, response) => {
+    try { response.json({delivery: delivery.save(request.params.id, request.body || {}, request.user)}); }
+    catch (error) { sendError(response, error); }
   });
   router.patch("/orders/:id/verify-payment",(request,response)=>{
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(request.params.id);

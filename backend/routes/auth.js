@@ -44,7 +44,7 @@ module.exports=function authRouter(db) {
     } catch(error) {sendError(res,error);}
   });
   router.post("/logout",authFor(db),(req,res)=>{
-    db.prepare("UPDATE users SET auth_version=auth_version+1 WHERE id=?").run(req.user.id);
+    db.prepare("UPDATE users SET auth_version=auth_version+1,last_seen_at=NULL WHERE id=?").run(req.user.id);
     accounts.audit(db,req.user.id,req.user.id,"Signed out all sessions");
     res.json({message:"Signed out on all devices."});
   });
@@ -60,7 +60,7 @@ module.exports=function authRouter(db) {
         const fresh=db.prepare("SELECT * FROM password_resets WHERE token_hash=?").get(tokenHash);
         const user=db.prepare("SELECT * FROM users WHERE id=?").get(record.user_id);
         if (!fresh || fresh.used_at || fresh.expires_at<Date.now() || user.status!=="Active") throw new OrderError("Recovery code is invalid or expired.");
-        db.prepare("UPDATE users SET password_hash=?,auth_version=auth_version+1 WHERE id=?").run(hash,user.id);
+        db.prepare("UPDATE users SET password_hash=?,auth_version=auth_version+1,last_seen_at=NULL WHERE id=?").run(hash,user.id);
         db.prepare("UPDATE password_resets SET used_at=? WHERE user_id=? AND used_at IS NULL").run(Date.now(),user.id);
         accounts.audit(db,user.id,user.id,"Password recovered");
       }).immediate();

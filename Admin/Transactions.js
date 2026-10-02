@@ -31,20 +31,18 @@ async function refreshTransactions() {
     const buttons=document.querySelectorAll(".pagination button");
     buttons[0].disabled=page<=1;buttons[1].textContent=page+" / "+data.pages;buttons[2].disabled=page>=data.pages;
     status.textContent="Dates use Asia/Manila. Summary cards show today, all records, and the current month.";
-  }catch(error){if(requestVersion===version){status.textContent=error.message;rowsEl.innerHTML="";emptyEl.hidden=false;emptyEl.textContent="Report unavailable. Retry by applying filters.";}}
+  }catch(error){if(requestVersion===version){KopiNotice.set(status,error.message,"error");rowsEl.innerHTML="";emptyEl.hidden=false;emptyEl.textContent="Report unavailable. Retry by applying filters.";}}
 }
 document.querySelectorAll(".pagination button")[0].addEventListener("click",()=>{page--;refreshTransactions();});
 document.querySelectorAll(".pagination button")[2].addEventListener("click",()=>{page++;refreshTransactions();});
 searchEl.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(()=>{page=1;refreshTransactions();},250);});
 filters.addEventListener("submit",event=>{event.preventDefault();page=1;refreshTransactions();});
 document.getElementById("transactionFilter").addEventListener("click",()=>{filters.hidden=!filters.hidden;});
-document.getElementById("dateButton").setAttribute("aria-label","Choose transaction dates");
-document.getElementById("dateButton").addEventListener("click",()=>{filters.hidden=false;document.getElementById("reportFrom").focus();});
 document.getElementById("clearFilters").addEventListener("click",()=>{filters.reset();searchEl.value="";page=1;refreshTransactions();});
 document.getElementById("exportReport").addEventListener("click",async event=>{
   const button=event.currentTarget;button.disabled=true;
   try{await KopiApi.download("/admin/transactions/export?"+params(),"kopi-transactions.csv");}
-  catch(error){document.getElementById("reportStatus").textContent=error.message;}
+  catch(error){KopiNotice.set(document.getElementById("reportStatus"),error.message,"error");}
   finally{button.disabled=false;}
 });
 window.addEventListener("focus",refreshTransactions);

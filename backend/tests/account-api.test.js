@@ -21,6 +21,34 @@ async function harness(run) {
   const login=async(email,password)=>request("/api/auth/login","POST",{email,password});
   try {await run({db,request,login});}finally{await new Promise(resolve=>server.close(resolve));db.close();}
 }
+
+test("presence uses authenticated server activity, expires, and clears when sessions end",()=>harness(async({db,request,login})=>{
+  const admin=(await login("admin@test.invalid",adminPassword)).data.token;
+  let customer=(await login("customer@test.invalid",customerPassword)).data.token;
+  const customerStatus=async()=> (await request("/api/admin/users","GET",undefined,admin)).data.users.find(user=>user.id===1);
+  assert.equal((await customerStatus()).online,false);
+  assert.equal((await request("/api/me/presence","POST",{})).status,401);
+  const before=Date.now();
+  assert.equal((await request("/api/me/presence","POST",{userId:2,lastSeenAt:1},customer)).status,200);
+  assert.equal((await customerStatus()).online,true);
+  const stamp=db.prepare("SELECT last_seen_at FROM users WHERE id=1").get().last_seen_at;
+  assert.ok(stamp>=before && stamp<=Date.now());
+  assert.equal(db.prepare("SELECT last_seen_at FROM users WHERE id=2").get().last_seen_at,null);
+  await request("/api/me/presence","POST",{},customer);
+  assert.equal(db.prepare("SELECT last_seen_at FROM users WHERE id=1").get().last_seen_at,stamp);
+  db.prepare("UPDATE users SET last_seen_at=? WHERE id=1").run(Date.now()-121000);
+  assert.equal((await customerStatus()).online,false);
+  await request("/api/me/presence","POST",{},customer);
+  await request("/api/auth/logout","POST",{},customer);
+  assert.equal((await customerStatus()).online,false);
+  assert.equal((await request("/api/me/presence","POST",{},customer)).status,401);
+  customer=(await login("customer@test.invalid",customerPassword)).data.token;
+  await request("/api/me/presence","POST",{},customer);
+  assert.equal((await request("/api/admin/users/1","PATCH",{role:"Customer",status:"Inactive",currentPassword:adminPassword},admin)).status,200);
+  assert.equal((await customerStatus()).online,false);
+  assert.equal(db.prepare("SELECT last_seen_at FROM users WHERE id=1").get().last_seen_at,null);
+  assert.equal((await request("/api/me/presence","POST",{},customer)).status,401);
+}));
 test("signup validation, ignored privilege claims and inactive-account enforcement",()=>harness(async({db,request,login})=>{
   const invalid=await request("/api/auth/signup","POST",{firstName:{},lastName:"Test",email:"test@invalid",password:"short"});
   assert.equal(invalid.status,400);
@@ -75,6 +103,7 @@ test("admin access changes, single-use recovery and role claims are enforced by 
   assert.equal((await request("/api/admin/users/1/recovery-code","POST",{currentPassword:adminPassword,identityConfirmed:false},adminToken)).status,400);
   const issued=await request("/api/admin/users/1/recovery-code","POST",{currentPassword:adminPassword,identityConfirmed:true},adminToken);
   assert.equal(issued.status,200);
+  assert.match(issued.data.code,/^\d{12}$/);
   assert.notEqual(db.prepare("SELECT token_hash FROM password_resets").get().token_hash,issued.data.code);
   const recovered=await request("/api/auth/reset-password","POST",{code:issued.data.code,newPassword:"RecoveredCustomerPassword!"});
   assert.equal(recovered.status,200);
@@ -86,4 +115,16 @@ test("admin access changes, single-use recovery and role claims are enforced by 
   assert.equal((await request("/api/auth/reset-password","POST",{code:expired.data.code,newPassword:"NotUsedPassword!"})).status,400);
   assert.equal((await request("/api/admin/users/1","PATCH",{role:"Customer",status:"Inactive",currentPassword:adminPassword},adminToken)).status,200);
   assert.equal((await login("customer@test.invalid","RecoveredCustomerPassword!")).status,401);
+}));
+
+test("administrators can permanently delete an unused account but cannot delete themselves or accounts with orders",()=>harness(async({db,request,login})=>{
+  const adminToken=(await login("admin@test.invalid",adminPassword)).data.token;
+  assert.equal((await request("/api/admin/users/1","DELETE",{currentPassword:adminPassword,confirmDelete:false},adminToken)).status,400);
+  assert.equal((await request("/api/admin/users/2","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken)).status,400);
+  assert.equal((await request("/api/admin/users/1","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken)).status,200);
+  assert.equal(db.prepare("SELECT id FROM users WHERE id=1").get(),undefined);
+  db.prepare("INSERT INTO orders(order_number,user_id,total) VALUES('TEST-DELETE-ORDER',3,10)").run();
+  const blocked=await request("/api/admin/users/3","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken);
+  assert.equal(blocked.status,409);
+  assert.ok(db.prepare("SELECT id FROM users WHERE id=3").get());
 }));

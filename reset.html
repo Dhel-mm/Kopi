@@ -1,16 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kopi; Recover account</title><link rel="stylesheet" href="login.css"></head>
-<body><div class="container">
-<img src="Customer/HomePic/Intro.JPG" class="bg-image" alt=""><div class="overlay"></div>
-<main class="login-card">
-<h1>Recover your account</h1>
-<p>Contact Kopi; Calamba staff to verify your identity and receive a single-use recovery code. Codes expire after 15 minutes. Never share your password with staff.</p>
-<form id="resetForm">
-<div class="input-group"><label for="recoveryCode">Recovery code</label><input id="recoveryCode" name="code" required autocomplete="off" maxlength="100"></div>
-<div class="input-group"><label for="newPassword">New password</label><input id="newPassword" name="password" type="password" minlength="12" maxlength="72" required autocomplete="new-password"></div>
-<div class="input-group"><label for="confirmPassword">Confirm password</label><input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password"></div>
-<button type="submit">Reset password</button><p id="authStatus" role="status"></p>
-</form><a href="login.html">Back to login</a>
-</main></div><script src="Customer/Api.js"></script><script src="Auth.js"></script></body></html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kopi; Recover account</title>
+  <link rel="stylesheet" href="login.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="Customer/Notices.css">
+</head>
+<body class="recovery-page">
+<script src="Customer/Notices.js"></script>
+  <div class="container">
+    <img src="Customer/HomePic/Intro.JPG" class="bg-image" alt="">
+    <div class="overlay"></div>
+    <main class="login-card recovery-card">
+      <a class="recovery-back" href="login.html" aria-label="Back to login"><span aria-hidden="true">❮</span><span>Back to login</span></a>
+      <h1 class="card-title">Recover your account</h1>
+      <p class="recovery-description">Contact Kopi; Calamba staff to verify your identity and receive a single-use recovery code. Codes expire after 15 minutes. Never share your password with staff.</p>
+      <form id="resetForm">
+        <div class="input-group">
+          <label for="recoveryCode">Recovery code</label>
+          <input id="recoveryCode" name="code" required autocomplete="off" maxlength="100">
+        </div>
+        <div class="input-group">
+          <label for="newPassword">New password</label>
+          <input id="newPassword" name="password" type="password" minlength="12" maxlength="72" required autocomplete="new-password">
+        </div>
+        <div class="input-group">
+          <label for="confirmPassword">Confirm password</label>
+          <input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password">
+        </div>
+        <button class="login-btn recovery-submit" type="submit">Reset password</button>
+        <p id="authStatus" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+  </div>
+  <script src="Customer/Api.js"></script>
+  <script src="Auth.js"></script>
+</body>
+</html>

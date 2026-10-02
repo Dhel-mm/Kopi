@@ -11,6 +11,77 @@
   --shadow: 0 16px 35px rgba(53, 34, 16, 0.16);
 }
 
+/* Shared customer navigation motion. */
+.nav-links {
+  position: relative;
+  isolation: isolate;
+}
+
+.nav-link {
+  position: relative;
+  z-index: 1;
+  transition: color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-link i {
+  transform-origin: center;
+}
+
+.nav-link:focus-visible {
+  outline: 3px solid var(--gold, #d49b43);
+  outline-offset: 3px;
+}
+
+.nav-link-icon-clicked {
+  animation: customer-nav-icon-click 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-link-motion-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, width, height;
+  transition: transform 340ms cubic-bezier(.22, 1, .36, 1),
+    width 340ms cubic-bezier(.22, 1, .36, 1),
+    height 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-is-moving .nav-links .nav-link,
+.nav-is-moving .nav-links .nav-link i {
+  background: transparent;
+}
+
+@keyframes customer-nav-icon-click {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-3px) scale(1.08); }
+  70% { transform: translateY(1px) scale(.98); }
+}
+
+/* Keep active and inactive links the same size during page changes. */
+@media (max-width: 900px) {
+  .nav-links .nav-link { width: min(130px, 100%); }
+}
+
+@media (max-width: 500px) {
+  .nav-links .nav-link { width: min(60px, 100%); }
+  .nav-links .nav-link i {
+    width: 43px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto -2px;
+    border-radius: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link, .nav-link i, .nav-link-motion-indicator { transition: none; }
+  .nav-link-icon-clicked { animation: none; }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1003,8 +1074,8 @@ a {
   }
 
   .nav-link .cart-count {
-    top: 5px;
-    right: -4px;
+    top: 6px;
+    right: 10px;
     min-width: 15px;
     height: 15px;
     font-size: 10px;

@@ -70,27 +70,6 @@ body {
   letter-spacing: 1px;
 }
 
-.profile-icon {
-  position: absolute;
-  top: 40px;
-  right: 50px;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  border: 2px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.15);
-  color: white;
-  font-size: 35px;
-  text-decoration: none;
-}
-
-.profile-icon:hover {
-  background: rgba(255,255,255,0.25);
-}
-
 .signup-card {
   background: white;
   border-radius: 20px;

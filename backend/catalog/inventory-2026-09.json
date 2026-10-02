@@ -1,0 +1,509 @@
+{
+  "source": "Inventory.csv supplied by the owner; 1-liter bottles for Oat Milk, Sprite and Cooking Oil confirmed September 26, 2026.",
+  "items": [
+    {
+      "sku": "coffee-beans",
+      "productName": "Coffee Beans",
+      "category": "Kopi; / Coffee Series, Coffee-Based Frappe",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "bag"
+    },
+    {
+      "sku": "oat-milk",
+      "productName": "Oat Milk",
+      "category": "Kopi; / Coffee Series, Non-Kopi;, Cream Based, Coffee-Based Frappe, Add-on",
+      "quantity": 20000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "mineral-water",
+      "productName": "Mineral Water",
+      "category": "Kopi; / Coffee Series, Tea Series",
+      "quantity": 20000,
+      "measurement": "ml",
+      "packageQuantity": 20000,
+      "packageUnit": "gallon"
+    },
+    {
+      "sku": "tube-ice",
+      "productName": "Ice",
+      "category": "Kopi; / Coffee Series, Non-Kopi;, Tea Series & Fruit Soda, Cream Based, Coffee-Based Frappe",
+      "quantity": 30000,
+      "measurement": "g",
+      "packageQuantity": 30000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "kopi-special-syrup",
+      "productName": "Kopi; Special Syrup",
+      "category": "Kopi; / Coffee Series",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "caramel-syrup",
+      "productName": "Caramel Syrup",
+      "category": "Kopi; / Coffee Series, Coffee-Based Frappe",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "vanilla-syrup",
+      "productName": "Vanilla Syrup",
+      "category": "Kopi; / Coffee Series",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "sea-salt-cream",
+      "productName": "Sea Salt Cream",
+      "category": "Kopi; / Coffee Series, Non-Kopi;",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "white-chocolate-sauce",
+      "productName": "White Chocolate Sauce",
+      "category": "Kopi; / Coffee Series, Cream Based, Coffee-Based Frappe",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "salted-caramel-sauce",
+      "productName": "Salted Caramel Sauce",
+      "category": "Kopi; / Coffee Series",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "dark-chocolate-sauce",
+      "productName": "Dark Chocolate Sauce",
+      "category": "Kopi; / Coffee Series, Coffee-Based Frappe",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "chocolate-sauce",
+      "productName": "Chocolate Sauce",
+      "category": "Non-Kopi;, Cream Based",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "chocolate-syrup",
+      "productName": "Chocolate Syrup",
+      "category": "Cream Based",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "strawberry-syrup",
+      "productName": "Strawberry Syrup",
+      "category": "Non-Kopi;, Tea Series & Fruit Soda, Cream Based",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "strawberry-sauce",
+      "productName": "Strawberry Sauce",
+      "category": "Non-Kopi;",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "green-apple-syrup",
+      "productName": "Green Apple Syrup",
+      "category": "Fruit Soda",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "blueberry-syrup",
+      "productName": "Blueberry Syrup",
+      "category": "Fruit Soda",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "lychee-syrup",
+      "productName": "Lychee Syrup",
+      "category": "Fruit Soda",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "mocha-syrup",
+      "productName": "Mocha Syrup",
+      "category": "Coffee-Based Frappe",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "mocha-sauce",
+      "productName": "Mocha Sauce",
+      "category": "Coffee-Based Frappe",
+      "quantity": 1000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "liquid-sweetener",
+      "productName": "Sweetener",
+      "category": "Kopi; / Coffee Series, Non-Kopi;, Cream Based",
+      "quantity": 3000,
+      "measurement": "ml",
+      "packageQuantity": 3000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "condensed-milk",
+      "productName": "Condensed Milk",
+      "category": "Kopi; / Coffee Series",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "can"
+    },
+    {
+      "sku": "cream-base",
+      "productName": "Cream Base",
+      "category": "Cream Based",
+      "quantity": 2000,
+      "measurement": "ml",
+      "packageQuantity": 2000,
+      "packageUnit": "container"
+    },
+    {
+      "sku": "chocolate-powder",
+      "productName": "Chocolate Powder",
+      "category": "Non-Kopi;, Cream Based",
+      "quantity": 3000,
+      "measurement": "g",
+      "packageQuantity": 3000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "matcha-powder",
+      "productName": "Matcha Powder",
+      "category": "Kopi; / Coffee Series, Non-Kopi;, Cream Based",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "nutella-spread",
+      "productName": "Nutella / Hazelnut Spread",
+      "category": "Kopi; / Coffee Series",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "jar"
+    },
+    {
+      "sku": "nutty-chocolate-spread",
+      "productName": "Nutty Chocolate Spread",
+      "category": "Cream Based",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "jar"
+    },
+    {
+      "sku": "oreo-cookies",
+      "productName": "Oreo Cookies",
+      "category": "Non-Kopi;, Cream Based",
+      "quantity": 3000,
+      "measurement": "g",
+      "packageQuantity": 3000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "biscoff-cookies",
+      "productName": "Biscoff Cookies",
+      "category": "Cream Based",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "biscoff-spread",
+      "productName": "Biscoff Spread",
+      "category": "Cream Based",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "jar"
+    },
+    {
+      "sku": "biscoff-crumbs",
+      "productName": "Biscoff Crumbs",
+      "category": "Cream Based",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "hibiscus-tea",
+      "productName": "Hibiscus Tea",
+      "category": "Tea Series",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "strawberry-boba",
+      "productName": "Strawberry Popping Boba",
+      "category": "Tea Series",
+      "quantity": 3000,
+      "measurement": "g",
+      "packageQuantity": 3000,
+      "packageUnit": "container"
+    },
+    {
+      "sku": "whipped-cream",
+      "productName": "Whipped Cream",
+      "category": "Cream Based, Coffee-Based Frappe",
+      "quantity": 2000,
+      "measurement": "g",
+      "packageQuantity": 2000,
+      "packageUnit": "container"
+    },
+    {
+      "sku": "chocolate-topping",
+      "productName": "Chocolate Topping",
+      "category": "Cream Based",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "strawberry-topping",
+      "productName": "Strawberry Topping",
+      "category": "Cream Based",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "sprite",
+      "productName": "Sprite",
+      "category": "Fruit Soda",
+      "quantity": 20000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "sweet-chili",
+      "productName": "Sweet Chili Sauce",
+      "category": "Chicken Meals",
+      "quantity": 2000,
+      "measurement": "ml",
+      "packageQuantity": 2000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "spicy-seasoning",
+      "productName": "Spicy Seasoning / Chili Powder",
+      "category": "Chicken Meals",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "garlic-parmesan",
+      "productName": "Garlic Parmesan Glaze / Powder",
+      "category": "Chicken Meals",
+      "quantity": 1000,
+      "measurement": "g",
+      "packageQuantity": 1000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "chicken-wings",
+      "productName": "Chicken Wings",
+      "category": "Chicken Meals",
+      "quantity": 10000,
+      "measurement": "g",
+      "packageQuantity": 10000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "chicken-fingers",
+      "productName": "Chicken Fingers",
+      "category": "Chicken Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "breading-mix",
+      "productName": "Breading Mix",
+      "category": "Chicken Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "bag"
+    },
+    {
+      "sku": "cooking-oil",
+      "productName": "Cooking Oil",
+      "category": "Chicken Meals, Rice Meals, Snacks",
+      "quantity": 10000,
+      "measurement": "ml",
+      "packageQuantity": 1000,
+      "packageUnit": "bottle"
+    },
+    {
+      "sku": "french-fries",
+      "productName": "Fries",
+      "category": "Chicken Meals, Snacks",
+      "quantity": 10000,
+      "measurement": "g",
+      "packageQuantity": 10000,
+      "packageUnit": "bag"
+    },
+    {
+      "sku": "bangus",
+      "productName": "Bangus",
+      "category": "Rice Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "pork-liempo",
+      "productName": "Pork Liempo",
+      "category": "Rice Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "beef-tapa",
+      "productName": "Beef Tapa",
+      "category": "Rice Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "hungarian-sausage",
+      "productName": "Hungarian Sausage",
+      "category": "Rice Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "cooked-rice",
+      "productName": "Cooked Rice",
+      "category": "Rice Meals",
+      "quantity": 10000,
+      "measurement": "g",
+      "packageQuantity": 10000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "fresh-eggs",
+      "productName": "Fresh Eggs",
+      "category": "Rice Meals",
+      "quantity": 30,
+      "measurement": "pcs",
+      "packageQuantity": 30,
+      "packageUnit": "tray"
+    },
+    {
+      "sku": "side-vegetables",
+      "productName": "Vegetables",
+      "category": "Rice Meals",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "beef",
+      "productName": "Beef",
+      "category": "Snacks",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "ground-beef",
+      "productName": "Ground Beef",
+      "category": "Snacks",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "batch"
+    },
+    {
+      "sku": "tortilla-wraps",
+      "productName": "Tortilla",
+      "category": "Snacks",
+      "quantity": 50,
+      "measurement": "pcs",
+      "packageQuantity": 50,
+      "packageUnit": "pack"
+    },
+    {
+      "sku": "cheese-blocks",
+      "productName": "Cheese",
+      "category": "Snacks",
+      "quantity": 5000,
+      "measurement": "g",
+      "packageQuantity": 5000,
+      "packageUnit": "pack"
+    }
+  ]
+}

@@ -16,9 +16,7 @@
 
 .transaction-search input { width:100%; min-width:0; border:0; outline:0; background:transparent; font-size:11px; }
 
-.transaction-filter,.date-button { display:flex; align-items:center; gap:7px; padding:9px 14px; border:1px solid var(--border); border-radius:9px; background:#fff; font-size:12px; font-weight:600; }
-
-.date-button { padding:9px 11px; font-size:16px; }
+.transaction-filter { display:flex; align-items:center; gap:7px; padding:9px 14px; border:1px solid var(--border); border-radius:9px; background:#fff; font-size:12px; font-weight:600; }
 
 .transaction-table-card { overflow:hidden; border:1px solid var(--border); border-radius:10px; background:#fff; }
 
@@ -93,4 +91,9 @@
 .report-filters { display:flex; flex-wrap:wrap; gap:12px; padding:16px; margin-block:12px; border:1px solid #d5c5ab; border-radius:12px; background:#fffaf1; }
 .report-filters[hidden] { display:none; }
 .report-filters label { display:grid; gap:4px; font-size:12px; }
-.report-filters input, .report-filters select, .report-filters button, #exportReport { padding:8px; border:1px solid #b5afa8; border-radius:6px; color:#3d2b16; background:white; font:inherit; }
+.report-filters input, .report-filters select { padding:8px; border:1px solid #b5afa8; border-radius:6px; color:#3d2b16; background:white; font:inherit; }
+.report-filters { align-items: end; }
+.report-export { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:12px 0; font-size:12px; }
+.report-action { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:8px 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font:700 11px "Poppins",sans-serif; cursor:pointer; }
+.report-action:focus-visible { outline:2px solid var(--tan); outline-offset:3px; }
+.report-action:disabled { opacity:.6; cursor:wait; }

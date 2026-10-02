@@ -27,7 +27,7 @@ function createReports(db,clock=()=>new Date()) {
   function summary() {
     const today=manilaDay(clock()),month=today.slice(0,8)+"01",yesterday=shift(today,-1);
     const previousMonthEnd=shift(month,-1),previousMonthStart=previousMonthEnd.slice(0,8)+"01";
-    const stock=db.prepare("SELECT * FROM inventory_items").all();
+    const stock=db.prepare("SELECT * FROM inventory_items WHERE is_archived=0").all();
     const counts=db.prepare(`SELECT COUNT(*) AS totalOrders,
       SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) AS completedOrders,
       SUM(CASE WHEN status='Canceled' THEN 1 ELSE 0 END) AS canceledOrders,
@@ -59,7 +59,7 @@ function createReports(db,clock=()=>new Date()) {
       GROUP BY i.product_id,i.product_name ORDER BY sold DESC,grossSales DESC,i.product_id LIMIT 10`).all(productRange.start,productRange.end)
       .map(row=>({...row,category:catalog.products.find(product=>product.id===row.productId)?.category||"Archived product"}));
     const recentOrders=db.prepare(`SELECT order_number AS orderNumber,order_type AS orderType,status,total FROM orders ORDER BY id DESC LIMIT 5`).all();
-    const lowStock=db.prepare("SELECT * FROM inventory_items ORDER BY quantity/initial_quantity,product_name").all()
+    const lowStock=db.prepare("SELECT * FROM inventory_items WHERE is_archived=0 ORDER BY quantity/initial_quantity,product_name").all()
       .filter(item=>item.quantity<=lowStockLevel(item)).slice(0,5)
       .map(item=>({productName:item.product_name,quantity:item.quantity,measurement:item.measurement,status:item.quantity<=0?"Out of Stock":"Low Stock"}));
     return {...summary(),salesSeries,orderSummary,topProducts,recentOrders,lowStock,ranges:{salesRange,orderRange,productRange}};

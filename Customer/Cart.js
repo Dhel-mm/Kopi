@@ -68,8 +68,7 @@ paymentChoices.querySelectorAll("[data-payment]").forEach(button => {
     const isGcash = selectedPayment === "GCash";
     document.getElementById("paymentMethodName").textContent = selectedPayment;
     const icon = document.getElementById("paymentMethodIcon");
-    icon.className = isGcash ? "gcash-badge" : "bi bi-cash-stack payment-cash-icon";
-    icon.textContent = isGcash ? "G" : "";
+    icon.src = isGcash ? "HomePic/gcash.png" : "HomePic/Cash.png";
     gcashPanel.hidden = !isGcash;
     gcashReference.disabled = !isGcash;
     gcashReference.required = isGcash;
@@ -138,7 +137,7 @@ if (orderNowBtn) {
     if (placedOrder || orderNowBtn.disabled || !quoteReady) return;
 
     if (!KopiApi.getSession()) {
-      alert("Please log in before placing an order.");
+      KopiNotice.toast("Please log in before placing an order.");
       window.location.href = "../login.html";
       return;
     }
@@ -168,7 +167,7 @@ if (orderNowBtn) {
       gcashReference.readOnly = false;
       syncCheckoutRecovery();
       refreshCheckoutQuote();
-      alert(error.message);
+      KopiNotice.toast(error.message, "error");
     }
   });
 }
@@ -241,7 +240,7 @@ document.getElementById("recoverCheckoutBtn").addEventListener("click",async eve
     checkoutCartSnapshot=pending?.payload?.cartSnapshot||pending?.payload?.items||[];
     displaySavedOrder(result);
   } catch(error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
     syncCheckoutRecovery();
   } finally { button.disabled=false; }
 });
@@ -280,10 +279,10 @@ async function refreshCheckoutQuote() {
     orderNowBtn.disabled = false;
     gcashChoice.disabled = false;
     gcashPanel.hidden = selectedPayment !== "GCash";
-    status.textContent = "Prices and stock checked. Availability is confirmed again when you place the order.";
+    status.textContent = "";
   } catch (error) {
     if (version !== quoteVersion) return;
-    status.textContent = error.message + " Please review your order before sending payment.";
+    KopiNotice.set(status,error.message,"error");
     document.getElementById("gcashAmount").textContent = "Unavailable";
   }
 }

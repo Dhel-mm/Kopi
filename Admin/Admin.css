@@ -72,12 +72,16 @@ button { cursor: pointer; }
 }
 
 .admin-nav {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
 .admin-nav-link {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 13px;
@@ -86,6 +90,8 @@ button { cursor: pointer; }
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .admin-nav-link i {
@@ -93,13 +99,63 @@ button { cursor: pointer; }
   width: 20px;
   text-align: center;
   flex-shrink: 0;
+  transform-origin: center;
+  transition: transform 180ms ease;
 }
 
 .admin-nav-link:hover { background: rgba(212, 155, 67, 0.16); }
 
+.admin-nav-link:hover i,
+.admin-nav-link:focus-visible i { transform: translateX(2px); }
+
+.admin-nav-link:focus-visible {
+  outline: 3px solid var(--tan);
+  outline-offset: 3px;
+}
+
 .admin-nav-link.active {
   background: var(--tan);
   color: var(--dark);
+}
+
+/* Smooth active-state handoff between Admin sidebar pages. */
+.admin-nav-icon-clicked {
+  animation: admin-nav-icon-click 320ms cubic-bezier(.2, .8, .25, 1);
+}
+
+.admin-nav-motion-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 12px;
+  background: var(--tan);
+  will-change: transform, width, height;
+  transition:
+    transform 340ms cubic-bezier(.22, 1, .36, 1),
+    width 340ms cubic-bezier(.22, 1, .36, 1),
+    height 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.admin-nav-is-moving .admin-nav-link {
+  background: transparent;
+  transition: color 180ms ease;
+}
+
+@keyframes admin-nav-icon-click {
+  0% { transform: translateX(0) scale(1); }
+  42% { transform: translateX(5px) scale(1.14) rotate(-6deg); }
+  72% { transform: translateX(-1px) scale(.97) rotate(2deg); }
+  100% { transform: translateX(0) scale(1) rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-link,
+  .admin-nav-link i,
+  .admin-nav-motion-indicator { transition: none; }
+
+  .admin-nav-icon-clicked { animation: none; }
 }
 
 .admin-logout {
@@ -158,6 +214,21 @@ button { cursor: pointer; }
   color: var(--muted);
 }
 
+.admin-header-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 38px;
+  line-height: 1;
+}
+.admin-header-avatar .bi-person-circle::before { display: block; }
+
 .profile-text {
   line-height: 1.25;
   text-align: left;
@@ -176,9 +247,16 @@ button { cursor: pointer; }
 }
 
 .admin-profile > i.bi-chevron-down {
+  display: inline-block;
+  transition: transform 220ms ease;
   font-size: 12px;
   color: var(--muted);
   margin-left: 2px;
+}
+
+.admin-profile[aria-expanded="true"] > i.bi-chevron-down { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .admin-profile > i.bi-chevron-down { transition: none; }
 }
 
 .admin-profile {
@@ -196,7 +274,7 @@ button { cursor: pointer; }
   z-index: 100;
   width: 220px;
   padding: 12px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--border);
   border-radius: 13px;
   background: var(--paper);
   box-shadow: 0 14px 30px rgba(61, 43, 22, 0.18);
@@ -214,7 +292,7 @@ button { cursor: pointer; }
   width: 58px;
   height: 58px;
   flex: 0 0 auto;
-  border: 3px solid var(--dark);
+  border: 2px solid var(--dark);
   border-radius: 50%;
   color: var(--dark);
   font-size: 31px;
@@ -289,3 +367,8 @@ button { cursor: pointer; }
 .admin-dialog output { display: block; overflow-wrap: anywhere; }
 .admin-dialog [hidden] { display:none; }
 .report-status { color:#8c382c; min-height:1.5em; }
+
+/* Shared table typography across the three administrative lists. */
+.admin-content :is(.transaction-table, .inventory-table, .users-table) thead th { font-size:13px; }
+.admin-content :is(.transaction-table, .inventory-table, .users-table) tbody td { font-size:12px; }
+.admin-content :is(.payment-chip, .transaction-status, .stock-status, .role-chip) { font-size:12px; }

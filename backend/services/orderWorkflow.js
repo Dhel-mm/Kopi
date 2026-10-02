@@ -1,7 +1,8 @@
-const { randomUUID, createHash } = require("node:crypto");
+const { createHash } = require("node:crypto");
 const { quote, money, OrderError } = require("./pricing");
 const { createInventoryService } = require("./inventory");
 const { parseManualPayment } = require("./manualPayment");
+const { createVoucherService } = require("./vouchers");
 
 function text(value, label, max, optional = false) {
   if (optional && (value == null || value === "")) return "";
@@ -30,13 +31,27 @@ function requestFingerprint(body, inStore) {
     serviceType:inStore?body.serviceType:"Delivery",
     address:inStore?"":body.address,phone:inStore?"":body.phone,
     customerName:inStore?(body.customerName||"Walk-in Customer"):"",
-    voucher:inStore?"":body.voucher||"",discount:inStore?(body.discount??0):0,
+    voucher:body.voucher||"",discount:inStore?(body.discount??0):0,
     expectedTotal:body.expectedTotal,confirmedReceived:inStore?body.confirmedReceived:null
   };
   return "v2:"+createHash("sha256").update(JSON.stringify(stable(intent))).digest("hex");
 }
 function createOrderWorkflow(db) {
   const stock = createInventoryService(db);
+  const vouchers = createVoucherService(db);
+
+  // Called inside the immediate creation transaction, so simultaneous checkouts
+  // cannot allocate the same number. Keep historical order numbers untouched.
+  function nextOrderNumber(inStore) {
+    const prefix = inStore ? "POS-" : "KOPI-";
+    const sequence = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'orders'").get();
+    let number = (sequence?.seq || 0) + 1;
+    let candidate;
+    do {
+      candidate = prefix + String(number++).padStart(4, "0");
+    } while (db.prepare("SELECT 1 FROM orders WHERE order_number = ?").get(candidate));
+    return candidate;
+  }
   function service(body, inStore) {
     if (!inStore) return "Delivery";
     const type = body.serviceType === "Take out" ? "Takeout" : body.serviceType;
@@ -44,7 +59,7 @@ function createOrderWorkflow(db) {
     return type;
   }
   function prepareQuote(body, inStore = false) {
-    const priced = quote(body,inStore);
+    const priced = quote(body,inStore,vouchers.resolve);
     const serviceType = service(body,inStore);
     stock.check(priced.items,serviceType!=="Dine-in");
     return { ...priced,serviceType };
@@ -70,7 +85,7 @@ function createOrderWorkflow(db) {
       return result(previous.id);
     }
     const serviceType = service(body,inStore);
-    const priced = quote(body,inStore);
+    let priced = quote(body,inStore,vouchers.resolve);
     const paymentName = body.payment === "gCash" ? "GCash" : (body.payment ?? "Cash");
     let payment;
     if (inStore && !["Cash","GCash"].includes(paymentName)) {
@@ -96,12 +111,14 @@ function createOrderWorkflow(db) {
         if (existing.request_hash!==expectedHash) throw new OrderError("This checkout request was already used for a different order.",409);
         return result(existing.id);
       }
+      // Recheck the current voucher inside the write transaction before charging.
+      priced = quote(body,inStore,vouchers.resolve);
       if (body.expectedTotal == null || money(body.expectedTotal)!==money(priced.total)) {
         throw new OrderError("The order total changed. Review the updated price before placing the order.",409);
       }
       stock.check(priced.items,serviceType!=="Dine-in");
       const status = inStore?"Preparing":"New";
-      const orderNumber = (inStore?"POS-":"KOPI-")+randomUUID();
+      const orderNumber = nextOrderNumber(inStore);
       const inserted = db.prepare(`
         INSERT INTO orders (
           order_number,user_id,customer_name,order_type,service_type,status,payment,address,phone,voucher,
@@ -155,11 +172,11 @@ function createOrderWorkflow(db) {
   }
   return {prepareQuote,create,cancel,advance,result,recover};
 }
-function sendError(response,error) {
+function sendError(response,error,customerFacing = false) {
   if (error.code==="SQLITE_CONSTRAINT_UNIQUE" && error.message.includes("payment_reference")) {
     return response.status(409).json({message:"That GCash reference is already attached to an order. Check My Orders before paying again."});
   }
-  if (error instanceof OrderError) return response.status(error.status).json({message:error.message});
+  if (error instanceof OrderError) return response.status(error.status).json({message:customerFacing && error.customerMessage ? error.customerMessage : error.message});
   console.error("Order request failed:",error.code||error.name);
   return response.status(500).json({message:"Could not save the order. Please retry the same checkout request."});
 }

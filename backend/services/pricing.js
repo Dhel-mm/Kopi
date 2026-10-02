@@ -61,21 +61,22 @@ function priceItems(items) {
   });
 }
 
-function quote(body, inStore = false) {
+function quote(body, inStore = false, resolveVoucher) {
   const items = priceItems(body.items);
   const subtotalCents = items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
   if (subtotalCents > 100000000) throw new OrderError("Order total is too large.");
-  let voucher = "";
+  if (body.voucher != null && typeof body.voucher !== "string") throw new OrderError("Invalid voucher.");
+  const voucher = (body.voucher || "").trim().toUpperCase();
   let discountCents = 0;
   if (inStore) {
     // The cashier is authenticated as Admin; only this route permits a manual discount.
     discountCents = money(body.discount ?? 0, "Discount");
     if (discountCents > subtotalCents) throw new OrderError("Discount cannot exceed the subtotal.");
-  } else {
-    if (body.voucher != null && typeof body.voucher !== "string") throw new OrderError("Invalid voucher.");
-    voucher = (body.voucher || "").trim().toUpperCase();
-    if (voucher && voucher !== "KOPI10") throw new OrderError("That voucher code is not valid.");
-    discountCents = voucher === "KOPI10" ? Math.min(1000, subtotalCents) : 0;
+  }
+  if (voucher) {
+    if (discountCents > 0) throw new OrderError("Use either a voucher or a manual discount, not both.");
+    if (!resolveVoucher) throw new OrderError("That voucher code is not valid.");
+    discountCents = Math.min(resolveVoucher(voucher), subtotalCents);
   }
   // Current shop policy: free delivery. Never accept a browser-supplied fee or price.
   return {

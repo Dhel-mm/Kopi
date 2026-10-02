@@ -130,3 +130,107 @@ const KopiStore = (() => {
 })();
 
 document.addEventListener("DOMContentLoaded", KopiStore.updateCartCount);
+
+// The header and phone navigation share a highlight below their link content.
+(() => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const links = Array.from(document.querySelectorAll(".nav-links .nav-link"));
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let navigating = false;
+  let indicator = null;
+  let navigationTimer = null;
+
+  function resetMotion() {
+    window.clearTimeout(navigationTimer);
+    navigationTimer = null;
+    navigating = false;
+    indicator?.remove();
+    indicator = null;
+    document.body.classList.remove("nav-is-moving");
+    links.forEach(link => link.querySelector("i")?.classList.remove("nav-link-icon-clicked"));
+  }
+
+  function animateIcon(link) {
+    const icon = link.querySelector("i");
+    if (!icon) return;
+    icon.classList.remove("nav-link-icon-clicked");
+    void icon.offsetWidth;
+    icon.classList.add("nav-link-icon-clicked");
+  }
+
+  window.addEventListener("pageshow", resetMotion);
+  window.addEventListener("pagehide", resetMotion);
+
+  links.forEach(link => {
+    link.addEventListener("click", event => {
+      if (event.defaultPrevented ||
+          (event.button != null && event.button !== 0) ||
+          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+          (link.target && link.target !== "_self") ||
+          link.hasAttribute("download") || !link.href) return;
+
+      if (navigating) {
+        event.preventDefault();
+        return;
+      }
+      if (reducedMotion.matches) return;
+      if (link.href === window.location.href) {
+        event.preventDefault();
+        animateIcon(link);
+        return;
+      }
+
+      const nav = link.closest(".nav-links");
+      const activeLink = nav?.querySelector(".nav-link.active");
+      if (!activeLink) return;
+
+      // Phone layouts highlight the icon; wider layouts highlight the whole link.
+      const activeIcon = activeLink.querySelector("i");
+      const iconBackground = activeIcon && window.getComputedStyle(activeIcon).backgroundColor;
+      const useIcon = iconBackground && iconBackground !== "transparent" &&
+        iconBackground !== "rgba(0, 0, 0, 0)";
+      const source = useIcon ? activeIcon : activeLink;
+      const target = useIcon ? link.querySelector("i") : link;
+      if (!target) return;
+
+      const from = source.getBoundingClientRect();
+      const to = target.getBoundingClientRect();
+      const navRect = nav.getBoundingClientRect();
+      const style = window.getComputedStyle(source);
+      const left = from.left - navRect.left - nav.clientLeft + nav.scrollLeft;
+      const top = from.top - navRect.top - nav.clientTop + nav.scrollTop;
+
+      event.preventDefault();
+      navigating = true;
+      indicator = document.createElement("span");
+      indicator.className = "nav-link-motion-indicator";
+      indicator.setAttribute("aria-hidden", "true");
+      indicator.style.backgroundColor = style.backgroundColor;
+      indicator.style.borderRadius = style.borderRadius;
+      indicator.style.width = `${from.width}px`;
+      indicator.style.height = `${from.height}px`;
+      indicator.style.transform = `translate(${left}px, ${top}px)`;
+      nav.prepend(indicator);
+      void indicator.offsetWidth;
+      document.body.classList.add("nav-is-moving");
+      animateIcon(link);
+
+      let followed = false;
+      function followLink() {
+        if (followed) return;
+        followed = true;
+        window.clearTimeout(navigationTimer);
+        window.location.assign(link.href);
+      }
+
+      indicator.addEventListener("transitionend", event => {
+        if (event.target === indicator && event.propertyName === "transform") followLink();
+      });
+      indicator.style.transform = `translate(${left + to.left - from.left}px, ${top + to.top - from.top}px)`;
+      indicator.style.width = `${to.width}px`;
+      indicator.style.height = `${to.height}px`;
+      navigationTimer = window.setTimeout(followLink, 420);
+    });
+  });
+})();

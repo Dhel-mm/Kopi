@@ -10,7 +10,7 @@ function createApp(db,settings={}) {
     res.set({
       "X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY",
       "Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=()",
-      "Content-Security-Policy":"default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+      "Content-Security-Policy":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
       "Cross-Origin-Resource-Policy":"same-origin"
     });
     if (settings.production) res.set("Strict-Transport-Security","max-age=31536000");
@@ -38,6 +38,7 @@ function createApp(db,settings={}) {
   app.use("/api/admin",require("./routes/reports")(db));
   app.use("/api/admin/inventory",require("./routes/inventory")(db));
   app.use("/api/admin/users",require("./routes/users")(db));
+  app.use("/api/admin/vouchers",require("./routes/vouchers")(db));
   app.use("/api",(req,res)=>res.status(404).json({message:"API endpoint not found."}));
   app.get("/",(req,res)=>res.redirect("/splash.html"));
   // Only web assets are public. No project-root static directory, databases,

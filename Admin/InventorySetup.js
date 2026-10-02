@@ -18,7 +18,7 @@ async function refreshConversions() {
     document.getElementById("conversionList").innerHTML = unitConversions.map(row=>
       `<li><strong>${escapeHtml(row.productName)}</strong>: ${row.recipeAmount} ${escapeHtml(row.recipeUnit)} = ${row.stockAmount} ${escapeHtml(row.stockUnit)} <span class="conversion-tag">${row.isEstimate?"STARTER ESTIMATE":"Measured"}</span></li>`
     ).join("") || "<li>No saved conversions.</li>";
-  } catch(error) { document.getElementById("conversionSummary").textContent=error.message; }
+  } catch(error) { KopiNotice.set(document.getElementById("conversionSummary"),error.message,"error"); }
 }
 
 function renderConversion(changeIngredient=false) {
@@ -61,7 +61,7 @@ document.getElementById("conversionForm").addEventListener("submit",async event=
     await refreshConversions();
     await refreshRecipes();
     conversionStatus.textContent="Measured conversion saved. Existing order deductions are unchanged.";
-  } catch(error) { conversionStatus.textContent=error.message; }
+  } catch(error) { KopiNotice.set(conversionStatus,error.message,"error"); }
   finally { button.disabled=false; }
 });
 
@@ -80,7 +80,7 @@ rowsEl.addEventListener("click",async event=>{
     list.innerHTML=data.movements.length
       ? '<ul class="stock-movements">'+data.movements.map(row=>`<li><strong>${row.changeAmount>0?"+":""}${row.changeAmount} ${escapeHtml(item.measurement)}</strong><span>${escapeHtml(row.reason)}</span><small>${escapeHtml(row.orderNumber||"Stock adjustment")} · ${escapeHtml(row.createdAt)} UTC</small></li>`).join("")+"</ul>"
       : "No stock movements recorded yet.";
-  } catch(error) { list.textContent=error.message; }
+  } catch(error) { KopiNotice.set(list,error.message,"error"); }
 });
 document.getElementById("closeMovements").addEventListener("click",()=>movementDialog.close());
 if (inventory.length) refreshConversions();

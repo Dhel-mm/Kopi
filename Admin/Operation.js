@@ -1,14 +1,28 @@
 const rowsEl = document.getElementById("operationsRows");
 const emptyEl = document.getElementById("operationsEmpty");
 const panelEl = document.getElementById("orderStatusPanel");
-const selectedOrderEl = document.getElementById("selectedOrder");
+const selectedOrderEl = document.getElementById("selectedOrderSummary");
+const selectedPaymentActions = document.getElementById("selectedPaymentActions");
 const currentStatusEl = document.getElementById("currentStatus");
+const orderAddressEl = document.getElementById("orderAddress");
+const orderPhoneEl = document.getElementById("orderPhone");
 const statusTrackEl = document.getElementById("statusTrack");
 const actionButtonsEl = document.getElementById("statusActionButtons");
+const sendDeliveryButton = document.getElementById("sendDeliveryDetails");
+const deliverySaved = document.getElementById("deliverySaved");
+const deliveryDialog = document.getElementById("deliveryDialog");
+const deliveryForm = document.getElementById("deliveryForm");
+const deliveryFields = document.getElementById("deliveryFields");
+const riderFee = document.getElementById("riderFee");
+const riderTrackingLink = document.getElementById("riderTrackingLink");
+const deliveryFormStatus = document.getElementById("deliveryFormStatus");
+const closeDeliveryButton = document.getElementById("closeDeliveryDialog");
+let deliveryDraft = null;
+let deliverySaving = false;
 
 const state = {
   orders: [],
-  type: "In-store",
+  type: "All",
   status: "All",
   query: "",
   selectedId: null
@@ -63,7 +77,7 @@ function renderRows() {
   const orders = filteredOrders();
 
   rowsEl.innerHTML = orders.map((order, index) => `
-    <tr class="${order.orderNumber === state.selectedId ? "selected" : ""}">
+    <tr class="${order.id === state.selectedId ? "selected" : ""}">
       <td>${index + 1}</td>
       <td><strong>${escapeHtml(order.orderNumber)}</strong></td>
       <td>
@@ -91,6 +105,13 @@ function renderRows() {
   `).join("");
 
   emptyEl.hidden = orders.length !== 0;
+  emptyEl.textContent = "No operations match these filters.";
+  // This is a normal empty state, not an alert or notice banner.
+  emptyEl.classList.remove("kopi-notice");
+  delete emptyEl.dataset.noticeType;
+  delete emptyEl.dataset.noticeMessage;
+  emptyEl.removeAttribute("aria-live");
+  emptyEl.removeAttribute("aria-atomic");
 
   rowsEl.querySelectorAll(".row-update").forEach(button => {
     button.addEventListener("click", () => {
@@ -106,10 +127,14 @@ async function refreshOrders() {
     const data = await KopiApi.request("/admin/orders");
     state.orders = data.orders;
     renderRows();
+    if (state.selectedId !== null) {
+      if (state.orders.some(order => order.id === state.selectedId)) selectOrder(state.selectedId);
+      else { state.selectedId = null; panelEl.hidden = true; }
+    }
   } catch (error) {
     rowsEl.innerHTML = "";
     emptyEl.hidden = false;
-    emptyEl.textContent = error.message;
+    KopiNotice.set(emptyEl,error.message,"error");
   }
 }
 
@@ -118,6 +143,7 @@ function selectOrder(id) {
 
   const order = state.orders.find(entry => entry.id === id);
   if (!order) return;
+  selectedPaymentActions.replaceChildren();
 
   selectedOrderEl.innerHTML = `
     <h2>Order ${escapeHtml(order.orderNumber)}</h2>
@@ -136,6 +162,16 @@ function selectOrder(id) {
   currentStatusEl.className =
     `current-status ${order.status.toLowerCase().replaceAll(" ", "-")}`;
   currentStatusEl.textContent = order.status;
+  orderAddressEl.textContent = order.address?.trim() || "Not provided";
+  orderPhoneEl.textContent = order.phone?.trim() || "Not provided";
+  const canSendDelivery = order.orderType === "Online" &&
+    (order.status === "Preparing" || (order.deliveryRevision > 0 && ["Out for Delivery", "Arrived"].includes(order.status)));
+  sendDeliveryButton.hidden = !canSendDelivery;
+  sendDeliveryButton.disabled = order.payment === "GCash" && order.paymentStatus !== "Verified";
+  sendDeliveryButton.textContent = order.deliveryRevision > 0 ? "Update Delivery Details" : "Send Delivery Details";
+  deliverySaved.hidden = !order.deliveryRevision;
+  deliverySaved.textContent = order.deliveryRevision
+    ? `Lalamove fee: ${peso(order.riderFee)} (paid to rider). ${order.deliveryAcknowledgedAt ? "Customer acknowledged." : "Awaiting customer acknowledgement."}` : "";
 
   const flow = order.orderType === "In-store"
     ? ["Preparing", "Completed"]
@@ -201,11 +237,11 @@ function selectOrder(id) {
         await refreshOrders();
         selectOrder(order.id);
       } catch (error) {
-        alert(error.message);
+        KopiNotice.toast(error.message, "error");
         verifyButton.disabled = false;
       }
     });
-    selectedOrderEl.appendChild(verifyButton);
+    selectedPaymentActions.appendChild(verifyButton);
   }
 
   panelEl.hidden = false;
@@ -223,7 +259,7 @@ async function updateStatus(id, status) {
     await refreshOrders();
     selectOrder(id);
   } catch (error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
   }
 }
 
@@ -263,11 +299,6 @@ document.getElementById("orderSearch").addEventListener("input", event => {
   renderRows();
 });
 
-document.getElementById("filterButton").addEventListener("click", () => {
-  state.status = "All";
-  renderRows();
-});
-
 document.getElementById("closePanel").addEventListener("click", () => {
   panelEl.hidden = true;
   state.selectedId = null;
@@ -275,5 +306,56 @@ document.getElementById("closePanel").addEventListener("click", () => {
 });
 
 window.addEventListener("focus", refreshOrders);
+
+function previewDelivery() {
+  const fee = riderFee.value.trim() === "" ? NaN : Number(riderFee.value);
+  document.getElementById("deliveryMessagePreview").textContent = KopiDeliveryInfo.message(fee, riderTrackingLink.value.trim());
+}
+riderFee.addEventListener("input", previewDelivery);
+riderTrackingLink.addEventListener("input", () => { riderTrackingLink.setCustomValidity(""); previewDelivery(); });
+sendDeliveryButton.addEventListener("click", () => {
+  const order = state.orders.find(entry => entry.id === state.selectedId);
+  if (!order || deliverySaving) return;
+  deliveryDraft = {id: order.id, revision: order.deliveryRevision || 0};
+  deliveryForm.reset();
+  riderTrackingLink.setCustomValidity("");
+  riderFee.value = order.riderFee ?? "";
+  riderTrackingLink.value = order.trackingUrl || "";
+  document.getElementById("deliveryOrderLabel").textContent = `Order ${order.orderNumber} · ${order.customer}`;
+  deliveryFormStatus.textContent = "";
+  previewDelivery();
+  deliveryDialog.showModal();
+  riderFee.focus();
+});
+closeDeliveryButton.addEventListener("click", () => { if (!deliverySaving) deliveryDialog.close(); });
+deliveryDialog.addEventListener("cancel", event => { if (deliverySaving) event.preventDefault(); });
+deliveryForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (deliverySaving || !deliveryDraft) return;
+  const link = KopiDeliveryInfo.trackingUrl(riderTrackingLink.value);
+  riderTrackingLink.setCustomValidity(link ? "" : "Paste a valid HTTPS Lalamove live tracking/share link.");
+  if (!deliveryForm.reportValidity()) return;
+  const draft = {...deliveryDraft};
+  deliverySaving = true;
+  deliveryFields.disabled = true;
+  closeDeliveryButton.disabled = true;
+  KopiNotice.set(deliveryFormStatus, "Sending delivery details…", "loading");
+  try {
+    await KopiApi.request(`/admin/orders/${draft.id}/delivery`, {
+      method: "PUT",
+      body: JSON.stringify({fee: Number(riderFee.value), trackingUrl: link, revision: draft.revision})
+    });
+    deliveryDialog.close();
+    KopiNotice.toast("Delivery details saved and sent to the customer's website notifications.", "success");
+    await refreshOrders();
+  } catch (error) {
+    KopiNotice.set(deliveryFormStatus, error.message, "error");
+    if (error.status === 409) await refreshOrders();
+  } finally {
+    deliverySaving = false;
+    deliveryFields.disabled = false;
+    closeDeliveryButton.disabled = false;
+  }
+});
 
 refreshOrders();

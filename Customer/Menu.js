@@ -175,7 +175,7 @@ function currentOrder() {
 
 function saveOrder(goToCheckout) {
   const missing = state.product.options.find(option => option.priceKey && !state.choices[option.key]);
-  if (missing) { alert(`Please select ${missing.label.toLowerCase()} first.`); return; }
+  if (missing) { KopiNotice.toast(`Please select ${missing.label.toLowerCase()} first.`); return; }
   const order = currentOrder();
   if (state.editCartId) KopiStore.updateCartItem(state.editCartId, order);
   else if (!goToCheckout) KopiStore.addToCart(order);

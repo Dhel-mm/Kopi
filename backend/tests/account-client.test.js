@@ -11,7 +11,7 @@ function element() {
     setAttribute(){},focus(){},click(){},reset(){},querySelectorAll(){return [];},
     querySelector(){return this.submitButton;},elements:{}};
 }
-function accountHarness() {
+function accountHarness(orders = []) {
   const ids=new Map(),selectors=new Map(),focusHandlers={},calls=[];
   const get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id);};
   const stars=Array.from({length:5},(_,index)=>Object.assign(element(),{dataset:{rating:String(index+1)}}));
@@ -28,17 +28,38 @@ function accountHarness() {
   const KopiApi={request:async(url,options)=>{
     calls.push({url,options});
     if(url==="/me")return {user:{firstName:"Saved",lastName:"Customer",email:"test@example.invalid"}};
-    if(url==="/orders/my")return {orders:[]};
+    if(url==="/orders/my")return {orders};
     if(url==="/feedback")return new Promise(resolve=>{resolveFeedback=resolve;});
     throw new Error("Unexpected request: "+url);
   }};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,"../../Customer/Account.js"),"utf8"),{
-    document,KopiApi,KopiProfile:{avatar(){}},alert(){},setInterval(){},setTimeout(){},
+    document,KopiApi,KopiDeliveryInfo:require("../../Customer/DeliveryInfo"),KopiProfile:{avatar(){}},KopiNotice:{toast(){},set(element,message){element.textContent=message;}},alert(){},setInterval(){},setTimeout(){},
     history:{replaceState(){}},window:{location:{hash:"",replace(){}},addEventListener(name,fn){focusHandlers[name]=fn;}}
   });
   return {get,stars,profile,feedback,calls,focusHandlers,finishFeedback:()=>resolveFeedback({message:"Saved"})};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+test("order cards retain rider fees after acknowledgement without adding them to the total",async()=>{
+  const h=accountHarness([{id:1,orderNumber:"KOPI-0001",orderType:"Online",status:"Preparing",total:160,
+    createdAt:"2026-09-28T12:00:00Z",riderFee:80,deliveryRevision:1,deliveryAcknowledgedAt:"2026-09-28",
+    trackingUrl:"https://share.lalamove.com/?order=1&sign=test"}]);
+  await tick();
+  const html=h.get("customerOrders").innerHTML;
+  assert.match(html,/Order total<\/span><strong>₱160\.00/);
+  assert.match(html,/Lalamove Delivery Fee<\/span><strong>₱80\.00/);
+  assert.match(html,/href="https:\/\/share\.lalamove\.com\/\?order=1&amp;sign=test" target="_blank" rel="noopener noreferrer"/);
+  assert.ok(html.indexOf('>Track</a>')<html.indexOf('>Cancel Order</button>'));
+});
+
+test("order cards hide unsaved rider fees and reject unsafe tracking links",async()=>{
+  const h=accountHarness([{id:1,orderNumber:"KOPI-0001",orderType:"Online",status:"New",total:160,
+    createdAt:"2026-09-28T12:00:00Z",riderFee:null,deliveryRevision:0,trackingUrl:"javascript:alert(1)"}]);
+  await tick();
+  const html=h.get("customerOrders").innerHTML;
+  assert.doesNotMatch(html,/Lalamove Delivery Fee|>Track<|javascript:/);
+  assert.match(html,/cancel-order-btn/);
+});
 test("feedback sends optional comments and blocks duplicate clicks while saving",async()=>{
   const h=accountHarness();await tick();
   h.stars[4].listeners.click();

@@ -19,6 +19,14 @@ function validateAvatar(data) {
 module.exports=function customerRouter(db) {
   const router=express.Router();
   router.use(authFor(db));
+  router.post("/me/presence",(req,res)=>{
+    const now=Date.now();
+    // Only the authenticated account and server clock can establish presence.
+    db.prepare(`UPDATE users SET last_seen_at=? WHERE id=?
+      AND (last_seen_at IS NULL OR last_seen_at<?)`)
+      .run(now,req.user.id,now-20000);
+    res.json({ok:true});
+  });
   router.get("/me",(req,res)=>res.json({user:accounts.publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(req.user.id))}));
   const update=async(req,res)=>{
     try {res.json({message:"Profile changes saved.",...await accounts.updateProfile(db,req.user.id,req.body||{})});}

@@ -249,6 +249,40 @@ body {
   }
 
 }
+
+/* Allow feedback and recovery content to grow without clipping on phones. */
+body { overflow-x: hidden; overflow-y: auto; }
+.login-card { height: auto; min-height: 600px; margin-bottom: 24px; }
+.login-btn:disabled, .login-btn button:disabled { cursor: wait; opacity: 0.7; }
+.login-card.recovery-card {
+  position: relative;
+  min-height: 0;
+  margin: 32px 16px;
+  padding: 72px 40px 36px;
+}
+.recovery-card .card-title { margin-bottom: 14px; color: #30291f; font-size: 25px; }
+.recovery-description { margin-bottom: 24px; color: #6e6254; font-size: 13px; line-height: 1.7; }
+.recovery-back {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b4c28;
+  font: 600 13px/1.5 "Poppins", Arial, sans-serif;
+  text-decoration: none;
+}
+.recovery-back span:first-child { font-size: 23px; line-height: 1; }
+.recovery-back:hover { color: #30291f; text-decoration: underline; }
+.recovery-back:focus-visible { outline: 2px solid #9a743f; outline-offset: 5px; border-radius: 4px; }
+.recovery-page .bg-image, .recovery-page .overlay { position: fixed; }
+@media (max-width: 450px) {
+  .login-card { min-height: 460px; }
+  .login-card.recovery-card { width: calc(100% - 32px); min-height: 0; margin: 24px 16px; padding: 64px 24px 28px; }
+  .recovery-card .card-title { font-size: 22px; }
+  .recovery-card .recovery-submit { width: 100%; margin-left: 0; padding: 12px; }
+}
 @media (max-width: 450px) {
   
   .container {
@@ -271,7 +305,7 @@ body {
   .login-card {
     padding: 30px 24px;
     margin: 60px 16px 0;
-    height: 460px;
+    height: auto;
     width: 80%;
   }
 

@@ -10,8 +10,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="Cart.css">
   <link rel="icon" href="HomePic/Logo.png"/>
+  <link rel="stylesheet" href="Notices.css">
 </head>
 <body>
+<script src="Notices.js"></script>
   <header class="site-header">
     <nav class="navbar" aria-label="Main navigation">
       <a class="brand" href="Homepage.html">
@@ -51,7 +53,6 @@
     <section class="cart-view" id="cartView">
       <div class="cart-shell">
         <div class="cart-heading">
-          <a href="Menu.html" class="x-back" aria-label="Back to menu"><i class="bi bi-x-lg"></i></a>
           <h1>My Cart</h1>
           <button class="clear-btn" type="button" id="clearCartBtn">
             <i class="bi bi-trash3"></i>
@@ -82,7 +83,7 @@
         </template>
 
         <div class="cart-total-bar">
-          <strong>Total</strong>
+          <strong>Total: </strong>
           <strong id="cartTotal">PHP 0</strong>
           <button class="dark-btn" type="button" id="checkoutBtn">Checkout</button>
         </div>
@@ -101,18 +102,18 @@
           <label id="paymentMethodLabel">Payment Method</label>
           <div class="payment-picker">
             <button class="payment-select" type="button" id="paymentMethodBtn" aria-labelledby="paymentMethodLabel paymentMethodName" aria-expanded="false" aria-controls="paymentChoices">
-              <i class="bi bi-cash-stack payment-cash-icon" id="paymentMethodIcon" aria-hidden="true"></i>
-              <strong id="paymentMethodName">Cash</strong>
+              <img class="payment-option-logo" id="paymentMethodIcon" src="HomePic/Cash.png" alt="" width="32" height="32">
+              <strong id="paymentMethodName">COD (Cash on Delivery)</strong>
               <i class="bi bi-chevron-down" aria-hidden="true"></i>
             </button>
             <div class="payment-choices" id="paymentChoices" role="group" aria-label="Choose payment method" hidden>
               <button type="button" data-payment="Cash" aria-pressed="true">
-                <i class="bi bi-cash-stack" aria-hidden="true"></i>
-                <span><strong>Cash</strong><small>Pay when your order arrives</small></span>
+                <img class="payment-option-logo" src="HomePic/Cash.png" alt="" width="32" height="32">
+                <span><strong>COD (Cash on Delivery)</strong><small>Pay when your order arrives</small></span>
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
               </button>
               <button type="button" data-payment="GCash" aria-pressed="false">
-                <span class="gcash-badge" aria-hidden="true">G</span>
+                <img class="gcash-logo" src="HomePic/gcash.png" alt="" width="32" height="32">
                 <span><strong>GCash</strong><small>Pay using our number or QR</small></span>
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
               </button>
@@ -126,8 +127,8 @@
         </div>
 
         <div class="field-group">
-          <label for="houseAddress">House Address</label>
-          <input id="houseAddress" type="text" placeholder="Input Home Address here" required>
+          <label for="houseAddress">Full Address</label>
+          <input id="houseAddress" type="text" placeholder="House No., Street, Subdivision, Barangay, City/Municipality, Province" required>
         </div>
 
         <div class="field-group">
@@ -144,7 +145,7 @@
         </div>
         <section class="gcash-panel" id="gcashPanel" aria-labelledby="gcashTitle" hidden>
           <div class="gcash-panel-heading">
-            <span class="gcash-badge" aria-hidden="true">G</span>
+            <img class="gcash-logo" src="HomePic/gcash.png" alt="" width="32" height="32">
             <div><h2 id="gcashTitle">Pay with GCash</h2><p>Scan, send, then enter your reference number.</p></div>
             <span class="manual-payment-tag">Manual payment</span>
           </div>
@@ -190,7 +191,7 @@
           </template>
           <div class="summary-lines">
             <div><span>Subtotal</span><strong id="subtotalAmount">PHP 0.00</strong></div>
-            <div><span>Delivery Fee</span><strong id="deliveryAmount">PHP 0.00</strong></div>
+            <div><span>Delivery Fee <span class="rider-fee-note">(Pay Delivery Fee directly to the Lalamove Rider)</span></span><strong id="deliveryAmount">PHP 0.00</strong></div>
             <div><span>Voucher</span><strong id="voucherAmount">- PHP 0.00</strong></div>
           </div>
           <div class="summary-total">
@@ -256,6 +257,8 @@
     </section>
   </main>
   <script src="Api.js"></script>
+  <script src="DeliveryInfo.js"></script>
+  <script src="DeliveryNotifications.js"></script>
   <script src="Catalog.js"></script>
   <script src="Store.js"></script>
   <script src="Cart.js"></script>

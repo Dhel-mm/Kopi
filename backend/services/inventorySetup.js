@@ -16,7 +16,9 @@ const starterConversions = [
   ["condensed-milk", 20, "ml", 26, "g"],
   ["garlic-parmesan", 20, "g", 20, "ml"],
   ["cheese-sauce", 50, "g", 50, "ml"],
-  ["bangus", 350, "g", 1, "pcs"]
+  ["bangus", 350, "g", 1, "pcs"],
+  // Owner's 18–21 g range per 25 ml, midpoint; remains explicitly estimated.
+  ["sea-salt-cream", 25, "ml", 19.5, "g"]
 ];
 
 function seedInventorySetup(db) {

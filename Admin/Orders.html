@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="Admin.css">
   <link rel="stylesheet" href="Orders.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png"/>
+  <link rel="stylesheet" href="../Customer/Notices.css">
 </head>
 <body>
+<script src="../Customer/Notices.js"></script>
 
   <div class="admin-shell">
     <aside class="admin-sidebar">
@@ -116,6 +118,15 @@
               <p class="order-empty" id="orderEmptyMsg">No items yet. Tap a product to add it.</p>
             </div>
 
+            <div class="pos-voucher">
+              <label for="posVoucherCode">Voucher code</label>
+              <div class="pos-voucher-input">
+                <input id="posVoucherCode" type="text" maxlength="32" placeholder="Enter voucher code" autocomplete="off" aria-describedby="posVoucherStatus">
+                <button id="applyPosVoucher" type="button">Apply</button>
+              </div>
+              <p id="posVoucherStatus" role="status" aria-live="polite"></p>
+            </div>
+
             <div class="order-summary-lines">
               <div class="summary-line">
                 <span>Subtotal</span>
@@ -126,6 +137,7 @@
                 <button type="button" class="add-discount-link" id="addDiscountBtn">Add Discount</button>
                 <strong id="discountAmount">₱0.00</strong>
               </div>
+              <div class="summary-line" id="posVoucherLine" hidden><span>Voucher deduction</span><strong id="posVoucherAmount">₱0.00</strong></div>
             </div>
 
             <div class="order-total-line">
@@ -137,15 +149,12 @@
               <span class="payment-label">Payment Method</span>
               <div class="payment-options">
                 <button type="button" class="payment-btn active" data-method="Cash">
-                  <i class="bi bi-cash-stack"></i>Cash
+                  <img class="payment-logo" src="../Customer/HomePic/Cash.png" alt="">Cash
                 </button>
-                <button type="button" class="payment-btn" data-method="gCash">
-                  <i class="bi bi-c-circle-fill"></i>gCash
+                <button type="button" class="payment-btn" data-method="GCash">
+                  <img class="payment-logo" src="../Customer/HomePic/gcash.png" alt="">GCash
                 </button>
               </div>
-              <button type="button" class="payment-other-btn" data-method="Other">
-                <i class="bi bi-three-dots"></i> other
-              </button>
               <div class="payment-extra" id="paymentExtra" hidden></div>
             </div>
 
@@ -193,8 +202,9 @@
   <script src="../Customer/Catalog.js"></script>
   <script src="Products.js"></script>
   <script src="../Customer/Api.js"></script>
-  <script src="AdminGuard.js"></script>
-  <script src="Orders.js"></script>
+<script src="AdminGuard.js"></script>
+<script src="AdminNav.js"></script>
+<script src="Orders.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

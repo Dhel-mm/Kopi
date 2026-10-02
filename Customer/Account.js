@@ -10,7 +10,7 @@ const profileForm = document.getElementById("profileForm");
 const feedbackForm = document.getElementById("feedbackForm");
 
 const panelTitles = {
-  profile: { desktop: "Profile", mobile: "My Account" },
+  profile: { desktop: "My Account", mobile: "My Account" },
   orders: { desktop: "My Orders", mobile: "My Orders" },
   feedback: { desktop: "Feedback", mobile: "Feedback" },
   about: { desktop: "About Kopi;", mobile: "About Kopi;" }
@@ -47,10 +47,16 @@ function escapeHtml(value) {
   }[character]));
 }
 
+function showProfileName(user) {
+  const heading = document.getElementById("profileFullName");
+  if (heading) heading.textContent = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ") || "Your account";
+}
+
 async function loadProfile() {
   try {
     const data = await KopiApi.request("/me");
     const user = data.user;
+    showProfileName(user);
 
     if (profileForm?.elements.firstName) {
       profileForm.elements.firstName.value = user.firstName || "";
@@ -60,7 +66,7 @@ async function loadProfile() {
       KopiProfile.avatar(document.getElementById("profileAvatar"),user.avatar);
     }
   } catch (error) {
-    document.getElementById("profileStatus").textContent = error.message;
+    KopiNotice.set(document.getElementById("profileStatus"),error.message,"error");
     if(error.status===401) window.location.replace("../login.html");
   }
 }
@@ -82,7 +88,12 @@ async function loadMyOrders() {
       return;
     }
 
-    target.innerHTML = data.orders.map(order => `
+    target.innerHTML = data.orders.map(order => {
+      const trackingLink = order.orderType === "Online" && order.trackingUrl
+        ? KopiDeliveryInfo.trackingUrl(order.trackingUrl) : null;
+      const hasRiderFee = order.orderType === "Online" && order.deliveryRevision > 0 &&
+        typeof order.riderFee === "number" && Number.isFinite(order.riderFee);
+      return `
       <article class="order-card">
         <div class="order-meta">
           <h2 class="order-id">${escapeHtml(order.orderNumber)}</h2>
@@ -92,24 +103,28 @@ async function loadMyOrders() {
           </div>
         </div>
 
-        <div class="order-card-heading">
-          Order Status: ${escapeHtml(order.status)}
+        <div class="order-summary">
+          <span class="order-status" data-status="${escapeHtml(order.status)}">${escapeHtml(order.status)}</span>
+          <div class="order-amounts">
+            <div class="order-total"><span>Order total</span><strong>₱${Number(order.total || 0).toFixed(2)}</strong></div>
+            ${hasRiderFee ? `<div class="order-total order-rider-fee"><span>Lalamove Delivery Fee</span><strong>₱${order.riderFee.toFixed(2)}</strong><small>Pay directly to the rider · not included in order total</small></div>` : ""}
+          </div>
         </div>
-
-        <p>Total: ₱${Number(order.total || 0).toFixed(2)}</p>
         ${order.payment === "GCash" ? `
-          <p>Payment: GCash — ${escapeHtml(order.paymentStatus || "Pending verification")}</p>
+          <div class="order-payment"><p><img class="gcash-logo" src="HomePic/gcash.png" alt="" width="26" height="26">Payment: GCash — ${escapeHtml(order.paymentStatus || "Pending verification")}</p>
           <p>Reference: ${escapeHtml(order.paymentReference || "Not provided")}</p>
           ${order.status === "Canceled" ? "<p>If you already sent payment, contact the shop about a refund. Canceling an order does not automatically refund GCash.</p>" : ""}
+          </div>
         ` : ""}
 
         <div class="order-actions">
+          ${trackingLink ? `<a class="outline-btn track-order-btn" href="${escapeHtml(trackingLink)}" target="_blank" rel="noopener noreferrer">Track</a>` : ""}
           ${["New", "Preparing"].includes(order.status)
             ? `<button class="outline-btn cancel-order-btn" type="button" data-order-id="${order.id}">Cancel Order</button>`
             : ""}
         </div>
       </article>
-    `).join("");
+    `; }).join("");
 
     target.querySelectorAll("[data-order-id]").forEach(button => {
       button.addEventListener("click", async () => {
@@ -123,7 +138,7 @@ async function loadMyOrders() {
 
           await loadMyOrders();
         } catch (error) {
-          alert(error.message);
+          KopiNotice.toast(error.message, "error");
           button.disabled = false;
         }
       });
@@ -138,7 +153,7 @@ if (logoutBtn) {
     event.preventDefault();
 
     try { await KopiApi.logout(); }
-    catch { alert("Signed out in this browser. The server could not revoke other sessions; reconnect and sign out again if needed."); }
+    catch { KopiNotice.toast("Signed out in this browser. The server could not revoke other sessions; reconnect and sign out again if needed."); }
 
     if (logoutToast) {
       logoutToast.classList.add("show");
@@ -151,6 +166,10 @@ if (logoutBtn) {
     }
   });
 }
+
+window.addEventListener("kopi:delivery-updated", () => {
+  if (!document.getElementById("orders")?.hidden) loadMyOrders();
+});
 
 sidebarToggle?.addEventListener("click", () => {
   const isOpen = accountSidebar.classList.toggle("is-open");
@@ -182,12 +201,19 @@ profileForm?.addEventListener("submit",async event=>{
     const result=await KopiProfile.save(profileForm);
     status.textContent=result.message;
     profileForm.elements.email.readOnly=true;
-  }catch(error){status.textContent=error.message;}
+    profileForm.elements.phone.readOnly=true;
+    if (result.user) showProfileName(result.user);
+  }catch(error){KopiNotice.set(status,error.message,"error");}
   finally{button.disabled=false;}
 });
 document.getElementById("editEmail").addEventListener("click",()=>{
   profileForm.elements.email.readOnly=false;profileForm.elements.email.focus();
   document.getElementById("profileStatus").textContent="Enter your current password, then Save changes, to update your email.";
+});
+document.getElementById("editPhone")?.addEventListener("click",()=>{
+  profileForm.elements.phone.readOnly=false;
+  profileForm.elements.phone.focus();
+  KopiNotice.set(document.getElementById("profileStatus"),"Enter your 11-digit phone number, then click Save changes.","info");
 });
 const photoInput=document.getElementById("profilePhotoFile");
 document.getElementById("uploadPhoto").addEventListener("click",()=>photoInput.click());
@@ -198,7 +224,7 @@ photoInput.addEventListener("change",async()=>{
     const result=await KopiProfile.upload(photoInput.files[0]);
     KopiProfile.avatar(document.getElementById("profileAvatar"),result.avatar);
     document.getElementById("profileStatus").textContent=result.message;
-  }catch(error){document.getElementById("profileStatus").textContent=error.message;}
+  }catch(error){KopiNotice.set(document.getElementById("profileStatus"),error.message,"error");}
   finally{button.disabled=false;photoInput.value="";}
 });
 document.getElementById("removePhoto").addEventListener("click",async event=>{
@@ -207,7 +233,7 @@ document.getElementById("removePhoto").addEventListener("click",async event=>{
     const result=await KopiApi.request("/me/avatar",{method:"DELETE"});
     KopiProfile.avatar(document.getElementById("profileAvatar"),null);
     document.getElementById("profileStatus").textContent=result.message;
-  }catch(error){document.getElementById("profileStatus").textContent=error.message;}
+  }catch(error){KopiNotice.set(document.getElementById("profileStatus"),error.message,"error");}
   finally{button.disabled=false;}
 });
 
@@ -239,7 +265,7 @@ feedbackForm?.addEventListener("submit", async event => {
   const additionalComment = document.getElementById("comments").value.trim();
 
   if (!selectedRating || !improveComment || !likedComment || !visitFrequency) {
-    alert("Please complete the rating and every feedback field.");
+    KopiNotice.toast("Please complete the rating and every feedback field.");
     return;
   }
 
@@ -256,7 +282,7 @@ feedbackForm?.addEventListener("submit", async event => {
       })
     });
 
-    alert(data.message);
+    KopiNotice.toast(data.message);
     feedbackForm.reset();
     selectedRating = 0;
     document.getElementById("ratingText").textContent="Click a star to rate";
@@ -266,7 +292,7 @@ feedbackForm?.addEventListener("submit", async event => {
       star.classList.remove("selected");
     });
   } catch (error) {
-    alert(error.message);
+    KopiNotice.toast(error.message, "error");
   } finally {
     submitButton.disabled = false;
   }

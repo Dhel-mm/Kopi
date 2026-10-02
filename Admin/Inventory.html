@@ -6,8 +6,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="Admin.css"><link rel="stylesheet" href="Inventory.css"><link rel="icon" href="../Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="../Customer/Notices.css">
 </head>
 <body>
+<script src="../Customer/Notices.js"></script>
   <div class="admin-shell">
     <aside class="admin-sidebar">
       <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
@@ -18,15 +20,26 @@
     <div class="admin-main">
       <header class="admin-topbar"><div class="topbar-text"><h1>Inventory</h1><p>Manage your ingredients, packaging, and stock levels.</p></div><a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a></header>
       <main class="admin-content inventory-content">
-        <section class="inventory-summary"><article class="inventory-stat"><span>Total Products</span><strong id="totalProducts">0</strong></article><article class="inventory-stat stock"><span>In Stock</span><strong id="inStock">0</strong></article><article class="inventory-stat low"><span>Low Stock</span><strong id="lowStock">0</strong></article><article class="inventory-stat out"><span>Out of Stock</span><strong id="outStock">0</strong></article></section>
-        <section class="inventory-tools"><label class="inventory-search"><i class="bi bi-search"></i><input id="inventorySearch" type="search" placeholder="Search product name..."></label><label class="category-select"><i class="bi bi-funnel"></i><select id="categoryFilter"><option value="All">All Categories</option></select></label><button class="add-product" id="addProduct" type="button"><i class="bi bi-plus-lg"></i> Add Product</button></section>
+        <section class="inventory-summary" aria-label="Inventory stock filters">
+          <button class="inventory-stat" type="button" data-stock-filter="All" aria-pressed="true"><span>Total Products</span><strong id="totalProducts">0</strong></button>
+          <button class="inventory-stat stock" type="button" data-stock-filter="In Stock" aria-pressed="false"><span>In Stock</span><strong id="inStock">0</strong></button>
+          <button class="inventory-stat low" type="button" data-stock-filter="Low Stock" aria-pressed="false"><span>Low Stock</span><strong id="lowStock">0</strong></button>
+          <button class="inventory-stat out" type="button" data-stock-filter="Out of Stock" aria-pressed="false"><span>Out of Stock</span><strong id="outStock">0</strong></button>
+        </section>
+        <section class="inventory-tools">
+          <div class="inventory-setup-tools" role="group" aria-label="Inventory setup">
+            <button class="add-product" id="openRecipes" type="button"><i class="bi bi-journal-text" aria-hidden="true"></i> Recipes &amp; unit setup</button>
+            <button class="add-product" id="openConversions" type="button"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Measured conversions</button>
+          </div>
+          <label class="inventory-search"><i class="bi bi-search"></i><input id="inventorySearch" type="search" placeholder="Search product name..."></label>
+          <label class="category-select"><i class="bi bi-funnel"></i><select id="categoryFilter"><option value="All">All Categories</option></select></label>
+          <button class="add-product" id="addProduct" type="button"><i class="bi bi-plus-lg"></i> Add Product</button>
+        </section>
         <section class="inventory-table-card"><div class="table-scroll"><table class="inventory-table"><thead><tr><th>Product Name</th><th>Category</th><th>Stock</th><th>Measurement</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventoryRows"></tbody></table></div><p class="inventory-empty" id="inventoryEmpty" hidden>No inventory products found.</p><footer class="inventory-footer"><span id="inventoryRange"></span></footer></section>
         <section class="recipe-tools">
-          <button class="add-product" id="openRecipes" type="button">Recipes &amp; unit setup</button>
-          <button class="add-product" id="openConversions" type="button">Measured conversions</button>
           <p id="recipeSummary" role="status">Checking recipe setup…</p>
           <p id="conversionSummary" role="status"></p>
-          <p>Stock amounts are the remaining g, ml, or pieces. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
+          <p>Stock shows remaining package equivalents; fractions mean a partly used package. Measurement shows the amount available. Oat Milk, Sprite and Cooking Oil use 1 L bottles. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
         </section>
         <dialog id="recipeDialog" class="recipe-dialog">
           <form id="recipeForm">
@@ -36,8 +49,10 @@
             <select id="recipeSelect"></select>
             <p id="recipeIssues" role="status"></p>
             <div class="recipe-lines" id="recipeLines"></div>
-            <button type="button" id="addRecipeLine">Add ingredient</button>
-            <button class="add-product" type="submit" id="saveRecipe">Save recipe</button>
+            <div class="recipe-form-actions">
+              <button class="add-product" type="button" id="addRecipeLine">Add ingredient</button>
+              <button class="add-product" type="submit" id="saveRecipe">Save recipe</button>
+            </div>
           </form>
         </dialog>
         <dialog id="conversionDialog" class="recipe-dialog">
@@ -67,6 +82,6 @@
       </main>
     </div>
   </div>
-<script src="../Customer/Api.js"></script><script src="AdminGuard.js"></script><script src="Inventory.js"></script><script src="InventorySetup.js"></script><script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+<script src="../Customer/Api.js"></script><script src="AdminGuard.js"></script><script src="AdminNav.js"></script><script src="Inventory.js"></script><script src="InventorySetup.js"></script><script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

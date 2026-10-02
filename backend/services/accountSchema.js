@@ -1,7 +1,7 @@
 function migrateAccounts(db) {
   db.transaction(() => {
     for (const [table, additions] of Object.entries({
-      users: {auth_version:"INTEGER NOT NULL DEFAULT 0",avatar_data:"TEXT"},
+      users: {auth_version:"INTEGER NOT NULL DEFAULT 0",avatar_data:"TEXT",last_seen_at:"INTEGER"},
       feedback: {additional_comment:"TEXT NOT NULL DEFAULT ''"}
     })) {
       const columns = new Set(db.prepare("PRAGMA table_info("+table+")").all().map(row=>row.name));

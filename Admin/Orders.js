@@ -28,6 +28,9 @@ const placeOrderBtn = document.getElementById("placeOrderBtn");
 const paymentExtraEl = document.getElementById("paymentExtra");
 const productCardTemplate = document.getElementById("productCardTemplate");
 const orderItemTemplate = document.getElementById("orderItemTemplate");
+const posVoucherCode = document.getElementById("posVoucherCode");
+const posVoucherStatus = document.getElementById("posVoucherStatus");
+let posQuoteVersion = 0;
 
 const ORDER_SEQ_KEY = "kopi_admin_next_order_no";
 const OPERATIONS_ORDERS_KEY = "kopi_admin_operations_orders";
@@ -74,8 +77,9 @@ const state = {
   cart: [],           // [{ cartId, productId, name, image, priceLabel, price, quantity }]
   orderType: "Dine-in",
   discount: 0,
-  paymentMethod: "Cash",
-  otherPaymentLabel: ""
+  voucher: "",
+  voucherQuote: null,
+  paymentMethod: "Cash"
 };
 
 init();
@@ -90,10 +94,10 @@ recoverPosBtn.addEventListener("click",async()=>{
   recoverPosBtn.disabled=true;
   try {
     const result=await KopiApi.recoverOrder("/admin/orders");
-    alert(result.orderNumber+" — "+result.status+". Your current draft has been kept; check Operations before placing it again.");
+    KopiNotice.toast(result.orderNumber+" — "+result.status+". Your current draft has been kept; check Operations before placing it again.");
     KopiApi.finishOrder("/admin/orders");
     recoverPosBtn.hidden=true;
-  } catch(error) { alert(error.message); }
+  } catch(error) { KopiNotice.toast(error.message, "error"); }
   finally { recoverPosBtn.disabled=false; }
 });
 
@@ -122,12 +126,13 @@ function init() {
       document.querySelectorAll(".order-type-btn").forEach(b => b.classList.remove("active"));
       button.classList.add("active");
       state.orderType = button.dataset.type;
+      renderOrder();
     });
   });
 
-  document.querySelectorAll(".payment-btn, .payment-other-btn").forEach(button => {
+  document.querySelectorAll(".payment-btn").forEach(button => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".payment-btn, .payment-other-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".payment-btn").forEach(b => b.classList.remove("active"));
       button.classList.add("active");
       state.paymentMethod = button.dataset.method;
       renderPaymentExtra();
@@ -138,7 +143,26 @@ function init() {
     const input = window.prompt("Enter discount amount in pesos:", state.discount || "");
     if (input === null) return;
     const value = Math.max(0, Number(input) || 0);
+    if (value > 0 && state.voucher) {
+      KopiNotice.toast("Clear the voucher before adding a manual discount.", "warning");
+      return;
+    }
     state.discount = value;
+    renderOrder();
+  });
+
+  posVoucherCode.addEventListener("input", () => {
+    state.voucher = "";
+    renderOrder();
+    posVoucherStatus.textContent = posVoucherCode.value.trim() ? "Click Apply to validate this code." : "";
+  });
+  document.getElementById("applyPosVoucher").addEventListener("click", () => {
+    if (state.discount > 0 && posVoucherCode.value.trim()) {
+      KopiNotice.set(posVoucherStatus, "Set the manual discount to zero before applying a voucher.", "warning");
+      return;
+    }
+    state.voucher = posVoucherCode.value.trim().toUpperCase();
+    posVoucherCode.value = state.voucher;
     renderOrder();
   });
 
@@ -306,7 +330,7 @@ function openOptionsPopover(product, anchorEl, options, meaningfulOptions) {
       event.stopPropagation();
       const priceKeyOption = options.find(o => o.priceKey);
       if (priceKeyOption && !selections[priceKeyOption.key]) {
-        window.alert(`Please select ${priceKeyOption.label.toLowerCase()} first.`);
+        KopiNotice.toast(`Please select ${priceKeyOption.label.toLowerCase()} first.`);
         return;
       }
       const priceLabel = priceKeyOption ? selections[priceKeyOption.key] : Object.keys(product.prices)[0];
@@ -367,6 +391,8 @@ function cartItemSignature(item) {
 
 /* ---------- Order panel ---------- */
 function renderOrder() {
+  const version = ++posQuoteVersion;
+  state.voucherQuote = null;
   if (!state.cart.length) {
     orderItemsEl.innerHTML = "";
     orderItemsEl.appendChild(orderEmptyMsg);
@@ -382,7 +408,34 @@ function renderOrder() {
   subtotalAmountEl.textContent = formatMoney(subtotal);
   discountAmountEl.textContent = formatMoney(discount);
   orderTotalEl.textContent = formatMoney(total);
-  placeOrderBtn.disabled = state.cart.length === 0;
+  document.getElementById("posVoucherLine").hidden = !state.voucher;
+  document.getElementById("posVoucherAmount").textContent = "₱0.00";
+  placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim());
+  if (state.voucher && state.cart.length) refreshPosVoucher(version);
+  else if (state.voucher) posVoucherStatus.textContent = "Add an item to check this voucher.";
+  else if (!posVoucherCode.value.trim()) posVoucherStatus.textContent = "";
+}
+
+async function refreshPosVoucher(version) {
+  KopiNotice.set(posVoucherStatus, "Checking voucher…", "loading");
+  try {
+    const quote = await KopiApi.request("/admin/orders/quote", {
+      method: "POST",
+      body: JSON.stringify({items: state.cart, discount: state.discount, voucher: state.voucher, serviceType: state.orderType})
+    });
+    if (version !== posQuoteVersion) return;
+    state.voucherQuote = quote;
+    subtotalAmountEl.textContent = formatMoney(quote.subtotal);
+    document.getElementById("posVoucherAmount").textContent = "− " + formatMoney(quote.voucherDiscount);
+    orderTotalEl.textContent = formatMoney(quote.total);
+    KopiNotice.set(posVoucherStatus, `${quote.voucher} applied: ${formatMoney(quote.voucherDiscount)} off.`, "success");
+    placeOrderBtn.disabled = false;
+  } catch (error) {
+    if (version !== posQuoteVersion) return;
+    state.voucherQuote = null;
+    placeOrderBtn.disabled = true;
+    KopiNotice.set(posVoucherStatus, error.message, "error");
+  }
 }
 
 function renderOrderItem(item) {
@@ -427,15 +480,9 @@ function formatOrderItemLine(item) {
 
 /* ---------- Payment ---------- */
 function renderPaymentExtra() {
-  if (state.paymentMethod === "gCash") {
+  if (state.paymentMethod === "GCash") {
     paymentExtraEl.hidden = false;
     paymentExtraEl.innerHTML = `<input type="text" id="gcashRef" placeholder="Enter GCash reference number">`;
-  } else if (state.paymentMethod === "Other") {
-    paymentExtraEl.hidden = false;
-    paymentExtraEl.innerHTML = `<input type="text" id="otherMethodLabel" placeholder="Specify payment method">`;
-    document.getElementById("otherMethodLabel").addEventListener("input", event => {
-      state.otherPaymentLabel = event.target.value.trim();
-    });
   } else {
     paymentExtraEl.hidden = true;
     paymentExtraEl.innerHTML = "";
@@ -447,7 +494,7 @@ async function placeOrder() {
   if (!state.cart.length || placeOrderBtn.disabled) return;
 
   if (!KopiApi.getSession()) {
-    window.alert("Please log in as an administrator first.");
+    KopiNotice.toast("Please log in as an administrator first.");
     window.location.href = "../login.html";
     return;
   }
@@ -459,26 +506,25 @@ async function placeOrder() {
   try {
     const quote = await KopiApi.request("/admin/orders/quote", {
       method: "POST",
-      body: JSON.stringify({items:state.cart,discount:state.discount,serviceType:state.orderType})
+      body: JSON.stringify({items:state.cart,discount:state.discount,voucher:state.voucher,serviceType:state.orderType})
     });
-    const displayedTotal = state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0)-Math.min(state.discount,state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0));
+    const displayedTotal = state.voucherQuote?.total ?? (state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0)-Math.min(state.discount,state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0)));
     if (Math.abs(displayedTotal-quote.total)>0.001) {
-      state.cart = quote.items;
+      state.cart = quote.items.map((item,index)=>({...state.cart[index],...item}));
       renderOrder();
-      window.alert("Prices have been updated. Review the new total and place the order again.");
+      KopiNotice.toast("Prices have been updated. Review the new total and place the order again.");
       return;
     }
-    const gcash = state.paymentMethod === "gCash";
+    const gcash = state.paymentMethod === "GCash";
     const reference = document.getElementById("gcashRef")?.value.trim() || "";
     if (gcash && !/^[0-9]{6,30}$/.test(reference)) throw new Error("Enter the GCash reference number.");
     if (gcash && !window.confirm(`Have you received ${formatMoney(quote.total)} with reference ${reference} in the shop GCash account?`)) return;
     const result = await KopiApi.placeOrder("/admin/orders", {
         customerName: customerNameEl.value.trim() || "Walk-in Customer",
         serviceType: state.orderType,
-        payment: state.paymentMethod === "Other"
-          ? (state.otherPaymentLabel || "Other")
-          : state.paymentMethod,
+        payment: state.paymentMethod,
         discount: state.discount,
+        voucher: state.voucher,
         paymentReference: reference,
         confirmedReceived: gcash,
         expectedTotal: quote.total,
@@ -491,14 +537,15 @@ async function placeOrder() {
         }))
     });
 
-    window.alert(`${result.orderNumber} is now preparing.`);
+    KopiNotice.toast(`${result.orderNumber} is now preparing.`);
     KopiApi.finishOrder("/admin/orders");
     resetOrder();
   } catch (error) {
-    window.alert(error.message || "Could not place the in-store order.");
+    if (state.voucher) state.voucherQuote = null;
+    KopiNotice.toast(error.message || "Could not place the in-store order.", "error");
   } finally {
     if (checkoutSurface) checkoutSurface.inert = false;
-    placeOrderBtn.disabled = state.cart.length === 0;
+    placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim() && !state.voucherQuote);
     recoverPosBtn.hidden = !KopiApi.hasPendingOrder("/admin/orders");
   }
 }
@@ -506,13 +553,16 @@ async function placeOrder() {
 function resetOrder() {
   state.cart = [];
   state.discount = 0;
+  state.voucher = "";
+  state.voucherQuote = null;
+  posVoucherCode.value = "";
   state.orderType = "Dine-in";
   state.paymentMethod = "Cash";
-  state.otherPaymentLabel = "";
+
 
   customerNameEl.value = "";
   document.querySelectorAll(".order-type-btn").forEach(b => b.classList.toggle("active", b.dataset.type === "Dine-in"));
-  document.querySelectorAll(".payment-btn, .payment-other-btn").forEach(b => b.classList.toggle("active", b.dataset.method === "Cash"));
+  document.querySelectorAll(".payment-btn").forEach(b => b.classList.toggle("active", b.dataset.method === "Cash"));
   renderPaymentExtra();
   orderNumberEl.textContent = "# New";
   renderOrder();

@@ -124,6 +124,8 @@ db.exec(`
 
 require("./services/orderSchema").migrateOrderWorkflow(db);
 require("./services/accountSchema").migrateAccounts(db);
+require("./services/vouchers").migrateVouchers(db);
+require("./services/inventoryCatalog").applyInventoryCatalog(db);
 
 const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 const existingAdmin = db

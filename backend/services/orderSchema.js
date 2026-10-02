@@ -6,10 +6,19 @@ function migrateOrderWorkflow(db) {
     for (const [name, sql] of Object.entries({
       inventory_state: "TEXT NOT NULL DEFAULT 'legacy'",
       request_key: "TEXT", request_hash: "TEXT",
-      refund_status: "TEXT NOT NULL DEFAULT 'Not required'"
+      refund_status: "TEXT NOT NULL DEFAULT 'Not required'",
+      rider_fee_cents: "INTEGER CHECK(rider_fee_cents >= 0)",
+      delivery_tracking_url: "TEXT",
+      delivery_message: "TEXT",
+      delivery_revision: "INTEGER NOT NULL DEFAULT 0",
+      delivery_sent_at: "TEXT",
+      delivery_sent_by: "INTEGER REFERENCES users(id)",
+      delivery_acknowledged_at: "TEXT"
     })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
     db.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS orders_request_key ON orders(user_id, request_key) WHERE request_key IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS orders_pending_delivery ON orders(user_id,delivery_sent_at,id)
+        WHERE delivery_revision>0 AND delivery_acknowledged_at IS NULL AND status!='Canceled';
       CREATE TABLE IF NOT EXISTS order_stock_allocations (
         order_id INTEGER NOT NULL REFERENCES orders(id),
         inventory_item_id INTEGER NOT NULL REFERENCES inventory_items(id),
@@ -53,6 +62,7 @@ function migrateOrderWorkflow(db) {
       `);
     }
     require("./inventorySetup").seedInventorySetup(db);
+    require("./inventoryCatalog").migrateInventoryPackages(db);
   })();
 }
 module.exports = { migrateOrderWorkflow };

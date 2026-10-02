@@ -4,7 +4,7 @@ const t = (sku, amount, unit) => ({ sku, amount, unit });
 const g = (sku, amount) => t(sku, amount, "g");
 const ml = (sku, amount) => t(sku, amount, "ml");
 const pcs = (sku, amount) => t(sku, amount, "pcs");
-const milk = n => ml("fresh-milk", n);
+const milk = n => ml("oat-milk", n);
 const coffee = n => g("coffee-beans", n);
 const sweet = n => ml("liquid-sweetener", n);
 const hotCold = (hot, cold, isHot) => isHot ? hot : cold;

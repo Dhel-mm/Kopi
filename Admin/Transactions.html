@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="Admin.css">
   <link rel="stylesheet" href="Transactions.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="../Customer/Notices.css">
 </head>
 <body>
+<script src="../Customer/Notices.js"></script>
   <div class="admin-shell">
     <aside class="admin-sidebar">
       <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
@@ -40,7 +42,6 @@
           <div class="transaction-tools">
             <label class="transaction-search"><i class="bi bi-search"></i><input id="transactionSearch" type="search" placeholder="Search transaction or customer ..."></label>
             <button class="transaction-filter" id="transactionFilter" type="button"><i class="bi bi-funnel"></i>Filter</button>
-            <button class="date-button" id="dateButton" type="button" aria-label="Show all dates"><i class="bi bi-calendar3"></i></button>
           </div>
         </section>
 
@@ -50,10 +51,11 @@
           <label>Status<select id="reportStatusFilter"><option>All</option><option>Completed</option><option>Canceled</option></select></label>
           <label>Type<select id="reportType"><option>All</option><option>Online</option><option>Dine-in</option><option>Takeout</option></select></label>
           <label>Payment<select id="reportPayment"><option>All</option><option>Cash</option><option>GCash</option><option>Other</option></select></label>
-          <button type="submit">Apply filters</button><button id="clearFilters" type="button">Clear</button>
+          <button class="report-action" type="submit">Apply filters</button>
+          <button class="report-action" id="clearFilters" type="button">Clear</button>
         </form>
         <p id="reportStatus" class="report-status" role="status"></p>
-        <p><span id="filteredSales"></span> <button id="exportReport" type="button">Download CSV</button></p>
+        <div class="report-export"><span id="filteredSales"></span><button class="report-action" id="exportReport" type="button"><i class="bi bi-download" aria-hidden="true"></i>Download CSV</button></div>
         <section class="transaction-table-card">
           <div class="table-scroll">
             <table class="transaction-table">
@@ -68,8 +70,9 @@
     </div>
   </div>
   <script src="../Customer/Api.js"></script>
-  <script src="AdminGuard.js"></script>
-  <script src="Transactions.js"></script>
+<script src="AdminGuard.js"></script>
+<script src="AdminNav.js"></script>
+<script src="Transactions.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

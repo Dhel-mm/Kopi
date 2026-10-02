@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="Admin.css">
   <link rel="stylesheet" href="Dashboard.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png"/>
+  <link rel="stylesheet" href="../Customer/Notices.css">
 </head>
 <body>
+<script src="../Customer/Notices.js"></script>
 
   <div class="admin-shell">
     <aside class="admin-sidebar">
@@ -97,24 +99,30 @@
               <div class="card chart-card">
                 <div class="card-head">
                   <h2>Sales overview</h2>
-                  <select class="range-select" aria-label="Sales overview range">
-                    <option>This Week</option>
-                    <option>This Month</option>
-                  </select>
+                  <span class="range-select-wrap">
+                    <select class="range-select" aria-label="Sales overview range">
+                      <option>This Week</option>
+                      <option>This Month</option>
+                    </select>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                  </span>
                 </div>
-                <div class="sales-chart-wrap"><canvas id="salesChart"></canvas></div>
+                <div class="sales-chart-wrap"><canvas id="salesChart" role="img" aria-label="Sales overview">Daily sales figures are listed below.</canvas></div>
               </div>
 
               <div class="card donut-card">
                 <div class="card-head">
                   <h2>Order Summary</h2>
-                  <select class="range-select" aria-label="Order summary range">
-                    <option>This Week</option>
-                    <option>This Month</option>
-                  </select>
+                  <span class="range-select-wrap">
+                    <select class="range-select" aria-label="Order summary range">
+                      <option>This Week</option>
+                      <option>This Month</option>
+                    </select>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                  </span>
                 </div>
                 <div class="donut-wrap">
-                  <canvas id="orderSummaryChart" height="180"></canvas>
+                  <canvas id="orderSummaryChart" height="180" role="img" aria-label="Order summary">Order percentages are listed below.</canvas>
                 </div>
                 <ul class="donut-legend">
                   <li><span class="dot dot-instore"></span>Dine-in Orders <strong>—</strong></li>
@@ -127,10 +135,13 @@
             <div class="card top-products-card">
               <div class="card-head">
                 <h2>Top Selling Products</h2>
-                <select class="range-select" aria-label="Top selling products range">
-                  <option>This Week</option>
-                  <option>This Month</option>
-                </select>
+                <span class="range-select-wrap">
+                  <select class="range-select" aria-label="Top selling products range">
+                    <option>This Week</option>
+                    <option>This Month</option>
+                  </select>
+                  <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </span>
               </div>
               <table class="top-products-table">
                 <thead>
@@ -173,10 +184,11 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="vendor/chart.umd-4.4.4.js"></script>
   <script src="../Customer/Api.js"></script>
-  <script src="AdminGuard.js"></script>
-  <script src="Dashboard.js"></script>
+<script src="AdminGuard.js"></script>
+<script src="AdminNav.js"></script>
+<script src="Dashboard.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

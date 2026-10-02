@@ -462,21 +462,23 @@
   border-color: var(--tan);
 }
 
-.payment-other-btn {
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--white);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--muted);
+.pos-voucher { display:grid; gap:7px; margin:12px 0; }
+.pos-voucher label { font-size:12px; font-weight:700; }
+.pos-voucher-input { display:flex; gap:8px; }
+.pos-voucher-input input { min-width:0; width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--white); font:inherit; font-size:12px; }
+.pos-voucher-input button { min-height:36px; padding:8px 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font:700 11px "Poppins",sans-serif; cursor:pointer; }
+#posVoucherStatus { margin:0; font-size:11px; line-height:1.5; }
+#posVoucherStatus:empty, #posVoucherLine[hidden] { display:none; }
+
+.payment-logo {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+  border-radius: 5px;
 }
 
-.payment-other-btn.active {
-  background: var(--tan-soft);
-  color: var(--ink);
-  border-color: var(--tan);
-}
+
 
 .payment-extra input {
   width: 100%;
@@ -612,8 +614,7 @@
   .order-items { max-height: clamp(70px, calc(100dvh - 660px), 180px); flex-shrink: 0; }
   .input-with-icon { height: 38px; padding: 0 10px; }
   .input-with-icon input { font-size: 12px; }
-  .order-type-btn, .payment-btn, .payment-other-btn { padding: 8px; font-size: 12px; }
-  .place-order-btn { padding: 11px; font-size: 14px; flex-shrink: 0; }
+  .order-type-btn, .payment-btn,   .place-order-btn { padding: 11px; font-size: 14px; flex-shrink: 0; }
   .size-popover { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 
@@ -626,4 +627,22 @@
     padding-top: 0;
   }
   .order-panel { position: static; }
+}
+
+/* Tablet POS: current order first, followed by the product menu. */
+@media (max-width: 1100px) {
+  .orders-layout { grid-template-columns: minmax(0, 1fr); }
+  .orders-main { order: 2; }
+  .order-panel { order: 1; position: static; max-height: none; overflow: visible; }
+  .order-items { max-height: 220px; overflow-y: auto; }
+}
+@media (min-width: 501px) and (max-width: 1100px) {
+  .size-popover { width: 280px; padding: 14px; gap: 12px; border-radius: 12px; }
+  .popover-heading { font-size: 14px; }
+  .popover-group-label { font-size: 12px; margin-bottom: 6px; }
+  .popover-pill-row { gap: 6px; }
+  .popover-pill { padding: 7px 11px; font-size: 12px; }
+  .popover-footer { gap: 10px; padding-top: 10px; }
+  .popover-total { font-size: 17px; }
+  .popover-add-btn { padding: 9px 14px; font-size: 12px; }
 }
