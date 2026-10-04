@@ -147,6 +147,11 @@ if (!existingAdmin) {
   console.log("Admin account created.");
 }
 
+const demoSetup = require("./services/demoSetup").applyDemoSetup(db);
+if (demoSetup.applied) {
+  console.log(`School demo initialized: ${demoSetup.restocked} inventory items topped up; customer account created.`);
+}
+
 if (require.main === module) {
   console.log(`Database ready: ${databasePath}`);
 }
