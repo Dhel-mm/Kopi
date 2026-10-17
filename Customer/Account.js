@@ -89,9 +89,9 @@ async function loadMyOrders() {
     }
 
     target.innerHTML = data.orders.map(order => {
-      const trackingLink = order.orderType === "Online" && order.trackingUrl
+      const trackingLink = !["Canceled", "Completed"].includes(order.status) && order.orderType === "Online" && order.trackingUrl
         ? KopiDeliveryInfo.trackingUrl(order.trackingUrl) : null;
-      const hasRiderFee = order.orderType === "Online" && order.deliveryRevision > 0 &&
+      const hasRiderFee = order.status !== "Canceled" && order.orderType === "Online" && order.deliveryRevision > 0 &&
         typeof order.riderFee === "number" && Number.isFinite(order.riderFee);
       return `
       <article class="order-card">
@@ -113,7 +113,7 @@ async function loadMyOrders() {
         ${order.payment === "GCash" ? `
           <div class="order-payment"><p><img class="gcash-logo" src="HomePic/gcash.png" alt="" width="26" height="26">Payment: GCash — ${escapeHtml(order.paymentStatus || "Pending verification")}</p>
           <p>Reference: ${escapeHtml(order.paymentReference || "Not provided")}</p>
-          ${order.status === "Canceled" ? "<p>If you already sent payment, contact the shop about a refund. Canceling an order does not automatically refund GCash.</p>" : ""}
+          ${order.status === "Canceled" ? `<p class="order-cancellation-reason">${escapeHtml(order.cancellationReason || "If you already sent payment, contact the shop about a refund. Canceling an order does not automatically refund GCash.")}</p>` : ""}
           </div>
         ` : ""}
 
@@ -128,7 +128,8 @@ async function loadMyOrders() {
 
     target.querySelectorAll("[data-order-id]").forEach(button => {
       button.addEventListener("click", async () => {
-        if (!window.confirm("Cancel this order? If preparation has started, ingredients remain deducted. Contact the shop for any GCash refund.")) return;
+        const order = data.orders.find(entry => String(entry.id) === button.dataset.orderId);
+        if (!order || !await confirmOrderCancellation(order)) return;
         button.disabled = true;
         try {
           await KopiApi.request(
@@ -313,3 +314,51 @@ window.addEventListener("focus", () => {
 
 
 setInterval(()=>{if(!document.hidden&&!document.getElementById("orders").hidden)loadMyOrders();},30000);
+function confirmOrderCancellation(order) {
+  if (document.getElementById("cancelOrderDialog")) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const previousFocus = document.activeElement;
+    const dialog = document.createElement("dialog");
+    dialog.id = "cancelOrderDialog";
+    dialog.className = "cancel-order-dialog";
+    dialog.setAttribute("aria-labelledby", "cancelOrderTitle");
+    dialog.setAttribute("aria-describedby", "cancelOrderMessage");
+    const title = document.createElement("h2");
+    title.id = "cancelOrderTitle";
+    title.textContent = "Cancel order";
+    const message = document.createElement("p");
+    message.id = "cancelOrderMessage";
+    message.textContent = "Cancel this order? If preparation has started, ingredients remain deducted.";
+    if (order.payment === "GCash") {
+      const contact = document.createElement("a");
+      contact.href = "https://www.facebook.com/kopiest2021";
+      contact.target = "_blank";
+      contact.rel = "noopener noreferrer";
+      contact.textContent = "Contact the shop";
+      message.append(" ", contact, " for any GCash refund.");
+    }
+    const actions = document.createElement("div");
+    actions.className = "cancel-dialog-actions";
+    const keep = document.createElement("button");
+    keep.type = "button";
+    keep.className = "keep-order-btn";
+    keep.textContent = "Keep order";
+    keep.addEventListener("click", () => dialog.close("keep"));
+    const confirm = document.createElement("button");
+    confirm.type = "button";
+    confirm.className = "confirm-cancel-btn";
+    confirm.textContent = "Yes, cancel order";
+    confirm.addEventListener("click", () => dialog.close("confirm"));
+    actions.append(keep, confirm);
+    dialog.append(title, message, actions);
+    dialog.addEventListener("close", () => {
+      const confirmed = dialog.returnValue === "confirm";
+      dialog.remove();
+      if (previousFocus?.isConnected) previousFocus.focus();
+      resolve(confirmed);
+    }, {once: true});
+    document.body.append(dialog);
+    dialog.showModal();
+    keep.focus();
+  });
+}

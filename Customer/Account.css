@@ -2066,3 +2066,29 @@ button, input {
     font-size: 9px;
   }
 }
+.cancel-order-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: 85dvh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid #d5c5ab;
+  border-radius: 16px;
+  background: #fffaf1;
+  color: #3d2b16;
+  box-shadow: 0 12px 36px rgb(61 43 22 / 18%);
+  font: 400 14px/1.65 "Poppins", Arial, sans-serif;
+}
+.cancel-order-dialog::backdrop { background: rgb(0 0 0 / 40%); }
+.cancel-order-dialog h2 { margin: 0 0 12px; font-size: 21px; }
+.cancel-order-dialog p { margin: 0 0 22px; font: inherit; }
+.cancel-order-dialog a { color: #8a5308; text-decoration: underline; font-weight: 600; }
+.cancel-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.cancel-dialog-actions button { min-height: 42px; padding: 10px 16px; border: 1px solid #d5c5ab; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+.cancel-dialog-actions .keep-order-btn { background: #fff; color: #3d2b16; }
+.cancel-dialog-actions .confirm-cancel-btn { background: #9d3035; border-color: #9d3035; color: #fff; }
+.cancel-order-dialog :focus-visible { outline: 2px solid #8a5308; outline-offset: 3px; }
+@media (max-width: 355px) {
+  .cancel-order-dialog { padding: 18px; }
+  .cancel-dialog-actions button { width: 100%; }
+}

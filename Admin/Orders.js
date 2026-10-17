@@ -18,11 +18,9 @@ const productSearchEl = document.getElementById("productSearch");
 const orderItemsEl = document.getElementById("orderItems");
 const orderEmptyMsg = document.getElementById("orderEmptyMsg");
 const subtotalAmountEl = document.getElementById("subtotalAmount");
-const discountAmountEl = document.getElementById("discountAmount");
 const orderTotalEl = document.getElementById("orderTotal");
 const orderNumberEl = document.getElementById("orderNumber");
 const customerNameEl = document.getElementById("customerName");
-const addDiscountBtn = document.getElementById("addDiscountBtn");
 const cancelOrderBtn = document.getElementById("cancelOrderBtn");
 const placeOrderBtn = document.getElementById("placeOrderBtn");
 const paymentExtraEl = document.getElementById("paymentExtra");
@@ -30,7 +28,34 @@ const productCardTemplate = document.getElementById("productCardTemplate");
 const orderItemTemplate = document.getElementById("orderItemTemplate");
 const posVoucherCode = document.getElementById("posVoucherCode");
 const posVoucherStatus = document.getElementById("posVoucherStatus");
+const POS_ORDER_API = document.body.dataset.workspace === "Cashier" ? "/workforce/orders" : "/admin/orders";
 let posQuoteVersion = 0;
+let availabilityVersion = 0;
+let productClickPending = false;
+let addingProduct = false;
+const productAvailability = new Map();
+
+function showAdminReceipt(order) {
+  if (document.body.dataset.workspace === "Cashier") return;
+  let dialog = document.getElementById("posReceiptDialog");
+  if (!dialog) {
+    dialog = document.createElement("dialog");
+    dialog.id = "posReceiptDialog";
+    dialog.className = "pos-receipt-dialog";
+    dialog.innerHTML = `<header><h2>Order receipt</h2><button type="button" aria-label="Close receipt">×</button></header><div class="pos-receipt-body"></div>`;
+    dialog.querySelector("header button").addEventListener("click", () => dialog.close());
+    document.body.append(dialog);
+  }
+  const rows = order.items.map(item => `<p class="receipt-line"><span>${item.quantity} × ${escapeReceipt(item.name)}</span><strong>${formatMoney(item.price * item.quantity)}</strong></p>`).join("");
+  const discounts = Math.max(0, order.subtotal - order.total);
+  const receiptPaymentStatus = order.paymentStatus === "Verified" ? "Paid" : order.paymentStatus;
+  dialog.querySelector(".pos-receipt-body").innerHTML = `<h3>Kopi; Calamba</h3><p><strong>${escapeReceipt(order.orderNumber)}</strong> · ${escapeReceipt(order.serviceType)}</p><p>Status: <strong>${escapeReceipt(order.status)}</strong><br>Payment: ${escapeReceipt(order.payment)} · ${escapeReceipt(receiptPaymentStatus)}</p>${rows}<p class="receipt-line"><span>Subtotal</span><span>${formatMoney(order.subtotal)}</span></p><p class="receipt-line"><span>Discounts</span><span>− ${formatMoney(discounts)}</span></p><p class="receipt-line receipt-total"><span>Total</span><span>${formatMoney(order.total)}</span></p>${order.payment === "Cash" ? `<p class="receipt-line"><span>Cash received</span><span>${formatMoney(order.cashTendered)}</span></p><p class="receipt-line"><span>Cash change</span><strong>${formatMoney(order.cashChange)}</strong></p>` : ""}`;
+  dialog.showModal();
+}
+
+function escapeReceipt(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[character]));
+}
 
 const ORDER_SEQ_KEY = "kopi_admin_next_order_no";
 const OPERATIONS_ORDERS_KEY = "kopi_admin_operations_orders";
@@ -76,7 +101,6 @@ const state = {
   searchTerm: "",
   cart: [],           // [{ cartId, productId, name, image, priceLabel, price, quantity }]
   orderType: "Dine-in",
-  discount: 0,
   voucher: "",
   voucherQuote: null,
   paymentMethod: "Cash"
@@ -87,15 +111,16 @@ const recoverPosBtn=document.createElement("button");
 recoverPosBtn.type="button";
 recoverPosBtn.className="place-order-btn recover-pos-btn";
 recoverPosBtn.textContent="Recover previous order";
-recoverPosBtn.hidden=!KopiApi.hasPendingOrder("/admin/orders");
+recoverPosBtn.hidden=!KopiApi.hasPendingOrder(POS_ORDER_API);
 placeOrderBtn.after(recoverPosBtn);
 recoverPosBtn.addEventListener("click",async()=>{
   if (!window.confirm("Check the previous checkout. If it was not saved, retry its original items and payment details without creating a second order. Continue?")) return;
   recoverPosBtn.disabled=true;
   try {
-    const result=await KopiApi.recoverOrder("/admin/orders");
-    KopiNotice.toast(result.orderNumber+" — "+result.status+". Your current draft has been kept; check Operations before placing it again.");
-    KopiApi.finishOrder("/admin/orders");
+    const result=await KopiApi.recoverOrder(POS_ORDER_API);
+    KopiNotice.toast(result.orderNumber+" — "+result.status+". Your current draft has been kept; check the saved order before placing it again.");
+    document.dispatchEvent(new CustomEvent("kopi:pos-saved", {detail:result}));
+    KopiApi.finishOrder(POS_ORDER_API);
     recoverPosBtn.hidden=true;
   } catch(error) { KopiNotice.toast(error.message, "error"); }
   finally { recoverPosBtn.disabled=false; }
@@ -104,8 +129,14 @@ recoverPosBtn.addEventListener("click",async()=>{
 function init() {
   renderCategoryList();
   renderProducts();
+  renderPaymentExtra();
   renderOrder();
   orderNumberEl.textContent = "# New";
+  refreshProductAvailability().catch(() => {});
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") refreshProductAvailability().catch(() => {});
+  }, 15000);
+  window.addEventListener("focus", () => refreshProductAvailability().catch(() => {}));
 
   productSearchEl.addEventListener("input", () => {
     state.searchTerm = productSearchEl.value.trim().toLowerCase();
@@ -127,6 +158,7 @@ function init() {
       button.classList.add("active");
       state.orderType = button.dataset.type;
       renderOrder();
+      refreshProductAvailability().catch(() => {});
     });
   });
 
@@ -139,28 +171,12 @@ function init() {
     });
   });
 
-  addDiscountBtn.addEventListener("click", () => {
-    const input = window.prompt("Enter discount amount in pesos:", state.discount || "");
-    if (input === null) return;
-    const value = Math.max(0, Number(input) || 0);
-    if (value > 0 && state.voucher) {
-      KopiNotice.toast("Clear the voucher before adding a manual discount.", "warning");
-      return;
-    }
-    state.discount = value;
-    renderOrder();
-  });
-
   posVoucherCode.addEventListener("input", () => {
     state.voucher = "";
     renderOrder();
     posVoucherStatus.textContent = posVoucherCode.value.trim() ? "Click Apply to validate this code." : "";
   });
   document.getElementById("applyPosVoucher").addEventListener("click", () => {
-    if (state.discount > 0 && posVoucherCode.value.trim()) {
-      KopiNotice.set(posVoucherStatus, "Set the manual discount to zero before applying a voucher.", "warning");
-      return;
-    }
     state.voucher = posVoucherCode.value.trim().toUpperCase();
     posVoucherCode.value = state.voucher;
     renderOrder();
@@ -239,7 +255,34 @@ function renderProductCard(product) {
   img.alt = product.name;
   node.querySelector("[data-product-name]").textContent = product.name;
   node.querySelector("[data-product-price]").textContent = formatPriceLabel(product.prices);
+  paintProductAvailability(node, product.id);
   return node.outerHTML;
+}
+
+function paintProductAvailability(card, productId) {
+  const unavailable = productAvailability.get(productId) === false;
+  card.classList.toggle("is-unavailable", unavailable);
+  const button = card.querySelector(".add-btn");
+  button.setAttribute("aria-label", unavailable ? "The Product is not available" : "Add to order");
+  let label = card.querySelector(".product-availability");
+  if (unavailable && !label) {
+    label = document.createElement("span");
+    label.className = "product-availability";
+    label.textContent = "Not available";
+    card.appendChild(label);
+  } else if (!unavailable && label) label.remove();
+}
+
+async function refreshProductAvailability() {
+  if (document.body.dataset.workspace !== "Cashier") return true;
+  const version = ++availabilityVersion;
+  const serviceType = state.orderType;
+  const data = await KopiApi.request(POS_ORDER_API + "/availability?serviceType=" + encodeURIComponent(serviceType));
+  if (version !== availabilityVersion || state.orderType !== serviceType) return false;
+  productAvailability.clear();
+  data.products.forEach(product => productAvailability.set(product.productId, product.available));
+  productGridEl.querySelectorAll(".pos-product-card").forEach(card => paintProductAvailability(card, card.dataset.productId));
+  return true;
 }
 
 function formatPriceLabel(prices) {
@@ -249,9 +292,20 @@ function formatPriceLabel(prices) {
 }
 
 /* ---------- Adding to order ---------- */
-function handleProductClick(productId, cardEl) {
+async function handleProductClick(productId, cardEl) {
   const product = findProductById(productId);
-  if (!product) return;
+  if (!product || productClickPending || addingProduct) return;
+  productClickPending = true;
+  try {
+    if (!await refreshProductAvailability() || !cardEl.isConnected) return;
+    if (productAvailability.get(productId) === false) {
+      KopiNotice.toast("The Product is not available", "error");
+      return;
+    }
+  } catch (error) {
+    KopiNotice.toast("Could not check product availability. Please try again.", "error");
+    return;
+  } finally {productClickPending = false;}
 
   const priceEntries = Object.entries(product.prices);
   const options = getPopoverOptions(product);
@@ -326,7 +380,7 @@ function openOptionsPopover(product, anchorEl, options, meaningfulOptions) {
       });
     });
 
-    popover.querySelector(".popover-add-btn").addEventListener("click", event => {
+    popover.querySelector(".popover-add-btn").addEventListener("click", async event => {
       event.stopPropagation();
       const priceKeyOption = options.find(o => o.priceKey);
       if (priceKeyOption && !selections[priceKeyOption.key]) {
@@ -340,8 +394,10 @@ function openOptionsPopover(product, anchorEl, options, meaningfulOptions) {
         if (option.priceKey) return;
         if (selections[option.key]) extraOptions[option.label] = selections[option.key];
       });
-      addToCart(product, priceLabel, finalPrice, extraOptions);
-      popover.remove();
+      const button = event.currentTarget;
+      button.disabled = true;
+      if (await addToCart(product, priceLabel, finalPrice, extraOptions)) popover.remove();
+      else button.disabled = false;
     });
 
     if (popover.isConnected) positionPopover();
@@ -362,11 +418,32 @@ function openOptionsPopover(product, anchorEl, options, meaningfulOptions) {
   }, 0);
 }
 
-function addToCart(product, priceLabel, price, options = {}) {
+async function addToCart(product, priceLabel, price, options = {}) {
+  if (addingProduct) return;
   const priceOption = product.options.find(option => option.priceKey);
   if (priceOption) options = { ...options, [priceOption.label]: priceLabel };
   const signature = JSON.stringify({ productId: product.id, priceLabel, options });
   const existing = state.cart.find(item => cartItemSignature(item) === signature);
+
+  const before = JSON.stringify({cart: state.cart, serviceType: state.orderType});
+  addingProduct = true;
+  try {
+    // Validate the chosen size/add-ons and quantity against current stock.
+    await KopiApi.request(POS_ORDER_API + "/quote", {
+      method: "POST", body: JSON.stringify({
+        items: [{productId: product.id, quantity: (existing?.quantity || 0) + 1, options}],
+        serviceType: state.orderType
+      })
+    });
+    if (before !== JSON.stringify({cart: state.cart, serviceType: state.orderType})) {
+      KopiNotice.toast("Your order changed. Please select the product again.", "warning");
+      return;
+    }
+  } catch (error) {
+    KopiNotice.toast(error.status === 409 ? "The Product is not available" : error.message, "error");
+    refreshProductAvailability().catch(() => {});
+    return;
+  } finally {addingProduct = false;}
 
   if (existing) {
     existing.quantity += 1;
@@ -383,6 +460,7 @@ function addToCart(product, priceLabel, price, options = {}) {
     });
   }
   renderOrder();
+  return true;
 }
 
 function cartItemSignature(item) {
@@ -402,11 +480,9 @@ function renderOrder() {
   }
 
   const subtotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = Math.min(state.discount, subtotal);
-  const total = Math.max(0, subtotal - discount);
+  const total = subtotal;
 
   subtotalAmountEl.textContent = formatMoney(subtotal);
-  discountAmountEl.textContent = formatMoney(discount);
   orderTotalEl.textContent = formatMoney(total);
   document.getElementById("posVoucherLine").hidden = !state.voucher;
   document.getElementById("posVoucherAmount").textContent = "₱0.00";
@@ -414,20 +490,22 @@ function renderOrder() {
   if (state.voucher && state.cart.length) refreshPosVoucher(version);
   else if (state.voucher) posVoucherStatus.textContent = "Add an item to check this voucher.";
   else if (!posVoucherCode.value.trim()) posVoucherStatus.textContent = "";
+  updateCashCalculator();
 }
 
 async function refreshPosVoucher(version) {
   KopiNotice.set(posVoucherStatus, "Checking voucher…", "loading");
   try {
-    const quote = await KopiApi.request("/admin/orders/quote", {
+    const quote = await KopiApi.request(POS_ORDER_API + "/quote", {
       method: "POST",
-      body: JSON.stringify({items: state.cart, discount: state.discount, voucher: state.voucher, serviceType: state.orderType})
+      body: JSON.stringify({items: state.cart, voucher: state.voucher, serviceType: state.orderType})
     });
     if (version !== posQuoteVersion) return;
     state.voucherQuote = quote;
     subtotalAmountEl.textContent = formatMoney(quote.subtotal);
     document.getElementById("posVoucherAmount").textContent = "− " + formatMoney(quote.voucherDiscount);
     orderTotalEl.textContent = formatMoney(quote.total);
+    updateCashCalculator();
     KopiNotice.set(posVoucherStatus, `${quote.voucher} applied: ${formatMoney(quote.voucherDiscount)} off.`, "success");
     placeOrderBtn.disabled = false;
   } catch (error) {
@@ -484,17 +562,57 @@ function renderPaymentExtra() {
     paymentExtraEl.hidden = false;
     paymentExtraEl.innerHTML = `<input type="text" id="gcashRef" placeholder="Enter GCash reference number">`;
   } else {
-    paymentExtraEl.hidden = true;
-    paymentExtraEl.innerHTML = "";
+    paymentExtraEl.hidden = false;
+    paymentExtraEl.innerHTML = `<label for="cashTendered">Cash received
+      <input id="cashTendered" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" placeholder="Enter amount received" required aria-describedby="cashChangeAmount">
+    </label><div class="cash-change-line" id="cashChangeLine"><span>Cash change</span><strong id="cashChangeAmount">₱0.00</strong></div>`;
+    document.getElementById("cashTendered").addEventListener("input", () => updateCashCalculator());
+    updateCashCalculator();
   }
+}
+
+function currentOrderTotal() {
+  if (state.voucherQuote) return Number(state.voucherQuote.total);
+  const subtotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return subtotal;
+}
+
+function updateCashCalculator(validate = false) {
+  const input = document.getElementById("cashTendered");
+  const line = document.getElementById("cashChangeLine");
+  const amount = document.getElementById("cashChangeAmount");
+  if (!input || !line || !amount) return;
+  const tendered = Number(input.value);
+  const total = currentOrderTotal();
+  const needsCash = !input.value.trim() || !Number.isFinite(tendered) || tendered < total || !input.validity.valid;
+  if (validate) input.dataset.validationStarted = "true";
+  const showError = needsCash && input.dataset.validationStarted === "true";
+  input.classList.toggle("cash-required", showError);
+  input.setAttribute("aria-invalid", String(showError));
+  line.classList.remove("insufficient");
+  if (!input.value || !Number.isFinite(tendered)) {
+    amount.textContent = "Enter cash";
+    return;
+  }
+  const change = tendered - total;
+  if (change < 0) {
+    line.classList.add("insufficient");
+    amount.textContent = `${formatMoney(Math.abs(change))} short`;
+    return;
+  }
+  amount.textContent = formatMoney(change);
 }
 
 /* ---------- Place / cancel order ---------- */
 async function placeOrder() {
+  if (addingProduct) {
+    KopiNotice.toast("Please wait while the product stock is checked.", "loading");
+    return;
+  }
   if (!state.cart.length || placeOrderBtn.disabled) return;
 
   if (!KopiApi.getSession()) {
-    KopiNotice.toast("Please log in as an administrator first.");
+    KopiNotice.toast("Please log in to your ordering workspace first.");
     window.location.href = "../login.html";
     return;
   }
@@ -504,11 +622,11 @@ async function placeOrder() {
   if (checkoutSurface) checkoutSurface.inert = true;
 
   try {
-    const quote = await KopiApi.request("/admin/orders/quote", {
+    const quote = await KopiApi.request(POS_ORDER_API + "/quote", {
       method: "POST",
-      body: JSON.stringify({items:state.cart,discount:state.discount,voucher:state.voucher,serviceType:state.orderType})
+      body: JSON.stringify({items:state.cart,voucher:state.voucher,serviceType:state.orderType})
     });
-    const displayedTotal = state.voucherQuote?.total ?? (state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0)-Math.min(state.discount,state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0)));
+    const displayedTotal = state.voucherQuote?.total ?? state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0);
     if (Math.abs(displayedTotal-quote.total)>0.001) {
       state.cart = quote.items.map((item,index)=>({...state.cart[index],...item}));
       renderOrder();
@@ -517,15 +635,21 @@ async function placeOrder() {
     }
     const gcash = state.paymentMethod === "GCash";
     const reference = document.getElementById("gcashRef")?.value.trim() || "";
+    const cashInput = document.getElementById("cashTendered");
+    const cashTendered = Number(cashInput?.value);
     if (gcash && !/^[0-9]{6,30}$/.test(reference)) throw new Error("Enter the GCash reference number.");
     if (gcash && !window.confirm(`Have you received ${formatMoney(quote.total)} with reference ${reference} in the shop GCash account?`)) return;
-    const result = await KopiApi.placeOrder("/admin/orders", {
+    if (!gcash && (!cashInput?.value.trim() || !cashInput.validity.valid || !Number.isFinite(cashTendered) || cashTendered < quote.total)) {
+      updateCashCalculator(true);
+      throw new Error("Enter cash received that covers the order total.");
+    }
+    const result = await KopiApi.placeOrder(POS_ORDER_API, {
         customerName: customerNameEl.value.trim() || "Walk-in Customer",
         serviceType: state.orderType,
         payment: state.paymentMethod,
-        discount: state.discount,
         voucher: state.voucher,
         paymentReference: reference,
+        cashTendered: gcash ? null : cashTendered,
         confirmedReceived: gcash,
         expectedTotal: quote.total,
         items: state.cart.map(item => ({
@@ -538,21 +662,24 @@ async function placeOrder() {
     });
 
     KopiNotice.toast(`${result.orderNumber} is now preparing.`);
-    KopiApi.finishOrder("/admin/orders");
+    KopiApi.finishOrder(POS_ORDER_API);
+    showAdminReceipt(result);
     resetOrder();
+    refreshProductAvailability().catch(() => {});
+    document.dispatchEvent(new CustomEvent("kopi:pos-saved", {detail:result}));
   } catch (error) {
+    refreshProductAvailability().catch(() => {});
     if (state.voucher) state.voucherQuote = null;
     KopiNotice.toast(error.message || "Could not place the in-store order.", "error");
   } finally {
     if (checkoutSurface) checkoutSurface.inert = false;
     placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim() && !state.voucherQuote);
-    recoverPosBtn.hidden = !KopiApi.hasPendingOrder("/admin/orders");
+    recoverPosBtn.hidden = !KopiApi.hasPendingOrder(POS_ORDER_API);
   }
 }
 
 function resetOrder() {
   state.cart = [];
-  state.discount = 0;
   state.voucher = "";
   state.voucherQuote = null;
   posVoucherCode.value = "";

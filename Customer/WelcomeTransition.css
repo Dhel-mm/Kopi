@@ -1,0 +1,54 @@
+/* Shared by splash and login so the background survives page navigation. */
+@view-transition {
+  navigation: auto;
+}
+
+body { background-color: #382e23; }
+.bg-image { view-transition-name: welcome-background; }
+.overlay { view-transition-name: welcome-shade; }
+.logo-image { view-transition-name: welcome-logo; }
+.logo { view-transition-name: welcome-wordmark; }
+.content { view-transition-name: welcome-copy; }
+.login-card { view-transition-name: welcome-form; }
+
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; }
+::view-transition-old(welcome-copy),
+::view-transition-old(welcome-form) { animation: welcome-out 220ms ease-out both; }
+::view-transition-new(welcome-copy),
+::view-transition-new(welcome-form) { animation: welcome-in 420ms cubic-bezier(.22, 1, .36, 1) both; }
+
+/* The shared scenery stays still while the foreground fades. */
+::view-transition-old(welcome-background),
+::view-transition-old(welcome-shade) { animation: none; }
+::view-transition-new(welcome-background),
+::view-transition-new(welcome-shade) { animation: none; mix-blend-mode: normal; }
+
+.welcome-leaving .content {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.welcome-entering .login-card {
+  animation: welcome-in 420ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes welcome-out {
+  to { opacity: 0; transform: translateY(-8px); }
+}
+@keyframes welcome-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  ::view-transition-group(*) { animation-duration: 0s; }
+  .welcome-leaving .content { opacity: 1; transform: none; transition: none; }
+  .welcome-entering .login-card { animation: none; }
+}

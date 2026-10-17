@@ -2,6 +2,11 @@ const KopiApi = (() => {
   const baseUrl = window.location.protocol === "file:" ? "http://localhost:3000/api" : "/api";
   const sessionKey = "kopi_api_session";
 
+  function homeForRole(role) {
+    return {Admin:"/Admin/Dashboard.html",Cashier:"/Cashier/Orders.html",Staff:"/Staff/Orders.html"}[role]
+      || "/Customer/Homepage.html";
+  }
+
   function getSession() {
     try {
       return JSON.parse(sessionStorage.getItem(sessionKey) || localStorage.getItem(sessionKey)) || null;
@@ -60,7 +65,7 @@ const KopiApi = (() => {
   // A visible, signed-in page checks in every 45 seconds. Closed or hidden
   // pages become offline after the server's two-minute activity window.
   if (typeof document !== "undefined" && typeof window.addEventListener === "function"
-      && /^\/(Customer|Admin)\//i.test(window.location.pathname || "")) {
+      && /^\/(Customer|Admin|Cashier|Staff)\//i.test(window.location.pathname || "")) {
     let presencePending = false;
     let lastPresence = 0;
     async function updatePresence() {
@@ -141,6 +146,7 @@ const KopiApi = (() => {
   }
 
   return {
+    homeForRole,
     placeOrder,
     pendingOrder,
     hasPendingOrder,

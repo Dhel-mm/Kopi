@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../../Admin/Dashboard.js'),'utf8');
 
-function dashboard({empty=false,missingLibrary=false,requestError=false}={}) {
+function dashboard({empty=false,missingLibrary=false,requestError=false,todaySales=120,yesterdaySales=0}={}) {
   const nodes=new Map(),charts=[];
   function node(key) {
     if(!nodes.has(key))nodes.set(key,{textContent:'',innerHTML:'',selectedIndex:0,
@@ -21,7 +21,7 @@ function dashboard({empty=false,missingLibrary=false,requestError=false}={}) {
     window:{addEventListener(){}},KopiNotice:{set(target,message){target.textContent=message;}},
     KopiApi:{async request(){
       if(requestError)throw Error('Test connection failure');
-      return {todaySales:120,totalOrders:2,yesterdaySales:0,lowStockItems:0,outOfStockItems:0,servedThisWeek:1,
+      return {todaySales,totalOrders:2,yesterdaySales,lowStockItems:0,outOfStockItems:0,servedThisWeek:1,
         topProducts:[],recentOrders:[],lowStock:[],salesSeries:[{day:'2026-09-28',total:empty?0:120}],
         orderSummary:empty?[]:[{type:'Online',count:2}]};
     }}
@@ -50,6 +50,16 @@ test('Dashboard updates both charts and labels their actual report values',async
   assert.equal(legend[1].textContent,'100.0%');
   assert.match(nodes.get('salesChart')['aria-label'],/120.00/);
   assert.ok(charts.every(chart=>chart.updated));
+});
+
+test('today sales comparison is red only when sales dropped below yesterday',async()=>{
+  const down=dashboard({todaySales:75,yesterdaySales:100});
+  const up=dashboard({todaySales:125,yesterdaySales:100});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(down.nodes.get('todaySalesDelta').className,'stat-delta danger');
+  assert.equal(down.nodes.get('todaySalesDelta').textContent,'-25.0% vs yesterday');
+  assert.equal(up.nodes.get('todaySalesDelta').className,'stat-delta positive');
+  assert.equal(up.nodes.get('todaySalesDelta').textContent,'25.0% vs yesterday');
 });
 
 test('Empty periods draw a neutral ring and no-sales message without inventing data',async()=>{

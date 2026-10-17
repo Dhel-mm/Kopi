@@ -17,17 +17,28 @@
     } catch { return null; }
   }
 
-  function messageParts(fee, link) {
+  function messageParts(fee, link, payment = "GCash", total) {
     const amount = Number.isFinite(fee) && fee >= 0 ? fee.toFixed(2) : "__";
+    if (payment === "Cash") {
+      const orderAmount = Number.isFinite(total) && total >= 0 ? total.toFixed(2) : "___";
+      const cashDue = Number.isFinite(total) && total >= 0 && Number.isFinite(fee) && fee >= 0
+        ? ((Math.round(total * 100) + Math.round(fee * 100)) / 100).toFixed(2) : "__";
+      return [
+        "Hi! Your coffee order is ready. The total cost of your order is ", `₱${orderAmount}`,
+        ", and the Lalamove delivery fee to your location is ", `₱${amount}`,
+        ". Please prepare a total of ", `₱${cashDue}`,
+        " in cash to pay the rider.\n\nHere's the live tracking link for your order:", link || "__"
+      ];
+    }
     return [
-      "Hi! Your coffee order is ready. The Lalamove fee to your location is ",
+      "Hi! Your coffee order is ready. The Lalamove delivery fee to your location is ",
       `₱${amount}`,
-      ". Please prepare this amount in cash for the rider.\n\nHere's the live tracking link for your order:",
+      ". Please prepare this amount in cash to pay the rider.\n\nHere's the live tracking link for your order:",
       link || "__"
     ];
   }
-  function message(fee, link) {
-    return messageParts(fee, link).join("");
+  function message(fee, link, payment, total) {
+    return messageParts(fee, link, payment, total).join("");
   }
   return {trackingUrl, message, messageParts};
 });

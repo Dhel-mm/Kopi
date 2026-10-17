@@ -3,8 +3,12 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 backend/data/
+backend/backups/
 *.db
 *.db-wal
 *.db-shm
 *.log
+*.tmp
+.DS_Store
+Thumbs.db
 /Workflow.js

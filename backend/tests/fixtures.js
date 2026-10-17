@@ -33,7 +33,7 @@ function body(overrides={}) {
   return {
     items:[{productId:"caramel-frappe",quantity:1,options:{"Size":"16oz"},price:1,name:"Forged name"}],
     address:"Test address",phone:"09123456789",payment:"Cash",
-    expectedTotal:160,requestKey:require("node:crypto").randomUUID(),
+    expectedTotal:160,cashTendered:160,requestKey:require("node:crypto").randomUUID(),
     ...overrides
   };
 }

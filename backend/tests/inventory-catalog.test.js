@@ -152,7 +152,15 @@ test("Inventory displays bottles, remaining measurements and partial packages co
   assert.equal(helpers.packageStock(milk),"20 bottles");
   assert.equal(helpers.displayMeasurement(milk),"20 L");
   assert.equal(helpers.packageStock({...milk,quantity:19000}),"19 bottles");
-  assert.equal(helpers.packageStock({...milk,quantity:500}),"0.5 bottles");
+  assert.equal(helpers.packageStock({...milk,quantity:500}),"1 bottle");
   assert.equal(helpers.displayMeasurement({...milk,quantity:500}),"500 ml");
   assert.equal(helpers.packageStock({...milk,quantity:1000}),"1 bottle");
+  assert.equal(helpers.packageStock({...milk,quantity:840}),"1 bottle");
+  assert.equal(helpers.packageStock({...milk,quantity:0}),"0 bottles");
+  assert.equal(helpers.packageStock({...milk,quantity:0.001}),"1 bottle");
+  assert.equal(helpers.packageStock({...milk,quantity:1945,packageUnit:"bag"}),"2 bags");
+  assert.equal(helpers.packageStock({...milk,quantity:1000.001}),"2 bottles");
+  assert.equal(helpers.packageStock({...milk,quantity:19999}),"20 bottles");
+  assert.equal(helpers.packageStock({...milk,quantity:1945,packageUnit:"box"}),"2 boxes");
+  assert.equal(helpers.packageStock({...milk,quantity:1945,packageUnit:"packs"}),"2 packs");
 });

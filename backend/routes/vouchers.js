@@ -16,5 +16,9 @@ module.exports = function voucherRouter(db) {
     try { res.json({voucher: vouchers.save(req.body || {}, req.params.code)}); }
     catch (error) { sendError(res, error); }
   });
+  router.delete("/:code", (req, res) => {
+    try { res.json(vouchers.remove(req.params.code)); }
+    catch (error) { sendError(res, error); }
+  });
   return router;
 };

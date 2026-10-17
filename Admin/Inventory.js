@@ -35,10 +35,13 @@ function displayMeasurement(item, value = item.quantity) {
 }
 
 function packageStock(item) {
-  const count = Number(item.quantity) / Number(item.initialQuantity);
+  // An opened package counts until its final measurable amount is consumed.
+  const remaining = Math.max(0, Math.round(Number(item.quantity) * 1000));
+  const capacity = Math.round(Number(item.initialQuantity) * 1000);
+  const count = capacity > 0 ? Math.ceil(remaining / capacity) : 0;
   const label = item.packageUnit || "package";
-  const plural = label === "batch" ? "batches" : label === "pouch" ? "pouches" : label+"s";
-  const amount = count > 0 && count < 0.001 ? "<0.001" : count.toLocaleString(undefined,{maximumFractionDigits:3});
+  const plural = /s$/i.test(label) ? label : /(ch|sh|x|z)$/i.test(label) ? label+"es" : label+"s";
+  const amount = count.toLocaleString(undefined,{maximumFractionDigits:0});
   return `${amount} ${count === 1 ? label : plural}`;
 }
 
@@ -234,7 +237,7 @@ async function addProduct() {
   const quantity = window.prompt("Starting stock quantity:", "0");
   const measurement = window.prompt("Measurement (g, ml, pcs):", "pcs") || "pcs";
   const initialQuantity = window.prompt("Amount in ONE full package, in the same unit (for example 1000 ml in a carton):", quantity || "1");
-  const packageUnit = window.prompt("Package type (bottle, bag, pack, pouch, can, jar, container, gallon, batch, tray, carton, tub, block, package):", "package");
+  const packageUnit = window.prompt("Stock unit (your own label, for example bottle, bag, pack or sachet):", "package");
 
   if (quantity === null || initialQuantity === null || packageUnit === null || !Number.isFinite(Number(quantity))) return;
 

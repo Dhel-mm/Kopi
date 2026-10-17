@@ -7,7 +7,16 @@ module.exports = function orderRouter(db) {
   const requireAuth = authFor(db);
   const workflow = createOrderWorkflow(db);
   const delivery = require("../services/delivery").createDeliveryService(db);
-  router.use(requireAuth);
+  const paymentReview = require("../services/paymentReview").createPaymentReviewService(db);
+  router.use(requireAuth, requireRole("Customer", "Admin"));
+  router.get("/notifications", requireRole("Customer"), (request, response) => {
+    response.json({notifications: [...paymentReview.pending(request.user),
+      ...delivery.pending(request.user).map(notice => ({...notice, type: "delivery"}))]});
+  });
+  router.patch("/:id/cancellation/acknowledge", requireRole("Customer"), (request, response) => {
+    try { response.json(paymentReview.acknowledge(request.params.id, request.user)); }
+    catch (error) { sendError(response, error); }
+  });
   router.get("/delivery-notifications", requireRole("Customer"), (request, response) => {
     response.json({notifications: delivery.pending(request.user)});
   });
@@ -32,6 +41,7 @@ module.exports = function orderRouter(db) {
       SELECT id,order_number AS orderNumber,order_type AS orderType,status,payment,
         payment_reference AS paymentReference,payment_status AS paymentStatus,
         refund_status AS refundStatus,inventory_state AS inventoryState,total,
+        cancellation_reason AS cancellationReason,
         rider_fee_cents / 100.0 AS riderFee,delivery_tracking_url AS trackingUrl,
         delivery_message AS deliveryMessage,delivery_revision AS deliveryRevision,
         delivery_acknowledged_at AS deliveryAcknowledgedAt,

@@ -4,12 +4,15 @@ const express=require("express");
 const jwt=require("jsonwebtoken");
 const {fixture,customer,admin,body}=require("./fixtures");
 process.env.JWT_SECRET="isolated-safety-tests-not-for-production";
+const cashier={id:4,role:"Cashier"};
 
 async function harness(run) {
   const db=fixture(),app=express();
+  db.prepare("INSERT INTO users(id,first_name,last_name,email,password_hash,role) VALUES(4,'Test','Cashier','cashier@test.invalid','unused','Cashier')").run();
   app.use(express.json());
   app.use("/api/orders",require("../routes/orders")(db));
   app.use("/api/admin",require("../routes/adminOrders")(db));
+  app.use("/api/workforce",require("../routes/workforce")(db));
   app.use("/api/admin/inventory",require("../routes/inventory")(db));
   const server=await new Promise(resolve=>{
     const listener=app.listen(0,"127.0.0.1",()=>resolve(listener));
@@ -29,7 +32,7 @@ test("simultaneous online and POS orders cannot oversell the final serving",()=>
   db.prepare("UPDATE inventory_items SET quantity=20 WHERE sku='caramel-syrup'").run();
   const outcomes=await Promise.all([
     request("/orders","POST",body()),
-    request("/admin/orders","POST",body({serviceType:"Dine-in"}),admin)
+    request("/workforce/orders","POST",body({serviceType:"Dine-in"}),cashier)
   ]);
   assert.deepEqual(outcomes.map(result=>result.status).sort(),[201,409]);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM orders").get().n,1);
@@ -57,7 +60,7 @@ test("order recovery is restricted to the owner and original checkout type",()=>
   const endpoint="/orders/requests/"+payload.requestKey;
   assert.equal((await request(endpoint)).data.orderId,created.data.orderId);
   assert.equal((await request(endpoint,"GET",undefined,{id:3,role:"Customer"})).status,404);
-  assert.equal((await request("/admin"+endpoint,"GET",undefined,admin)).status,404);
+  assert.equal((await request("/workforce"+endpoint,"GET",undefined,cashier)).status,404);
   const invalid=await request("/orders","POST",body({payment:"GCash",paymentReference:"bad-reference"}));
   assert.equal(invalid.status,400);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM orders").get().n,1);

@@ -28,6 +28,7 @@
 .voucher-list { display: grid; gap: 10px; max-height: 240px; overflow: auto; margin: 14px 0 0; padding: 0; list-style: none; }
 .voucher-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12px; }
 .voucher-list strong { display: block; overflow-wrap: anywhere; }
+.voucher-list .voucher-used-code { color: #9d3035; }
 .voucher-list small { color: var(--muted); }
 @media (max-width: 600px) {
   .voucher-dialog { padding: 12px; }

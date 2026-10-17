@@ -9,19 +9,55 @@
   border-radius: 14px;
   background: #fffaf1;
   color: #3d2b16;
-  font: 500 14px/1.6 "Poppins", Arial, sans-serif;
+  font:
+    500 14px/1.6 "Poppins",
+    Arial,
+    sans-serif;
 }
-.delivery-notice::backdrop { background: rgb(0 0 0 / 35%); }
-.delivery-notice h2 { margin: 0 0 14px; font-size: 20px; overflow-wrap: anywhere; }
-.delivery-notice-message { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cancellation-notice h2 { color: #9c3030; }
+.cancellation-notice { border-top: 4px solid #b44b43; }
+.delivery-notice::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+.delivery-notice h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.delivery-notice-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .delivery-notice-message .delivery-notice-value {
-  color: #176b52;
+  color: #d49b43;
   font-weight: 700;
 }
-.delivery-notice a { color: #8a5308; text-decoration: underline; }
-.delivery-notice > button { display: block; margin: 18px 0 0 auto; padding: 9px 24px; border: 0; border-radius: 9px; background: #3d2b16; color: #fff; font: 700 14px "Poppins", Arial, sans-serif; cursor: pointer; }
-.delivery-notice > button:disabled { opacity: .6; cursor: wait; }
-.delivery-notice :focus-visible { outline: 2px solid #d49b43; outline-offset: 3px; }
+.delivery-notice a {
+  color: #8a5308;
+  text-decoration: underline;
+}
+.delivery-notice > button {
+  display: block;
+  margin: 18px 0 0 auto;
+  padding: 9px 24px;
+  border: 0;
+  border-radius: 9px;
+  background: #3d2b16;
+  color: #fff;
+  font:
+    700 14px "Poppins",
+    Arial,
+    sans-serif;
+  cursor: pointer;
+}
+.delivery-notice > button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.delivery-notice :focus-visible {
+  outline: 2px solid #d49b43;
+  outline-offset: 3px;
+}
 .kopi-notice {
   --notice-color: #285d7d;
   --notice-background: #edf5fa;
@@ -32,12 +68,17 @@
   border-left: 4px solid var(--notice-color);
   border-radius: 10px;
   background: var(--notice-background);
-  font: 500 13px/1.6 "Poppins", Arial, sans-serif;
+  font:
+    500 13px/1.6 "Poppins",
+    Arial,
+    sans-serif;
   overflow-wrap: anywhere;
   text-align: left;
 }
 .kopi-notice[data-notice-type],
-#profileStatus.kopi-notice { color: var(--notice-color); }
+#profileStatus.kopi-notice {
+  color: var(--notice-color);
+}
 .kopi-notice[data-notice-type="error"] {
   --notice-color: #9d3035;
   --notice-background: #fff1f0;
@@ -53,7 +94,9 @@
   --notice-background: #fff6e4;
   --notice-border: #ead2a6;
 }
-.kopi-notice:empty { display: none; }
+.kopi-notice:empty {
+  display: none;
+}
 .kopi-toast.logout-toast {
   position: fixed;
   left: 50%;
@@ -71,14 +114,22 @@
   background: #30281e;
   color: #fffaf0;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  font: 600 14px/1.5 "Poppins", Arial, sans-serif;
+  font:
+    600 14px/1.5 "Poppins",
+    Arial,
+    sans-serif;
   text-align: left;
   transform: translate(-50%, 20px);
   opacity: 0;
   pointer-events: auto;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
 }
-.kopi-toast.logout-toast.show { transform: translate(-50%, 0); opacity: 1; }
+.kopi-toast.logout-toast.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
 .kopi-toast-icon {
   flex: 0 0 24px;
   display: grid;
@@ -90,10 +141,19 @@
   color: #a6cfea;
   font-weight: 700;
 }
-.kopi-toast[data-notice-type="success"] .kopi-toast-icon { color: #9be08d; }
-.kopi-toast[data-notice-type="error"] .kopi-toast-icon { color: #ffaaaa; }
-.kopi-toast[data-notice-type="warning"] .kopi-toast-icon { color: #f2cd85; }
-.kopi-toast-text { min-width: 0; overflow-wrap: anywhere; }
+.kopi-toast[data-notice-type="success"] .kopi-toast-icon {
+  color: #9be08d;
+}
+.kopi-toast[data-notice-type="error"] .kopi-toast-icon {
+  color: #ffaaaa;
+}
+.kopi-toast[data-notice-type="warning"] .kopi-toast-icon {
+  color: #f2cd85;
+}
+.kopi-toast-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .kopi-toast-close {
   flex: 0 0 28px;
   min-width: 28px;
@@ -101,14 +161,28 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font: 24px/28px "Poppins", Arial, sans-serif;
+  font:
+    24px/28px "Poppins",
+    Arial,
+    sans-serif;
   cursor: pointer;
 }
-.kopi-toast-close:focus-visible { outline: 2px solid #e6c38b; outline-offset: 3px; }
+.kopi-toast-close:focus-visible {
+  outline: 2px solid #e6c38b;
+  outline-offset: 3px;
+}
 @media (max-width: 500px) {
-  .kopi-notice { font-size: 12px; }
-  .kopi-toast.logout-toast { bottom: 90px; padding: 12px 16px; font-size: 13px; }
+  .kopi-notice {
+    font-size: 12px;
+  }
+  .kopi-toast.logout-toast {
+    bottom: 90px;
+    padding: 12px 16px;
+    font-size: 13px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kopi-toast.logout-toast { transition: none; }
+  .kopi-toast.logout-toast {
+    transition: none;
+  }
 }

@@ -152,6 +152,25 @@
 
 .pos-product-card:hover { box-shadow: 0 4px 14px rgba(48, 40, 30, 0.10); }
 
+.pos-product-card.is-unavailable {
+  border-color: #ca7169;
+  background: #fcebea;
+}
+.pos-product-card.is-unavailable:hover { box-shadow: 0 4px 14px rgba(156, 46, 37, 0.16); }
+.pos-product-card.is-unavailable h3,
+.pos-product-card.is-unavailable .product-price { color: #8b2923; }
+.pos-product-card.is-unavailable .add-btn { background: #a73830; }
+.product-availability {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f6cfcb;
+  color: #8b2923;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .product-img-wrap {
   position: relative;
   aspect-ratio: 1 / 1;
@@ -406,15 +425,6 @@
 .summary-line span:first-child { color: var(--muted); }
 .summary-line strong { margin-left: auto; }
 
-.add-discount-link {
-  border: 0;
-  background: transparent;
-  color: var(--link);
-  font-size: 13px;
-  font-weight: 700;
-  margin-left: 8px;
-}
-
 .order-total-line {
   display: flex;
   align-items: center;
@@ -480,15 +490,59 @@
 
 
 
+.payment-extra {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-extra label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .payment-extra input {
   width: 100%;
   height: 40px;
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
   font-size: 13px;
   outline: none;
 }
+
+.payment-extra input:focus { border-color: var(--tan); box-shadow: 0 0 0 3px var(--tan-soft); }
+
+.payment-extra input.cash-required {
+  border-color: #d49a94;
+  background: #fff3f1;
+}
+
+.payment-extra input.cash-required:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(184, 76, 69, 0.12);
+}
+
+.cash-change-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--tan-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cash-change-line strong { font-size: 15px; }
+.cash-change-line.insufficient { border-color: var(--danger); background: #fff3f0; color: var(--danger); }
 
 .place-order-btn {
   display: flex;
@@ -508,6 +562,30 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.pos-receipt-dialog {
+  width: min(420px, calc(100vw - 28px));
+  max-height: min(720px, calc(100dvh - 28px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 20px 46px rgba(48, 40, 30, 0.22);
+}
+
+.pos-receipt-dialog::backdrop { background: rgba(48, 40, 30, 0.42); }
+.pos-receipt-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.pos-receipt-dialog h2, .pos-receipt-dialog h3 { margin: 0; }
+.pos-receipt-dialog h2 { font-size: 18px; }
+.pos-receipt-dialog h3 { font-size: 16px; }
+.pos-receipt-dialog header button { border: 0; background: transparent; color: var(--ink); font-size: 22px; line-height: 1; }
+.pos-receipt-body { font-size: 13px; }
+.pos-receipt-body > p { margin: 8px 0; }
+.pos-receipt-dialog .receipt-line { display: flex; justify-content: space-between; gap: 16px; }
+.pos-receipt-dialog .receipt-total { margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--border); font-size: 17px; font-weight: 800; }
+.pos-receipt-dialog .place-order-btn { width: 100%; margin-top: 16px; }
 
 /* ---------- Product options popover (Size, Ice Level, Add-ons, Flavors) ---------- */
 .size-popover {

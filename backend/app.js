@@ -34,6 +34,7 @@ function createApp(db,settings={}) {
   app.use("/api/auth",require("./routes/auth")(db));
   app.use("/api",require("./routes/customer")(db));
   app.use("/api/orders",require("./routes/orders")(db));
+  app.use("/api/workforce",require("./routes/workforce")(db));
   app.use("/api/admin",require("./routes/adminOrders")(db));
   app.use("/api/admin",require("./routes/reports")(db));
   app.use("/api/admin/inventory",require("./routes/inventory")(db));
@@ -41,10 +42,13 @@ function createApp(db,settings={}) {
   app.use("/api/admin/vouchers",require("./routes/vouchers")(db));
   app.use("/api",(req,res)=>res.status(404).json({message:"API endpoint not found."}));
   app.get("/",(req,res)=>res.redirect("/splash.html"));
+  // POS order entry belongs to the Cashier workspace. Preserve old bookmarks
+  // by sending Admin's retired Orders page to Operations.
+  app.get("/Admin/Orders.html",(req,res)=>res.redirect(302,"/Admin/Operation.html"));
   // Only web assets are public. No project-root static directory, databases,
   // backups, configuration, tests, or prototype credential storage are served.
   const webAsset=/\.(?:html|css|js|png|jpe?g|jfif|webp|gif|svg|ico|woff2?)$/i;
-  for (const directory of ["Customer","Admin"]) app.use("/"+directory,(req,res,next)=>{
+  for (const directory of ["Customer","Admin","Cashier","Staff"]) app.use("/"+directory,(req,res,next)=>{
     if (!webAsset.test(req.path)||req.path.split("/").some(part=>part.startsWith("."))) return res.sendStatus(404);
     next();
   },express.static(path.join(root,directory),{index:false,dotfiles:"deny",maxAge:0}));

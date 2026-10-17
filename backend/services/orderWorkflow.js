@@ -32,7 +32,8 @@ function requestFingerprint(body, inStore) {
     address:inStore?"":body.address,phone:inStore?"":body.phone,
     customerName:inStore?(body.customerName||"Walk-in Customer"):"",
     voucher:body.voucher||"",discount:inStore?(body.discount??0):0,
-    expectedTotal:body.expectedTotal,confirmedReceived:inStore?body.confirmedReceived:null
+    expectedTotal:body.expectedTotal,confirmedReceived:inStore?body.confirmedReceived:null,
+    cashTendered:inStore?body.cashTendered:null
   };
   return "v2:"+createHash("sha256").update(JSON.stringify(stable(intent))).digest("hex");
 }
@@ -67,10 +68,11 @@ function createOrderWorkflow(db) {
   function result(id) {
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     return {
-      orderId:row.id,orderNumber:row.order_number,status:row.status,payment:row.payment,
+      orderId:row.id,orderNumber:row.order_number,status:row.status,payment:row.payment,createdAt:row.created_at,
       paymentStatus:row.payment_status,paymentReference:row.payment_reference,
       inventoryState:row.inventory_state,refundStatus:row.refund_status,
-      subtotal:row.subtotal,deliveryFee:row.delivery_fee,voucherDiscount:row.voucher_discount,total:row.total,
+      subtotal:row.subtotal,deliveryFee:row.delivery_fee,voucher:row.voucher,voucherDiscount:row.voucher_discount,total:row.total,
+      cashTendered:row.cash_tendered,cashChange:row.cash_change,
       items:db.prepare("SELECT product_id AS productId,product_name AS name,quantity,price,options_json FROM order_items WHERE order_id=?").all(id)
         .map(item=>({productId:item.productId,name:item.name,quantity:item.quantity,price:item.price,options:JSON.parse(item.options_json)}))
     };
@@ -98,6 +100,16 @@ function createOrderWorkflow(db) {
       if (body.confirmedReceived!==true) throw new OrderError("Check GCash receipt in the shop account before placing this in-store order.");
       payment.status="Verified";
     }
+    let cashTendered = null;
+    let cashChange = null;
+    if (inStore && payment.payment === "Cash") {
+      const tenderedCents = money(body.cashTendered, "Cash received");
+      const totalCents = money(priced.total, "Order total");
+      if (tenderedCents < totalCents) throw new OrderError("Cash received must cover the order total.");
+      cashTendered = tenderedCents / 100;
+      cashChange = (tenderedCents - totalCents) / 100;
+      payment.status = "Paid";
+    }
     const address = inStore?"":text(body.address,"delivery address",500);
     const phone = inStore?"":text(body.phone,"phone number",11);
     if (!inStore && !/^09[0-9]{9}$/.test(phone)) throw new OrderError("Enter an 11-digit phone number beginning with 09.");
@@ -123,15 +135,16 @@ function createOrderWorkflow(db) {
         INSERT INTO orders (
           order_number,user_id,customer_name,order_type,service_type,status,payment,address,phone,voucher,
           subtotal,delivery_fee,voucher_discount,total,payment_reference,payment_status,
-          payment_verified_at,payment_verified_by,inventory_state,request_key,request_hash
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          payment_verified_at,payment_verified_by,inventory_state,request_key,request_hash,cash_tendered,cash_change
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(orderNumber,user.id,customerName,inStore?"In-store":"Online",serviceType,status,payment.payment,
         address,phone,priced.voucher,priced.subtotal,priced.deliveryFee,priced.voucherDiscount,priced.total,
         payment.reference,payment.status,payment.status==="Verified"?new Date().toISOString():null,
-        payment.status==="Verified"?user.id:null,inStore?"consumed":"reserved",requestKey,intentHash);
+        payment.status==="Verified"?user.id:null,inStore?"consumed":"reserved",requestKey,intentHash,cashTendered,cashChange);
       const id = inserted.lastInsertRowid;
       for (const item of priced.items) db.prepare("INSERT INTO order_items(order_id,product_id,product_name,quantity,price,options_json) VALUES(?,?,?,?,?,?)")
         .run(id,item.productId,item.name,item.quantity,item.price,JSON.stringify(item.options));
+      vouchers.redeem(priced.voucher,id,user.id);
       stock.deduct(priced.items,id,serviceType!=="Dine-in");
       return result(id);
     }).immediate();
@@ -156,17 +169,20 @@ function createOrderWorkflow(db) {
       return result(id);
     }).immediate();
   }
-  function advance(id, next, user) {
+  function advance(id, next, user, {deliveryConfirmed = false} = {}) {
     if (next==="Canceled") return cancel(id,user);
     return db.transaction(() => {
       const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
       if (!order) throw new OrderError("Order was not found.",404);
       if (order.status===next) return result(id);
       const flow = order.order_type==="In-store"?["Preparing","Completed"]:["New","Preparing","Out for Delivery","Arrived","Completed"];
-      if (flow.indexOf(order.status)<0 || flow[flow.indexOf(order.status)+1]!==next) throw new OrderError("Invalid order status transition.",409);
+      const delivered = deliveryConfirmed && ["Admin", "Staff"].includes(user.role)
+        && order.order_type === "Online" && order.status === "Out for Delivery" && next === "Completed";
+      if (!delivered && (flow.indexOf(order.status)<0 || flow[flow.indexOf(order.status)+1]!==next)) throw new OrderError("Invalid order status transition.",409);
       if (order.payment==="GCash" && order.payment_status!=="Verified") throw new OrderError("Verify the GCash payment first.",409);
       db.prepare(`UPDATE orders SET status=?,inventory_state='consumed',
-        completed_at=CASE WHEN ?='Completed' THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id=?`).run(next,next,id);
+        payment_status=CASE WHEN ?='Completed' AND payment='Cash' THEN 'Paid' ELSE payment_status END,
+        completed_at=CASE WHEN ?='Completed' THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id=?`).run(next,next,next,id);
       return result(id);
     }).immediate();
   }

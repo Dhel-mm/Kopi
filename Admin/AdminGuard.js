@@ -1,9 +1,13 @@
 (() => {
+  if (/\/Admin\/Orders\.html$/i.test(window.location.pathname)) {
+    window.location.replace("Operation.html");
+    return;
+  }
   const session=KopiApi.getSession();
   if(!session?.token){window.location.replace("../login.html");return;}
-  if(session.user?.role!=="Admin"){window.location.replace("../Customer/Homepage.html");return;}
+  if(session.user?.role!=="Admin"){window.location.replace(KopiApi.homeForRole(session.user?.role));return;}
   KopiApi.request("/me").then(({user})=>{
-    if(user.role!=="Admin")window.location.replace("../Customer/Homepage.html");
+    if(user.role!=="Admin")window.location.replace(KopiApi.homeForRole(user.role));
   }).catch(error=>{
     if(error.status===401||error.status===403){KopiApi.clearSession();window.location.replace("../login.html");}
     else {

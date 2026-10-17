@@ -21,7 +21,6 @@
       <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
       <nav class="admin-nav">
         <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
-        <a class="admin-nav-link" href="Orders.html"><i class="bi bi-cup-hot-fill"></i><span>Orders</span></a>
         <a class="admin-nav-link active" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
         <a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
         <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
@@ -31,7 +30,7 @@
 
     <div class="admin-main">
       <header class="admin-topbar">
-        <div class="topbar-text"><h1>Operations</h1><p>Manage and update customer order status</p></div>
+        <div class="topbar-text"><h1>Operations</h1><p>Review order details and verify GCash payments</p></div>
         <a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a>
       </header>
 
@@ -56,28 +55,17 @@
           </button>
         </div>
 
-        <section class="order-status-panel" id="orderStatusPanel" hidden>
+        <dialog class="order-status-panel" id="orderStatusPanel" aria-labelledby="orderDetailsTitle">
           <div class="selected-order" id="selectedOrder">
             <div id="selectedOrderSummary"></div>
             <dl class="order-contact-details">
               <div><dt>Address:</dt><dd id="orderAddress">Not provided</dd></div>
               <div><dt>Phone No.:</dt><dd id="orderPhone">Not provided</dd></div>
             </dl>
-            <div id="selectedPaymentActions"></div>
-          </div>
-          <div class="status-panel-main">
-            <span class="panel-label">Current Status</span>
-            <strong class="current-status" id="currentStatus"></strong>
-            <div class="status-track" id="statusTrack"></div>
-            <button class="row-update send-delivery" id="sendDeliveryDetails" type="button" hidden>Send Delivery Details</button>
-            <p class="delivery-saved" id="deliverySaved" hidden></p>
-          </div>
-          <div class="status-actions">
-            <span class="panel-label">Update Order Status</span>
-            <div id="statusActionButtons"></div>
+            <div class="selected-payment-actions" id="selectedPaymentActions"></div>
           </div>
           <button class="close-panel" id="closePanel" type="button" aria-label="Close order details"><i class="bi bi-x-lg"></i></button>
-        </section>
+        </dialog>
 
         <section class="operations-table-card">
           <div class="table-scroll">
@@ -96,7 +84,7 @@
       <h2 id="voucherHeading">Voucher Codes</h2>
       <button id="closeVouchers" type="button" aria-label="Close voucher codes">×</button>
     </div>
-    <p class="voucher-help">Fixed peso deductions for online and in-store orders. One code per order; not combined with manual discounts.</p>
+    <p class="voucher-help">Fixed peso deductions for online and in-store orders. Each voucher code can be redeemed only once and cannot be combined with manual discounts.</p>
     <form id="voucherForm">
       <fieldset id="voucherFields">
         <label>Voucher code<input id="adminVoucherCode" required minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" placeholder="e.g. WELCOME50" autocomplete="off"></label>
@@ -111,32 +99,9 @@
     <p id="voucherStatus" class="voucher-status" role="status" aria-live="polite"></p>
     <ul id="voucherList" class="voucher-list"><li>Loading vouchers…</li></ul>
   </dialog>
-  <dialog class="admin-dialog delivery-dialog" id="deliveryDialog" aria-labelledby="deliveryDialogTitle">
-    <header>
-      <h2 id="deliveryDialogTitle">Send Delivery Details</h2>
-      <button id="closeDeliveryDialog" type="button" aria-label="Close delivery details">×</button>
-    </header>
-    <p id="deliveryOrderLabel"></p>
-    <p class="delivery-help">Book the rider in Lalamove first, then paste the booking's share link. This fee is paid to the rider, not added to the order total.</p>
-    <form id="deliveryForm">
-      <fieldset id="deliveryFields">
-        <label>Delivery Fee (₱)<input id="riderFee" type="number" min="0" max="1000000" step="0.01" placeholder="80.00" required></label>
-        <label>Lalamove Live Tracking Link<input id="riderTrackingLink" type="url" maxlength="2048" placeholder="https://share.lalamove.com/..." required></label>
-        <details class="delivery-help delivery-demo">
-          <summary>Demonstration sample link (not live tracking)</summary>
-          <code>https://share.lalamove.com/?demo=kopi-calamba</code>
-          <p>Copy this sample to test saving details, customer notifications and the Track button. It does not track a real rider. For a real order, use the share link from your booked Lalamove delivery.</p>
-        </details>
-        <div><strong class="panel-label">Message Preview</strong><p id="deliveryMessagePreview" class="delivery-message-preview"></p></div>
-        <button class="row-update" type="submit">Save / Send</button>
-      </fieldset>
-    </form>
-    <p id="deliveryFormStatus" role="status" aria-live="polite"></p>
-  </dialog>
   <script src="../Customer/Api.js"></script>
 <script src="AdminGuard.js"></script>
 <script src="AdminNav.js"></script>
-<script src="../Customer/DeliveryInfo.js"></script>
   <script src="Operation.js"></script>
   <script src="Vouchers.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>

@@ -27,7 +27,7 @@ module.exports=function usersRouter(db) {
       const first=accounts.field(b.firstName,"first name"),last=accounts.field(b.lastName,"last name");
       const email=accounts.email(b.email),password=accounts.password(b.password);
       const phone=b.phone?accounts.phone(b.phone):null;
-      if (!["Admin","Customer"].includes(b.role)) throw new OrderError("Choose Customer or Admin.");
+      if (!["Admin","Customer","Cashier","Staff"].includes(b.role)) throw new OrderError("Choose Customer, Cashier, Staff, or Admin.");
       const hash=await bcrypt.hash(password,12);
       const id=db.transaction(()=>{
         accounts.assertAdmin(db,actor);
@@ -44,7 +44,7 @@ module.exports=function usersRouter(db) {
     try {
       const b=req.body||{};
       const actor=await accounts.verifyPassword(db,req.user.id,b.currentPassword);
-      if (!["Admin","Customer"].includes(b.role)||!["Active","Inactive"].includes(b.status)) throw new OrderError("Choose a valid role and account status.");
+      if (!["Admin","Customer","Cashier","Staff"].includes(b.role)||!["Active","Inactive"].includes(b.status)) throw new OrderError("Choose a valid role and account status.");
       db.transaction(()=>{
         accounts.assertAdmin(db,actor);
         const user=db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
@@ -72,7 +72,7 @@ module.exports=function usersRouter(db) {
           throw new OrderError("Keep at least one active administrator.");
         }
         const orderCount=db.prepare(`SELECT COUNT(*) AS n FROM orders
-          WHERE user_id=? OR payment_verified_by=? OR delivery_sent_by=?`).get(user.id,user.id,user.id).n;
+          WHERE user_id=? OR payment_verified_by=? OR delivery_sent_by=? OR payment_rejected_by=?`).get(user.id,user.id,user.id,user.id).n;
         if (orderCount) throw new OrderError("This user has order history. Set the account to Inactive instead so records remain accurate.",409);
         db.prepare("DELETE FROM feedback WHERE user_id=?").run(user.id);
         db.prepare("DELETE FROM password_resets WHERE user_id=? OR issued_by=?").run(user.id,user.id);

@@ -29,7 +29,7 @@ test("delivery info is persisted separately from totals and stock, survives relo
     const saved = delivery.save(order.orderId, input(), admin);
     assert.equal(saved.riderFee, 80);
     assert.equal(saved.revision, 1);
-    assert.equal(saved.message, info.message(80, link));
+    assert.equal(saved.message, info.message(80, link, "Cash", 160));
     assert.equal(saved.acknowledgedAt, null);
     assert.deepEqual(db.prepare("SELECT total,subtotal,delivery_fee,voucher_discount FROM orders WHERE id=?").get(order.orderId), before);
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM inventory_transactions").get().count, movements);
@@ -47,6 +47,29 @@ test("delivery info is persisted separately from totals and stock, survives relo
     assert.equal(reloaded.read(order.orderId).trackingUrl, link);
     assert.equal(reloaded.read(order.orderId).riderFee, 80);
   } finally { reopened?.close(); db.close(); }
+});
+
+test("Cash notice includes order plus rider fee; verified GCash only asks for the rider fee", () => {
+  const db = fixture();
+  const trackingUrl = "https://share.lalamove.com/?demo=kopi-calamba";
+  try {
+    const flow = createOrderWorkflow(db), delivery = createDeliveryService(db);
+    const cash = prepared(db);
+    const saved = delivery.save(cash.orderId, input({trackingUrl}), admin);
+    assert.equal(saved.payment, "Cash");
+    assert.equal(saved.total, 160);
+    assert.equal(saved.message, "Hi! Your coffee order is ready. The total cost of your order is ₱160.00, and the Lalamove delivery fee to your location is ₱80.00. Please prepare a total of ₱240.00 in cash to pay the rider.\n\nHere's the live tracking link for your order:" + trackingUrl);
+    assert.equal(db.prepare("SELECT delivery_message FROM orders WHERE id=?").get(cash.orderId).delivery_message, saved.message);
+    db.prepare("UPDATE orders SET delivery_message='Old wording' WHERE id=?").run(cash.orderId);
+    assert.equal(delivery.pending(customer)[0].message, saved.message);
+    const gcash = flow.create(body({payment:"GCash", paymentReference:"7654321098765"}), customer);
+    db.prepare("UPDATE orders SET payment_status='Verified' WHERE id=?").run(gcash.orderId);
+    flow.advance(gcash.orderId, "Preparing", admin);
+    const paid = delivery.save(gcash.orderId, input({trackingUrl}), admin);
+    assert.equal(paid.message, "Hi! Your coffee order is ready. The Lalamove delivery fee to your location is ₱80.00. Please prepare this amount in cash to pay the rider.\n\nHere's the live tracking link for your order:" + trackingUrl);
+    assert.equal(info.message(0.2, trackingUrl, "Cash", 0.1).includes("₱0.30"), true);
+    assert.equal(delivery.save(cash.orderId, input({fee:0,trackingUrl,revision:1}), admin).message.includes("total of ₱160.00"), true);
+  } finally {db.close();}
 });
 
 test("delivery validation rejects blank fees and unsafe links and never alters a different order", () => {
@@ -112,7 +135,7 @@ test("delivery notices are online-only, not sent before preparation, and cancele
   } finally { db.close(); }
 });
 
-test("HTTP delivery routes enforce admin management and owner-only reading/acknowledgement", async () => {
+test("HTTP delivery routes enforce authorized management and owner-only reading/acknowledgement", async () => {
   const db = fixture(), app = express();
   const order = prepared(db);
   const other = prepared(db, {id:3,role:"Customer"});

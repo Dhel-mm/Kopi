@@ -3,6 +3,7 @@ const { authFor,requireRole } = require("../middleware/auth");
 const { createInventoryService,validateTerms,lowStockLevel,round } = require("../services/inventory");
 const { OrderError } = require("../services/pricing");
 const { sendError } = require("../services/orderWorkflow");
+const { packageLabel, packageDefinition } = require("../services/inventoryPackages");
 
 function quantity(value,allowZero=true) {
   if (typeof value!=="number" || !Number.isFinite(value) || value<0 ||
@@ -27,6 +28,19 @@ module.exports = function inventoryRouter(db) {
     res.json({items});
   });
   router.get("/recipes",(req,res)=>res.json({recipes:service.recipes()}));
+  router.put("/package-conversion/:sku",(req,res)=>{
+    try {
+      db.transaction(()=>{
+        const item = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(req.params.sku);
+        if (!item) throw new OrderError("Inventory product was not found.",404);
+        const {capacity,label} = packageDefinition(item,req.body || {});
+        const low = lowStockLevel({...item,initial_quantity:capacity});
+        db.prepare(`UPDATE inventory_items SET initial_quantity=?,package_unit=?,low_stock_level=?,
+          updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(capacity,label,low,item.id);
+      }).immediate();
+      res.json({message:"Package conversion saved. Remaining ingredient measurement is unchanged."});
+    } catch(error) {sendError(res,error);}
+  });
   router.get("/unit-conversions",(req,res)=>{
     const conversions = db.prepare(`
       SELECT c.inventory_item_id AS itemId, i.sku, i.product_name AS productName,
@@ -96,8 +110,7 @@ module.exports = function inventoryRouter(db) {
       if (!/^[a-z0-9-]+$/.test(b.sku) || !["g","ml","pcs"].includes(b.measurement)) throw new OrderError("Use a lowercase SKU and a stock unit of g, ml, or pcs.");
       const amount=quantity(b.quantity);
       const pack=quantity(b.initialQuantity,false);
-      const packageUnit=b.packageUnit||"package";
-      if (!["package","bottle","bag","pack","pouch","can","jar","container","gallon","batch","tray","carton","tub","block"].includes(packageUnit)) throw new OrderError("Choose a valid package type.");
+      const packageUnit=packageLabel(b.packageUnit ?? "package");
       const low=lowStockLevel({sku:b.sku,initial_quantity:pack});
       const id=db.transaction(()=>{
         if (db.prepare("SELECT id FROM inventory_items WHERE sku=?").get(b.sku)) throw new OrderError("That inventory SKU already exists.",409);

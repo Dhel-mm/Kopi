@@ -27,7 +27,7 @@ authForm?.addEventListener("submit",async event=>{
       KopiNotice.set(status,"Successfully logged in. Redirecting…","success");
       KopiNotice.toast("Successfully logged in","success",2500);
       await new Promise(resolve=>setTimeout(resolve,1500));
-      window.location.href=data.user.role==="Admin"?"Admin/Dashboard.html":"Customer/Homepage.html";
+      window.location.href=KopiApi.homeForRole(data.user.role);
     } else if(authForm.id==="signupForm") {
       await KopiApi.request("/auth/signup",{method:"POST",body:JSON.stringify(values)});
       KopiNotice.set(status,"Account created. Redirecting to login…","success");

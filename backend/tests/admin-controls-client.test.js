@@ -83,9 +83,30 @@ test("voucher entry moved exclusively to Operations beside filters without its c
   const toolbar = operation.slice(operation.indexOf('class="operation-status-tools"'), operation.indexOf('class="order-status-panel"'));
   assert.match(toolbar, /status-filter[\s\S]*id="toggleVouchers"/);
   assert.doesNotMatch(toolbar, /bi-chevron-down/);
-  const selected = operation.slice(operation.indexOf('class="selected-order"'), operation.indexOf('class="status-panel-main"'));
+  const selected = operation.slice(operation.indexOf('class="selected-order"'), operation.indexOf('class="operations-table-card"'));
   assert.match(selected, /selectedOrderSummary[\s\S]*order-contact-details[\s\S]*orderAddress[\s\S]*orderPhone/);
-  assert.match(operation, /Demonstration sample link \(not live tracking\)/);
+  assert.match(operation, /Review order details and verify GCash payments/);
+  assert.doesNotMatch(operation, /Current Status|Update Order Status|Send Delivery Details/);
+});
+
+test("used voucher is red and offers a confirmed Remove action instead of Edit", async () => {
+  const nodes=new Map(),writes=[];
+  const get=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);};
+  let vouchers=[{code:"USED50",amount:50,active:true,used:true}],confirm=false;
+  vm.runInNewContext(fs.readFileSync(path.join(root,"Admin/Vouchers.js"),"utf8"),{
+    document:{getElementById:get,createElement:node},window:{confirm:()=>confirm},
+    KopiNotice:{set(target,message){target.textContent=message;}},
+    KopiApi:{async request(url,options){if(!options)return {vouchers};writes.push({url,...options});vouchers=[];return {};}}
+  });
+  await tick();
+  const row=get("voucherList").children[0],button=row.children[1];
+  assert.equal(row.children[0].children[0].className,"voucher-used-code");
+  assert.match(fs.readFileSync(path.join(root,"Admin/Vouchers.css"),"utf8"),/\.voucher-used-code\s*\{\s*color: #9d3035/);
+  assert.equal(button.textContent,"Remove");
+  await button.listeners.click();assert.equal(writes.length,0);
+  confirm=true;await button.listeners.click();
+  assert.equal(writes[0].method,"DELETE");assert.equal(writes[0].url,"/admin/vouchers/USED50");
+  assert.equal(get("voucherList").children.length,0);
 });
 
 function logoutHarness(fail = false) {

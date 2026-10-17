@@ -30,39 +30,37 @@ test("vouchers persist normalized codes, preserve legacy promotion and validate 
   } finally { db.close(); }
 });
 
-test("one voucher gives the same server-calculated deduction online, dine-in and takeout", () => {
+test("each one-time voucher gives a server-calculated deduction and cannot be redeemed again", () => {
   const db = fixture();
   try {
     const vouchers = createVoucherService(db), workflow = createOrderWorkflow(db);
-    vouchers.save({code:"WELCOME50",amount:50,active:true});
-    for (const serviceType of [null, "Dine-in", "Takeout"]) {
+    for (const [serviceType, code] of [[null,"ONLINE50"], ["Dine-in","DINE50"], ["Takeout","TAKE50"]]) {
       const inStore = Boolean(serviceType);
-      const request = body({voucher:"WELCOME50",serviceType,expectedTotal:110,voucherDiscount:999});
+      vouchers.save({code,amount:50,active:true});
+      const request = body({voucher:code,serviceType,expectedTotal:110,voucherDiscount:999});
       const quoted = workflow.prepareQuote(request,inStore);
       assert.equal(quoted.total,110); assert.equal(quoted.voucherDiscount,50);
       const order = workflow.create(request,inStore?admin:customer,inStore);
       assert.equal(order.total,110); assert.equal(order.voucherDiscount,50);
-      assert.equal(db.prepare("SELECT voucher FROM orders WHERE id=?").get(order.orderId).voucher,"WELCOME50");
+      assert.equal(db.prepare("SELECT voucher FROM orders WHERE id=?").get(order.orderId).voucher,code);
+      assert.throws(() => workflow.prepareQuote(body({voucher:code,serviceType}),inStore), /already been used/);
     }
-    assert.throws(() => workflow.prepareQuote(body({voucher:"WELCOME50",discount:5,serviceType:"Dine-in"}),true), /not both/);
-    vouchers.save({amount:500,active:true},"WELCOME50");
-    assert.equal(workflow.prepareQuote(body({voucher:"WELCOME50"})).total,0);
-    assert.equal(workflow.prepareQuote(body({voucher:"WELCOME50"})).voucherDiscount,160);
+    vouchers.save({code:"MAXIMUM",amount:500,active:true});
+    assert.equal(workflow.prepareQuote(body({voucher:"MAXIMUM"})).total,0);
+    assert.equal(workflow.prepareQuote(body({voucher:"MAXIMUM"})).voucherDiscount,160);
   } finally { db.close(); }
 });
 
-test("changed or inactive vouchers block stale totals but saved checkout retries remain stable", () => {
+test("redeemed vouchers remain blocked while saved checkout retries remain stable", () => {
   const db = fixture();
   try {
     const vouchers = createVoucherService(db),workflow=createOrderWorkflow(db);
     vouchers.save({code:"SAVE20",amount:20,active:true});
     const request=body({voucher:"SAVE20",expectedTotal:140});
     const order=workflow.create(request,customer);
-    vouchers.save({amount:30,active:true},"SAVE20");
-    assert.throws(()=>workflow.create(body({voucher:"SAVE20",expectedTotal:140}),customer),/total changed/);
-    vouchers.save({amount:30,active:false},"SAVE20");
-    assert.throws(()=>workflow.prepareQuote(body({voucher:"SAVE20"})),/inactive/);
-    assert.throws(()=>workflow.create(body({voucher:"SAVE20",expectedTotal:130}),customer),/inactive/);
+    assert.throws(()=>workflow.prepareQuote(body({voucher:"SAVE20"})),/already been used/);
+    vouchers.save({code:"INACTIVE20",amount:30,active:false});
+    assert.throws(()=>workflow.prepareQuote(body({voucher:"INACTIVE20"})),/inactive/);
     assert.equal(workflow.create(request,customer).orderId,order.orderId);
     assert.equal(workflow.create(request,customer).total,140);
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM orders").get().count,1);
@@ -109,5 +107,32 @@ test("only authenticated admins can manage vouchers and customer checkout uses t
     assert.equal((await request("/vouchers/SCHOOL25","PUT",{amount:35,active:false})).status,200);
     assert.equal((await request("/orders/quote","POST",body({voucher:"SCHOOL25"}),customer)).status,400);
     assert.equal((await request("/vouchers")).data.vouchers.find(row=>row.code==="SCHOOL25").active,false);
+    assert.equal((await request("/vouchers/SCHOOL25","DELETE",null,customer)).status,403);
+    assert.equal((await request("/vouchers/SCHOOL25","DELETE",null,null)).status,401);
+    assert.equal((await request("/vouchers/SCHOOL25","DELETE")).status,200);
+    assert.equal((await request("/vouchers")).data.vouchers.some(row=>row.code==="SCHOOL25"),false);
   } finally { await new Promise(resolve=>server.close(resolve));db.close(); }
+});
+
+test("removing a redeemed voucher preserves receipt deduction and cannot make its code reusable", () => {
+  const db=fixture();
+  try {
+    const vouchers=createVoucherService(db),flow=createOrderWorkflow(db);
+    vouchers.save({code:"USED25",amount:25.50,active:true});
+    const request=body({voucher:"used25",expectedTotal:134.50});
+    const order=flow.create(request,customer);
+    assert.equal(order.voucher,"USED25");
+    assert.equal(order.voucherDiscount,25.50);
+    vouchers.remove("USED25");
+    migrateVouchers(db);
+    assert.equal(vouchers.list().some(row=>row.code==="USED25"),false);
+    assert.throws(()=>vouchers.resolve("USED25"),/already been used/);
+    assert.throws(()=>vouchers.save({code:"USED25",amount:20,active:true}),/already exists/);
+    assert.throws(()=>vouchers.save({amount:20,active:true},"USED25"),/not found/);
+    const recovered=flow.create(request,customer);
+    assert.equal(recovered.orderId,order.orderId);
+    assert.equal(recovered.voucher,"USED25");
+    assert.equal(recovered.voucherDiscount,25.50);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM voucher_redemptions WHERE voucher_code='USED25'").get().n,1);
+  } finally {db.close();}
 });

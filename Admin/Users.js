@@ -40,19 +40,19 @@ function renderUsers() {
   ).length;
   rowsEl.innerHTML = visible
     .slice((page - 1) * size, page * size)
-    .map(
-      (
-        user,
-        index,
-      ) => `<tr><td>${(page - 1) * size + index + 1}</td><td>${escapeHtml(user.name)}</td>
-    <td>${escapeHtml(user.email)}</td><td>${escapeHtml(user.phone || "—")}</td><td>${user.totalOrders}</td><td>₱${Number(user.totalSpent).toFixed(2)}</td>
+    .map((user, index) => {
+      const isEmployee = ["Admin", "Cashier", "Staff"].includes(user.role);
+      const totalOrders = isEmployee ? "—" : user.totalOrders;
+      const totalSpent = isEmployee ? "—" : `₱${Number(user.totalSpent).toFixed(2)}`;
+      return `<tr><td>${(page - 1) * size + index + 1}</td><td>${escapeHtml(user.name)}</td>
+    <td>${escapeHtml(user.email)}</td><td>${escapeHtml(user.phone || "—")}</td><td>${totalOrders}</td><td>${totalSpent}</td>
     <td>${escapeHtml(user.role)}</td><td>${String(user.createdAt).slice(0, 10)}</td>
     <td><span class="user-presence ${user.online ? "is-online" : "is-offline"}" title="${user.online ? "Active on a signed-in page within the last two minutes" : "No recent signed-in activity"}">${user.online ? "Online" : "Offline"}</span></td>
     <td><div class="user-actions">
     <button class="manage-user-btn" type="button" data-user="${user.id}" data-action="access" title="Manage user" aria-label="Manage ${escapeHtml(user.name)}"><i class="bi bi-person-gear" aria-hidden="true"></i></button>
     <button class="manage-user-btn" type="button" data-user="${user.id}" data-action="recover" title="Generate recovery code" aria-label="Recovery code for ${escapeHtml(user.name)}" ${user.status !== "Active" ? "disabled" : ""}><i class="bi bi-key" aria-hidden="true"></i></button>
-    <button class="manage-user-btn delete-user-btn" type="button" data-user="${user.id}" data-action="delete" title="Delete user" aria-label="Delete ${escapeHtml(user.name)}" ${user.id === KopiApi.getSession()?.user?.id ? "disabled" : ""}><i class="bi bi-trash3" aria-hidden="true"></i></button></div></td></tr>`,
-    )
+    <button class="manage-user-btn delete-user-btn" type="button" data-user="${user.id}" data-action="delete" title="Delete user" aria-label="Delete ${escapeHtml(user.name)}" ${user.id === KopiApi.getSession()?.user?.id ? "disabled" : ""}><i class="bi bi-trash3" aria-hidden="true"></i></button></div></td></tr>`;
+    })
     .join("");
   emptyEl.hidden = visible.length > 0;
   emptyEl.textContent = "No matching users.";

@@ -118,24 +118,10 @@
               <p class="order-empty" id="orderEmptyMsg">No items yet. Tap a product to add it.</p>
             </div>
 
-            <div class="pos-voucher">
-              <label for="posVoucherCode">Voucher code</label>
-              <div class="pos-voucher-input">
-                <input id="posVoucherCode" type="text" maxlength="32" placeholder="Enter voucher code" autocomplete="off" aria-describedby="posVoucherStatus">
-                <button id="applyPosVoucher" type="button">Apply</button>
-              </div>
-              <p id="posVoucherStatus" role="status" aria-live="polite"></p>
-            </div>
-
             <div class="order-summary-lines">
               <div class="summary-line">
                 <span>Subtotal</span>
                 <strong id="subtotalAmount">₱0.00</strong>
-              </div>
-              <div class="summary-line">
-                <span>Discount</span>
-                <button type="button" class="add-discount-link" id="addDiscountBtn">Add Discount</button>
-                <strong id="discountAmount">₱0.00</strong>
               </div>
               <div class="summary-line" id="posVoucherLine" hidden><span>Voucher deduction</span><strong id="posVoucherAmount">₱0.00</strong></div>
             </div>
@@ -156,6 +142,15 @@
                 </button>
               </div>
               <div class="payment-extra" id="paymentExtra" hidden></div>
+            </div>
+
+            <div class="pos-voucher">
+              <label for="posVoucherCode">Voucher code</label>
+              <div class="pos-voucher-input">
+                <input id="posVoucherCode" type="text" maxlength="32" placeholder="Enter voucher code" autocomplete="off" aria-describedby="posVoucherStatus">
+                <button id="applyPosVoucher" type="button">Apply</button>
+              </div>
+              <p id="posVoucherStatus" role="status" aria-live="polite"></p>
             </div>
 
             <button type="button" class="place-order-btn" id="placeOrderBtn">

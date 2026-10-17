@@ -14,7 +14,7 @@
     <aside class="admin-sidebar">
       <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
       <nav class="admin-nav">
-        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a><a class="admin-nav-link" href="Orders.html"><i class="bi bi-cup-hot-fill"></i><span>Orders</span></a><a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a><a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a><a class="admin-nav-link active" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a><a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a><a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a><a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a><a class="admin-nav-link active" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a><a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
       </nav>
     </aside>
     <div class="admin-main">
@@ -29,7 +29,7 @@
         <section class="inventory-tools">
           <div class="inventory-setup-tools" role="group" aria-label="Inventory setup">
             <button class="add-product" id="openRecipes" type="button"><i class="bi bi-journal-text" aria-hidden="true"></i> Recipes &amp; unit setup</button>
-            <button class="add-product" id="openConversions" type="button"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Measured conversions</button>
+            <button class="add-product" id="openConversions" type="button"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Ingredient unit conversion</button>
           </div>
           <label class="inventory-search"><i class="bi bi-search"></i><input id="inventorySearch" type="search" placeholder="Search product name..."></label>
           <label class="category-select"><i class="bi bi-funnel"></i><select id="categoryFilter"><option value="All">All Categories</option></select></label>
@@ -39,7 +39,7 @@
         <section class="recipe-tools">
           <p id="recipeSummary" role="status">Checking recipe setup…</p>
           <p id="conversionSummary" role="status"></p>
-          <p>Stock shows remaining package equivalents; fractions mean a partly used package. Measurement shows the amount available. Oat Milk, Sprite and Cooking Oil use 1 L bottles. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
+          <p>Stock counts full and partly used packages as whole numbers. A package remains counted until empty. Measurement shows the total amount left. Set the full package size in Ingredient unit conversion. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
         </section>
         <dialog id="recipeDialog" class="recipe-dialog">
           <form id="recipeForm">
@@ -58,21 +58,39 @@
         <dialog id="conversionDialog" class="recipe-dialog">
           <form id="conversionForm">
             <div class="recipe-dialog-heading"><h2>Ingredient unit conversion</h2><button type="button" id="closeConversions" aria-label="Close unit conversions">×</button></div>
-            <p>Use this when a recipe and stock use different units. Starter estimates are labeled below; replace them with your measured amounts. This never changes stock already counted or deducted.</p>
+            <p>Set the measurement of full packages, for example 1 L = 1 bottle or 500 g = 1 bag. Recipe amount uses the Measurement column; stock amount and stock unit describe the Stock column. Saving updates the package size and label, keeping the remaining measurement unchanged.</p>
             <label for="conversionIngredient">Ingredient</label>
             <select id="conversionIngredient" required></select>
+            <p id="conversionCurrentStock"></p>
             <div class="conversion-fields">
               <label>Recipe amount<input id="conversionRecipeAmount" type="number" min="0.001" step="0.001" required></label>
-              <label>Recipe unit<select id="conversionRecipeUnit"><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select></label>
-              <label>Equals this stock amount<input id="conversionStockAmount" type="number" min="0.001" step="0.001" required></label>
-              <label>Stock unit<input id="conversionStockUnit" readonly></label>
+              <label>Recipe unit<select id="conversionRecipeUnit"><option value="L">L</option><option value="kg">kg</option><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select></label>
+              <label>Equals this stock amount<input id="conversionStockAmount" type="number" min="1" step="1" required></label>
+              <label>Stock unit<input id="conversionStockUnit" type="text" maxlength="40" placeholder="e.g. bottle, bag, pack" required></label>
             </div>
-            <label class="conversion-confirm"><input id="conversionMeasured" type="checkbox" required> I measured these amounts for this ingredient.</label>
+            <label class="conversion-confirm"><input id="conversionMeasured" type="checkbox" required> These amounts describe full packages of this ingredient.</label>
             <p id="conversionStatus" role="status"></p>
-            <button class="add-product" type="submit" id="saveConversion">Save measured conversion</button>
-            <h3>Saved conversions</h3>
-            <ul id="conversionList"></ul>
+            <button class="add-product" type="submit" id="saveConversion">Save package conversion</button>
+            <h3>Saved package conversions</h3>
+            <ul id="packageConversionList"></ul>
           </form>
+          <details class="physical-conversions">
+            <summary>Recipe weight, volume and piece conversions</summary>
+            <p>For recipes using a different physical unit, such as ml of cream stocked in grams. These measured relationships are separate from package sizes.</p>
+            <form id="physicalConversionForm">
+              <p id="physicalConversionIngredient"></p>
+              <div class="conversion-fields">
+                <label>Recipe amount<input id="physicalRecipeAmount" type="number" min="0.001" step="0.001" required></label>
+                <label>Recipe unit<select id="physicalRecipeUnit"><option>g</option><option>ml</option><option>pcs</option></select></label>
+                <label>Measured equivalent<input id="physicalStockAmount" type="number" min="0.001" step="0.001" required></label>
+                <label>Measurement unit<input id="physicalStockUnit" readonly></label>
+              </div>
+              <label class="conversion-confirm"><input id="physicalMeasured" type="checkbox" required> I measured these equivalent amounts.</label>
+              <p id="physicalConversionStatus" role="status"></p>
+              <button class="add-product" id="savePhysicalConversion" type="submit">Save measured equivalent</button>
+            </form>
+            <ul id="conversionList"></ul>
+          </details>
         </dialog>
         <dialog id="movementDialog" class="recipe-dialog">
           <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button type="button" id="closeMovements" aria-label="Close stock movements">×</button></div>

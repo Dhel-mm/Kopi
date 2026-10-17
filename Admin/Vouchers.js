@@ -19,6 +19,7 @@
     card.showModal();
     toggle.setAttribute("aria-expanded", "true");
     code.focus();
+    refresh().catch(error => KopiNotice.set(status, error.message, "error"));
   });
   close.addEventListener("click", () => { if (!busy) card.close(); });
   card.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
@@ -44,15 +45,30 @@
       const name = document.createElement("strong");
       const details = document.createElement("small");
       name.textContent = voucher.code;
-      details.textContent = `₱${voucher.amount.toFixed(2)} off · ${voucher.active ? "Active" : "Inactive"}`;
+      if (voucher.used) name.className = "voucher-used-code";
+      details.textContent = `₱${voucher.amount.toFixed(2)} off · ${voucher.used ? "Used" : (voucher.active ? "Active" : "Inactive")}`;
       description.append(name, details);
       const edit = document.createElement("button");
       edit.type = "button";
       edit.className = "voucher-button";
-      edit.textContent = "Edit";
-      edit.setAttribute("aria-label", "Edit voucher " + voucher.code);
-      edit.addEventListener("click", () => {
+      edit.textContent = voucher.used ? "Remove" : "Edit";
+      edit.setAttribute("aria-label", (voucher.used ? "Remove voucher " : "Edit voucher ") + voucher.code);
+      edit.addEventListener("click", async () => {
         if (busy) return;
+        if (voucher.used) {
+          if (!window.confirm(`Remove used voucher ${voucher.code} from the list? Its order history will be kept, and the code cannot be reused.`)) return;
+          busy = true;
+          fields.disabled = close.disabled = edit.disabled = true;
+          try {
+            await KopiApi.request("/admin/vouchers/" + encodeURIComponent(voucher.code), {method: "DELETE"});
+            if (editing === voucher.code) reset();
+            KopiNotice.set(status, "Used voucher removed. Its order history is preserved.", "success");
+            try { await refresh(); }
+            catch { KopiNotice.set(status, "Voucher removed. Reload to refresh the list.", "warning"); }
+          } catch (error) { KopiNotice.set(status, error.message, "error"); }
+          finally { busy = false; fields.disabled = close.disabled = edit.disabled = false; }
+          return;
+        }
         editing = voucher.code;
         code.value = voucher.code;
         code.readOnly = true;

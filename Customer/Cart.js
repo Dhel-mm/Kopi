@@ -226,7 +226,8 @@ function syncCheckoutRecovery() {
 function displaySavedOrder(result) {
   activeCheckoutItems = result.items;
   activeTotals = { subtotal: result.subtotal, delivery: result.deliveryFee, total: result.total };
-  placedOrder = { id:result.orderNumber,payment:result.payment,paymentReference:result.paymentReference||"",paymentStatus:result.paymentStatus,status:result.status };
+  placedOrder = { id:result.orderNumber,payment:result.payment,paymentReference:result.paymentReference||"",paymentStatus:result.paymentStatus,status:result.status,
+    voucher:result.voucher||"",voucherDiscount:Number(result.voucherDiscount||0) };
   orderNowBtn.disabled = true;
   showReceipt();
 }
@@ -356,8 +357,8 @@ function showReceipt() {
   document.getElementById("receiptReferenceRow").hidden = placedOrder.payment !== "GCash";
   document.getElementById("receiptReference").textContent = placedOrder.paymentReference;
   document.getElementById("receiptPaymentStatus").textContent = placedOrder.payment === "GCash"
-    ? (placedOrder.paymentStatus === "Verified" ? "GCash payment verified by staff." : "Payment awaiting staff verification. This receipt confirms your order, not your payment.")
-    : "Cash payment due on delivery.";
+    ? (["Verified", "Paid"].includes(placedOrder.paymentStatus) ? "Paid — GCash payment verified by staff." : "Payment awaiting staff verification. This receipt confirms your order, not your payment.")
+    : placedOrder.paymentStatus === "Paid" ? "Paid — Cash payment received." : "Cash payment due on delivery.";
   if (placedOrder.status === "Canceled") document.getElementById("receiptPaymentStatus").textContent = "This order was canceled. Contact the shop if you already sent GCash payment.";
   receiptItems.innerHTML = "";
   receiptItems.appendChild(receiptHeadTemplate.content.firstElementChild.cloneNode(true));
@@ -365,10 +366,16 @@ function showReceipt() {
     const row = receiptRowTemplate.content.firstElementChild.cloneNode(true);
     row.querySelector("[data-receipt-quantity]").textContent = `${item.quantity}X`;
     row.querySelector("[data-receipt-name]").textContent = item.name.toUpperCase();
-    row.querySelector("[data-receipt-price]").textContent = `₱ ${formatWhole(item.price * item.quantity)}`;
+    row.querySelector("[data-receipt-price]").textContent = `₱ ${formatMoney(item.price * item.quantity)}`;
     receiptItems.appendChild(row);
   });
-  receiptTotal.textContent = `₱ ${formatWhole(activeTotals.total)}`;
+  document.getElementById("receiptSubtotal").textContent = `₱ ${formatMoney(activeTotals.subtotal)}`;
+  document.getElementById("receiptVoucherRow").hidden = placedOrder.voucherDiscount <= 0;
+  document.getElementById("receiptVoucherCode").textContent = placedOrder.voucher ? `Voucher (${placedOrder.voucher})` : "Voucher deduction";
+  document.getElementById("receiptVoucherDiscount").textContent = `− ₱ ${formatMoney(placedOrder.voucherDiscount)}`;
+  document.getElementById("receiptDeliveryRow").hidden = !activeTotals.delivery;
+  document.getElementById("receiptDeliveryFee").textContent = `₱ ${formatMoney(activeTotals.delivery)}`;
+  receiptTotal.textContent = `₱ ${formatMoney(activeTotals.total)}`;
   receiptModal.hidden = false;
 }
 

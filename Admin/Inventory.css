@@ -129,7 +129,11 @@
 .conversion-confirm { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .conversion-confirm input { width: auto; }
 .conversion-tag { display: inline-block; padding: 2px 6px; border-radius: 6px; background: #f6ead7; color: #6d4b20; font-size: 10px; }
-#conversionList { padding-left: 20px; font-size: 13px; line-height: 1.8; }
+#conversionList, #packageConversionList { padding-left: 20px; font-size: 13px; line-height: 1.8; max-height: 220px; overflow-y: auto; }
+.physical-conversions { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.physical-conversions summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+#conversionCurrentStock { padding: 10px; border-radius: 8px; background: var(--tan-soft); }
+#conversionDialog .add-product { width: auto; }
 .stock-movements { list-style: none; padding: 0; }
 .stock-movements li { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid #e6d9c7; }
 .stock-movements small { overflow-wrap: anywhere; color: #756958; }

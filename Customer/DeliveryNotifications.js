@@ -16,23 +16,25 @@
     current = null;
   }
   function show(notification, token) {
+    const canceled = notification.type === "cancellation";
     const link = KopiDeliveryInfo.trackingUrl(notification.trackingUrl);
-    if (!link) return;
+    if (!canceled && !link) return;
     const previousFocus = document.activeElement;
     current = notification;
     dialog = document.createElement("dialog");
-    dialog.className = "delivery-notice";
+    dialog.className = canceled ? "delivery-notice cancellation-notice" : "delivery-notice";
     dialog.setAttribute("aria-labelledby", "deliveryNoticeTitle");
     dialog.setAttribute("aria-describedby", "deliveryNoticeMessage");
     const title = document.createElement("h2");
     title.id = "deliveryNoticeTitle";
-    title.textContent = `Delivery details · ${notification.orderNumber}`;
+    title.textContent = `${canceled ? "Order canceled" : "Delivery details"} · ${notification.orderNumber}`;
     const message = document.createElement("p");
     message.id = "deliveryNoticeMessage";
     message.className = "delivery-notice-message";
-    KopiDeliveryInfo.messageParts(notification.riderFee, link).forEach((text, index) => {
+    if (canceled) message.textContent = notification.message;
+    else KopiDeliveryInfo.messageParts(notification.riderFee, link, notification.payment, notification.total).forEach((text, index) => {
       const part = document.createElement("span");
-      if (index === 1 || index === 3) part.className = "delivery-notice-value";
+      if (index % 2 === 1) part.className = "delivery-notice-value";
       part.textContent = text;
       message.appendChild(part);
     });
@@ -46,7 +48,9 @@
     const ok = document.createElement("button");
     ok.type = "button";
     ok.textContent = "OK";
-    dialog.append(title, message, track, status, ok);
+    dialog.append(title, message);
+    if (!canceled) dialog.append(track);
+    dialog.append(status, ok);
     // Closing with Escape must not silently acknowledge delivery information.
     dialog.addEventListener("cancel", event => event.preventDefault());
     document.body.appendChild(dialog);
@@ -58,7 +62,7 @@
       acknowledging = true;
       ok.disabled = true;
       try {
-        await KopiApi.request(`/orders/${notification.orderId}/delivery/acknowledge`, {
+        await KopiApi.request(`/orders/${notification.orderId}/${canceled ? "cancellation" : "delivery"}/acknowledge`, {
           method: "PATCH", body: JSON.stringify({revision: notification.revision})
         });
         dismiss();
@@ -68,7 +72,7 @@
         }
       } catch (error) {
         if (error.status === 401 || error.status === 404 || error.status === 409 || session()?.token !== token) dismiss();
-        else KopiNotice.set(status, "Could not acknowledge delivery details. Please try OK again when connected.", "error");
+        else KopiNotice.set(status, "Could not acknowledge this notice. Please try OK again when connected.", "error");
       } finally {
         acknowledging = false;
         ok.disabled = false;
@@ -84,10 +88,10 @@
     if (!active || document.visibilityState !== "visible" || checking || acknowledging) return;
     checking = true;
     try {
-      const data = await KopiApi.request("/orders/delivery-notifications");
+      const data = await KopiApi.request("/orders/notifications");
       if (session()?.token !== active.token) { dismiss(); return; }
       if (acknowledging || document.visibilityState !== "visible") return;
-      if (current && data.notifications.some(item => item.orderId === current.orderId && item.revision === current.revision)) return;
+      if (current && data.notifications.some(item => item.orderId === current.orderId && item.revision === current.revision && item.type === current.type)) return;
       dismiss();
       // Let an existing modal finish; the next check will deliver this notification.
       if (document.querySelector("dialog[open]")) return;

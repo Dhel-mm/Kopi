@@ -40,6 +40,18 @@ function accountHarness(orders = []) {
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
+test("My Orders keeps payment rejection reason visible and removes the cancel action", async () => {
+  const h = accountHarness([{id:1,orderNumber:"KOPI-0001",orderType:"Online",status:"Canceled",total:160,
+    payment:"GCash",paymentStatus:"Not received",paymentReference:"123456789",
+    cancellationReason:"Your order has been canceled because your GCash payment was not received.",
+    createdAt:"2026-09-28T12:00:00Z"}]);
+  await tick();
+  const html = h.get("customerOrders").innerHTML;
+  assert.match(html,/GCash payment was not received/);
+  assert.match(html,/Not received/);
+  assert.doesNotMatch(html,/cancel-order-btn|automatically refund/);
+});
+
 test("order cards retain rider fees after acknowledgement without adding them to the total",async()=>{
   const h=accountHarness([{id:1,orderNumber:"KOPI-0001",orderType:"Online",status:"Preparing",total:160,
     createdAt:"2026-09-28T12:00:00Z",riderFee:80,deliveryRevision:1,deliveryAcknowledgedAt:"2026-09-28",
@@ -59,6 +71,14 @@ test("order cards hide unsaved rider fees and reject unsafe tracking links",asyn
   const html=h.get("customerOrders").innerHTML;
   assert.doesNotMatch(html,/Lalamove Delivery Fee|>Track<|javascript:/);
   assert.match(html,/cancel-order-btn/);
+});
+
+test("completed orders no longer show Track even when the saved tracking URL is valid", async () => {
+  const h = accountHarness([{id:1,orderNumber:"KOPI-0001",orderType:"Online",status:"Completed",total:160,
+    createdAt:"2026-09-28T12:00:00Z",riderFee:80,deliveryRevision:1,
+    trackingUrl:"https://share.lalamove.com/?order=1"}]);
+  await tick();
+  assert.doesNotMatch(h.get("customerOrders").innerHTML,/>Track<|cancel-order-btn/);
 });
 test("feedback sends optional comments and blocks duplicate clicks while saving",async()=>{
   const h=accountHarness();await tick();

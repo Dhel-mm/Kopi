@@ -52,6 +52,24 @@ function harness() {
     setFail:value=>{failAck=value;},defer:()=>{deferred={};return deferred;}};
 }
 
+test("payment rejection replaces delivery notice, explains cancellation, and persists until acknowledged", async () => {
+  const h = harness(); await tick();
+  const message = "Your order has been canceled because your GCash payment was not received.";
+  h.setPending([{orderId:7,orderNumber:"KOPI-0007",type:"cancellation",revision:1,message}]);
+  await h.events.interval();
+  const modal = h.dialogs()[0];
+  assert.equal(modal.children[0].textContent,"Order canceled · KOPI-0007");
+  assert.equal(modal.children[1].textContent,message);
+  assert.equal(modal.children.some(child=>child.tag === "a"),false);
+  h.setFail(true);
+  await modal.children.at(-1).listeners.click();
+  assert.equal(h.dialogs()[0],modal);
+  h.setFail(false);
+  await modal.children.at(-1).listeners.click(); await tick();
+  assert.ok(h.calls.some(call=>call.url === "/orders/7/cancellation/acknowledge"));
+  assert.equal(h.dialogs().length,0);
+});
+
 test("delivery popup highlights saved fee and link, opens a safe new-tab link, and OK acknowledges before dismissal",async()=>{
   const h=harness(); await tick();
   const modal=h.dialogs()[0];
@@ -72,6 +90,15 @@ test("delivery popup highlights saved fee and link, opens a safe new-tab link, a
   assert.equal(h.dialogs().length,0);
   await h.events.focus(); await h.events.pageshow();
   assert.equal(h.dialogs().length,0);
+});
+
+test("Cash delivery popup highlights order cost, rider fee, combined cash and tracking link", async () => {
+  const h=harness(); await tick();
+  h.setPending([{...notification, revision:2, payment:"Cash", total:120.50}]);
+  await h.events.interval();
+  const parts=h.dialogs()[0].children[1].children;
+  assert.equal(parts.map(part=>part.textContent).join(""), info.message(80,notification.trackingUrl,"Cash",120.50));
+  assert.deepEqual(parts.filter(part=>part.className==="delivery-notice-value").map(part=>part.textContent), ["₱120.50","₱80.00","₱200.50",notification.trackingUrl]);
 });
 
 test("failed acknowledgement allows retry without silently dismissing or acknowledging",async()=>{
@@ -115,7 +142,7 @@ test("hidden and signed-out pages do not poll; a response for a previous login n
   assert.equal(h.dialogs().length,0);
 });
 
-test("delivery scripts are connected on every customer page and the Operations panel precedes the table",()=>{
+test("delivery scripts are connected on every customer page and Staff owns the delivery handover dialog",()=>{
   for(const page of ["Homepage","Menu","Cart","Account"]) {
     const html=fs.readFileSync(path.join(root,`Customer/${page}.html`),"utf8");
     assert.ok(html.indexOf('src="Api.js"')<html.indexOf('src="DeliveryNotifications.js"'));
@@ -124,8 +151,15 @@ test("delivery scripts are connected on every customer page and the Operations p
   }
   const operation=fs.readFileSync(path.join(root,"Admin/Operation.html"),"utf8");
   assert.ok(operation.indexOf('id="orderStatusPanel"')<operation.indexOf('class="operations-table-card"'));
-  assert.match(operation,/id="riderFee"[^>]*required/);
-  assert.match(operation,/id="riderTrackingLink"[^>]*required/);
+  assert.doesNotMatch(operation,/id="riderFee"/);
+  assert.doesNotMatch(operation,/id="riderTrackingLink"/);
+  assert.doesNotMatch(operation,/Current Status/);
+  assert.doesNotMatch(operation,/Update Order Status/);
+  const staff=fs.readFileSync(path.join(root,"Staff/Orders.html"),"utf8");
+  assert.match(staff,/id="deliveryDialog"/);
+  assert.match(staff,/id="riderFee"[^>]*required/);
+  assert.match(staff,/id="riderTrackingLink"[^>]*required/);
+  assert.match(staff,/src="\.\.\/Customer\/DeliveryInfo\.js"/);
   const cart=fs.readFileSync(path.join(root,"Customer/Cart.html"),"utf8");
   assert.match(cart,/class="rider-fee-note">\(Pay Delivery Fee directly to the Lalamove Rider\)/);
 });

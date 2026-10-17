@@ -17,7 +17,7 @@ function authHarness({id = "loginForm", values = {email: "test@example.com", pas
     document: {querySelectorAll: () => [], querySelector: () => form, getElementById: name => name === "authStatus" ? status : {checked: false}},
     FormData: class { constructor() {return Object.entries(values);} },
     KopiNotice: {set: (_, message, kind) => messages.push({message, kind}), toast: (message, kind) => messages.push({message, kind, toast: true})},
-    KopiApi: {request: async (...args) => {calls.push(args); if (error) throw new Error(error); return {user: {role}, token: "test-token"};}, saveSession() {}, clearSession() {}},
+    KopiApi: {homeForRole: role => ({Admin:"/Admin/Dashboard.html",Cashier:"/Cashier/Orders.html",Staff:"/Staff/Orders.html"}[role] || "/Customer/Homepage.html"), request: async (...args) => {calls.push(args); if (error) throw new Error(error); return {user: {role}, token: "test-token"};}, saveSession() {}, clearSession() {}},
     localStorage: {removeItem() {}},
     window: {location: {href: ""}},
     setTimeout: resolve => {timers.push(resolve);}
@@ -37,7 +37,7 @@ test("login shows loading then success toast before redirect, and blocks duplica
   assert.equal(h.calls.length, 1);
   h.timers[0]();
   await pending;
-  assert.equal(h.context.window.location.href, "Customer/Homepage.html");
+  assert.equal(h.context.window.location.href, "/Customer/Homepage.html");
 });
 
 test("admin login retains its dashboard destination", async () => {
@@ -46,7 +46,17 @@ test("admin login retains its dashboard destination", async () => {
   await new Promise(resolve => setImmediate(resolve));
   h.timers[0]();
   await pending;
-  assert.equal(h.context.window.location.href, "Admin/Dashboard.html");
+  assert.equal(h.context.window.location.href, "/Admin/Dashboard.html");
+});
+
+test("Cashier and Staff logins open their own workspace", async () => {
+  for (const role of ["Cashier", "Staff"]) {
+    const h=authHarness({role});
+    const pending=h.run();
+    await new Promise(resolve=>setImmediate(resolve));
+    h.timers[0]();await pending;
+    assert.equal(h.context.window.location.href,`/${role}/Orders.html`);
+  }
 });
 
 test("failed login shows an error and allows retry without redirecting", async () => {

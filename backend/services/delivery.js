@@ -3,15 +3,20 @@ const info = require("../../Customer/DeliveryInfo");
 
 function createDeliveryService(db) {
   function read(id) {
-    return db.prepare(`SELECT id AS orderId,order_number AS orderNumber,
+    const row = db.prepare(`SELECT id AS orderId,order_number AS orderNumber,payment,total,
       rider_fee_cents / 100.0 AS riderFee,delivery_tracking_url AS trackingUrl,
       delivery_message AS message,delivery_revision AS revision,
       delivery_sent_at AS sentAt,delivery_acknowledged_at AS acknowledgedAt
       FROM orders WHERE id=?`).get(id);
+    // Render older saved notifications with the current wording too.
+    if (row?.revision) row.message = info.message(row.riderFee, row.trackingUrl, row.payment, row.total);
+    return row;
   }
 
   const save = db.transaction((id, input, user) => {
-    if (user.role !== "Admin") throw new OrderError("Administrator access is required.", 403);
+    if (!["Admin", "Staff"].includes(user.role)) {
+      throw new OrderError("Administrator or staff access is required.", 403);
+    }
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!row) throw new OrderError("Order was not found.", 404);
     if (row.order_type !== "Online" || !["Preparing", "Out for Delivery", "Arrived"].includes(row.status)) {
@@ -34,7 +39,7 @@ function createDeliveryService(db) {
     db.prepare(`UPDATE orders SET rider_fee_cents=?,delivery_tracking_url=?,delivery_message=?,
       delivery_revision=delivery_revision+1,delivery_sent_at=CURRENT_TIMESTAMP,
       delivery_sent_by=?,delivery_acknowledged_at=NULL WHERE id=?`)
-      .run(fee, link, info.message(fee / 100, link), user.id, id);
+      .run(fee, link, info.message(fee / 100, link, row.payment, row.total), user.id, id);
     return read(id);
   });
 

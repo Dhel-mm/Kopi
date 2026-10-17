@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../Admin/Admin.css">
+  <link rel="stylesheet" href="../Cashier/Workspace.css">
+  <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <title>Kopi; Staff - Preparation Queue</title>
+</head>
+<body class="workspace-loading" data-workspace="Staff" data-page="queue" data-title="Preparation Queue" data-subtitle="Good coffee starts with a well-organized team.">
+  <div class="workspace-gate" id="workspaceGate" role="status">Opening your workspace…</div>
+  <div class="admin-shell">
+    <aside class="admin-sidebar" id="workspaceSidebar"></aside>
+    <div class="admin-main">
+      <header class="admin-topbar" id="workspaceHeader"></header>
+      <main class="workspace-content">
+        <section class="workspace-stats" aria-label="Current queue">
+          <div class="workspace-stat"><span>Waiting to prepare</span><strong id="newCount">0</strong></div>
+          <div class="workspace-stat"><span>Preparing now</span><strong id="preparingCount">0</strong></div>
+          <div class="workspace-stat"><span>Items in queue</span><strong id="itemCount">0</strong></div>
+        </section>
+        <div class="workspace-tools">
+          <label class="workspace-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="queueSearch" placeholder="Search order, customer, or item…" aria-label="Search preparation queue"></label>
+          <select id="queueType" class="workspace-select" aria-label="Filter order type"><option value="">All orders</option><option value="In-store">In-store</option><option value="Online">Online</option></select>
+          <button class="workspace-btn secondary" type="button" id="refreshQueue"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
+        </div>
+        <div class="workspace-filters" aria-label="Filter preparation status">
+          <button class="workspace-filter active" type="button" data-status="" aria-pressed="true">All active</button>
+          <button class="workspace-filter" type="button" data-status="New" aria-pressed="false">New</button>
+          <button class="workspace-filter" type="button" data-status="Preparing" aria-pressed="false">Preparing</button>
+          <button class="workspace-filter" type="button" data-status="Out for Delivery" aria-pressed="false">Out for Delivery</button>
+        </div>
+        <p class="workspace-status" id="queueMessage" role="status" aria-live="polite"></p>
+        <section class="workspace-queue" id="preparationQueue" aria-label="Order tickets"></section>
+        <div class="workspace-empty" id="queueEmpty" hidden><i class="bi bi-cup-hot" aria-hidden="true"></i><h2>All caught up</h2><p>No orders match this view. New orders will appear here automatically.</p></div>
+        <p class="workspace-status">Updates every 15 seconds while this page is visible. Confirm delivery with the rider before completing an online order. Admin handles payment verification and cancellations.</p>
+      </main>
+    </div>
+  </div>
+  <dialog class="workspace-dialog" id="statusDialog" aria-labelledby="statusDialogTitle" aria-describedby="statusDialogMessage">
+    <form method="dialog">
+      <header><h2 id="statusDialogTitle">Update order status</h2><button type="submit" value="cancel" aria-label="Close confirmation">×</button></header>
+      <p id="statusDialogMessage"></p>
+      <div class="workspace-dialog-actions">
+        <button class="workspace-btn secondary" type="submit" value="cancel" autofocus>Keep current status</button>
+        <button class="workspace-btn" type="submit" value="confirm">Confirm update</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog class="workspace-dialog delivery-workspace-dialog" id="deliveryDialog" aria-labelledby="deliveryDialogTitle">
+    <form id="deliveryForm">
+      <header><h2 id="deliveryDialogTitle">Send Delivery Details</h2><button type="button" id="closeDeliveryDialog" aria-label="Close delivery details">×</button></header>
+      <div class="delivery-order-details" id="deliveryOrderDetails"></div>
+      <p class="workspace-intro">Book the rider in Lalamove, then enter the rider fee and live tracking link. The fee is paid directly to the rider and is not added to the order total.</p>
+      <label class="workspace-field">Delivery Fee (₱)<input id="riderFee" type="number" min="0" max="1000000" step="0.01" required placeholder="80.00"></label>
+      <label class="workspace-field">Lalamove Live Tracking Link<input id="riderTrackingLink" type="url" maxlength="2048" required placeholder="https://share.lalamove.com/..."></label>
+      <button class="workspace-btn secondary demo-tracking-btn" id="useDemoTrackingLink" type="button"><i class="bi bi-link-45deg" aria-hidden="true"></i>Use demonstration link</button>
+      <p class="demo-tracking-note">For school demonstration only. Replace this with the rider’s real Lalamove live tracking link for an actual delivery.</p>
+      <p class="workspace-status" id="deliveryFormStatus" role="status" aria-live="polite"></p>
+      <div class="workspace-dialog-actions"><button class="workspace-btn secondary" type="button" id="cancelDelivery">Cancel</button><button class="workspace-btn" type="submit">Send details and hand over</button></div>
+    </form>
+  </dialog>
+  <script src="../Customer/Notices.js"></script>
+  <script src="../Customer/Api.js"></script>
+  <script src="../Customer/DeliveryInfo.js"></script>
+  <script src="../Cashier/Workspace.js"></script>
+  <script src="../Admin/AdminNav.js"></script>
+  <script src="Staff.js"></script>
+</body>
+</html>
+

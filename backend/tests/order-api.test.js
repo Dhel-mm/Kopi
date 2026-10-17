@@ -34,10 +34,8 @@ test("HTTP ordering, authorization, stock adjustments, recipe editing and manual
     assert.equal((await request("/orders","POST",body({...payload,requestKey:require("node:crypto").randomUUID()}))).status,409);
     assert.equal((await request("/orders/"+id+"/cancel","PATCH",{},{id:3,role:"Customer"})).status,404);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{confirmedReceived:true},customer)).status,403);
-    assert.equal((await request("/admin/orders/"+id+"/status","PATCH",{status:"Preparing"},admin)).status,409);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{},admin)).status,400);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{confirmedReceived:true},admin)).status,200);
-    assert.equal((await request("/admin/orders/"+id+"/status","PATCH",{status:"Preparing"},admin)).status,200);
     assert.equal((await request("/orders/my")).data.orders[0].paymentStatus,"Verified");
     const syrup=db.prepare("SELECT * FROM inventory_items WHERE sku='caramel-syrup'").get();
     assert.equal((await request("/admin/inventory/"+syrup.id+"/set-stock","PATCH",{quantity:250},admin)).status,200);
@@ -60,7 +58,7 @@ test("HTTP ordering, authorization, stock adjustments, recipe editing and manual
     const recipes=await request("/admin/inventory/recipes","GET",undefined,admin);
     assert.ok(recipes.data.recipes.length>45);
     const cancel=await request("/orders/"+id+"/cancel","PATCH",{});
-    assert.equal(cancel.data.inventoryState,"consumed");
+    assert.equal(cancel.data.inventoryState,"returned");
     assert.equal(cancel.data.refundStatus,"Needs staff review");
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{confirmedReceived:true},admin)).status,400);
   }finally{

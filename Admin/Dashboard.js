@@ -67,8 +67,10 @@ async function refreshDashboard() {
     if(version!==reportVersion)return;
     const values=[peso(data.todaySales),data.totalOrders,data.lowStockItems,data.outOfStockItems,data.servedThisWeek];
     document.querySelectorAll(".stat-value").forEach((node,index)=>node.textContent=values[index]);
-    const delta=document.querySelector(".stat-delta.positive");
-    delta.textContent=data.yesterdaySales>0?((data.todaySales-data.yesterdaySales)/data.yesterdaySales*100).toFixed(1)+"% vs yesterday":"Yesterday: "+peso(data.yesterdaySales);
+    const delta=document.getElementById("todaySalesDelta");
+    const change=Number(data.todaySales)-Number(data.yesterdaySales);
+    delta.className="stat-delta "+(data.yesterdaySales>0&&change<0?"danger":"positive");
+    delta.textContent=data.yesterdaySales>0?(change/data.yesterdaySales*100).toFixed(1)+"% vs yesterday":"Yesterday: "+peso(data.yesterdaySales);
     document.getElementById("topProducts").innerHTML=data.topProducts.map((row,index)=>`<tr><td>${index+1}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.category)}</td><td>${row.sold}</td><td>${peso(row.grossSales)}</td></tr>`).join("")||'<tr><td colspan="5">No completed sales in this period.</td></tr>';
     document.querySelector(".recent-orders-list").innerHTML=data.recentOrders.map(row=>`<li><span class="order-id">${escapeHtml(row.orderNumber)}</span><span class="order-type">${escapeHtml(row.orderType)}</span><span class="order-amount">${peso(row.total)}</span></li>`).join("")||"<li>No orders yet.</li>";
     document.querySelector(".low-stock-list").innerHTML=data.lowStock.map(row=>`<li><span>${escapeHtml(row.productName)}</span><strong class="${row.status==="Out of Stock"?"critical":""}">${row.quantity} ${escapeHtml(row.measurement)} left</strong></li>`).join("")||"<li>All stock levels are healthy.</li>";

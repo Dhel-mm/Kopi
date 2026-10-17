@@ -13,8 +13,17 @@ function migrateOrderWorkflow(db) {
       delivery_revision: "INTEGER NOT NULL DEFAULT 0",
       delivery_sent_at: "TEXT",
       delivery_sent_by: "INTEGER REFERENCES users(id)",
-      delivery_acknowledged_at: "TEXT"
+      delivery_acknowledged_at: "TEXT",
+      cancellation_reason: "TEXT",
+      payment_rejected_at: "TEXT",
+      payment_rejected_by: "INTEGER REFERENCES users(id)",
+      cancellation_acknowledged_at: "TEXT",
+      cash_tendered: "REAL CHECK(cash_tendered >= 0)",
+      cash_change: "REAL CHECK(cash_change >= 0)"
     })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
+    // Correct older cash receipts only where collection is evidenced by tender or completion.
+    db.exec(`UPDATE orders SET payment_status='Paid' WHERE payment='Cash' AND payment_status='Unpaid'
+      AND (status='Completed' OR (order_type='In-store' AND cash_tendered IS NOT NULL AND cash_tendered>=total))`);
     db.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS orders_request_key ON orders(user_id, request_key) WHERE request_key IS NOT NULL;
       CREATE INDEX IF NOT EXISTS orders_pending_delivery ON orders(user_id,delivery_sent_at,id)

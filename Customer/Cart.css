@@ -1994,3 +1994,9 @@ input {
   .payment-select .gcash-badge,
   .payment-choices .gcash-logo { width: 25px; height: 25px; flex-basis: 25px; }
 }
+.receipt-breakdown { display: grid; gap: 8px; padding-top: 14px; font: inherit; font-size: 13px; }
+.receipt-breakdown > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.receipt-breakdown > div[hidden] { display: none; }
+.receipt-breakdown span:first-child { overflow-wrap: anywhere; min-width: 0; }
+.receipt-breakdown span:last-child, .receipt-breakdown strong { flex-shrink: 0; }
+.receipt-breakdown .receipt-voucher { color: #49613e; }

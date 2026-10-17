@@ -31,8 +31,6 @@
         <nav class="admin-nav">
           <a class="admin-nav-link" href="Dashboard.html"
             ><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a
-          ><a class="admin-nav-link" href="Orders.html"
-            ><i class="bi bi-cup-hot-fill"></i><span>Orders</span></a
           ><a class="admin-nav-link" href="Operation.html"
             ><i class="bi bi-display"></i><span>Operation</span></a
           ><a class="admin-nav-link" href="Transactions.html"
@@ -84,6 +82,8 @@
             ><select id="roleFilter" aria-label="Filter by role">
               <option value="All">All Roles</option>
               <option value="Customer">Customer</option>
+              <option value="Cashier">Cashier</option>
+              <option value="Staff">Staff</option>
               <option value="Admin">Admin</option></select
             ><select id="statusFilter" aria-label="Filter by status">
               <option value="All">All Status</option>
@@ -199,6 +199,8 @@
                 <label
                   >Role<select name="role">
                     <option>Customer</option>
+                    <option>Cashier</option>
+                    <option>Staff</option>
                     <option>Admin</option>
                   </select></label
                 ><label id="userStatusLabel"
