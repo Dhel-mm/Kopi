@@ -42,7 +42,7 @@ function showAdminReceipt(order) {
     dialog = document.createElement("dialog");
     dialog.id = "posReceiptDialog";
     dialog.className = "pos-receipt-dialog";
-    dialog.innerHTML = `<header><h2>Order receipt</h2><button type="button" aria-label="Close receipt">×</button></header><div class="pos-receipt-body"></div>`;
+    dialog.innerHTML = `<header><h2>Order receipt</h2><button class="close-panel" type="button" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="pos-receipt-body"></div>`;
     dialog.querySelector("header button").addEventListener("click", () => dialog.close());
     document.body.append(dialog);
   }

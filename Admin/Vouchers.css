@@ -12,7 +12,7 @@
 .voucher-dialog::backdrop { background: rgba(40, 28, 14, .45); }
 .voucher-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .voucher-dialog h2 { font-size: 21px; margin: 0; }
-.voucher-dialog-heading button { padding: 5px 10px; border: 1px solid #c9b99e; border-radius: 7px; background: white; color: inherit; font: inherit; cursor: pointer; }
+.voucher-dialog-heading button:not(.close-panel) { padding: 5px 10px; border: 1px solid #c9b99e; border-radius: 7px; background: white; color: inherit; font: inherit; cursor: pointer; }
 .voucher-help { margin: 12px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 #voucherFields { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
 #voucherFields label { display: grid; gap: 5px; font-size: 12px; font-weight: 600; }
@@ -21,8 +21,8 @@
 .voucher-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .voucher-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 8px 13px; border: 0; border-radius: 8px; background: var(--dark); color: #fff; font: 700 11px "Poppins", Arial, sans-serif; cursor: pointer; }
 .voucher-button[hidden] { display: none; }
-.voucher-button:disabled, .voucher-dialog-heading button:disabled { opacity: .6; cursor: wait; }
-.voucher-button:focus-visible, .voucher-dialog-heading button:focus-visible { outline: 2px solid var(--tan); outline-offset: 3px; }
+.voucher-button:disabled { opacity: .6; cursor: wait; }
+.voucher-button:focus-visible { outline: 2px solid var(--tan); outline-offset: 3px; }
 .voucher-status { margin: 10px 0; font-size: 12px; overflow-wrap: anywhere; }
 .voucher-status:empty { display: none; }
 .voucher-list { display: grid; gap: 10px; max-height: 240px; overflow: auto; margin: 14px 0 0; padding: 0; list-style: none; }

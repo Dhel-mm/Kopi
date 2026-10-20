@@ -134,6 +134,36 @@ function selectOrder(id) {
       ? "This order has been canceled."
       : order.paymentStatus === "Verified" ? "GCash payment verified." : `GCash payment: ${order.paymentStatus || "Pending verification"}.`);
   }
+  // Customers can cancel online only while an order is New. After that, an
+  // administrator cancels it here (for example, when the customer calls).
+  const awaitingGcashReview = order.payment === "GCash" && order.paymentStatus !== "Verified";
+  if (["New", "Preparing"].includes(order.status) && !awaitingGcashReview) {
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.className = "reject-payment-btn admin-cancel-order-btn";
+    cancelButton.textContent = "Cancel order";
+    cancelButton.addEventListener("click", async () => {
+      const warning = order.status === "Preparing"
+        ? "Preparation has started, so ingredients will stay deducted."
+        : "Reserved ingredients will be returned to stock.";
+      const refund = order.payment === "GCash" && order.paymentStatus === "Verified" ? " Any GCash refund must be sent separately." : "";
+      if (!window.confirm(`Cancel ${order.orderNumber}? ${warning}${refund}`)) return;
+      if (paymentUpdating) return;
+      paymentUpdating = true;
+      cancelButton.disabled = true;
+      try {
+        const result = await KopiApi.request(`/orders/${order.id}/cancel`, {method: "PATCH"});
+        KopiNotice.toast(result.message, "success");
+      } catch (error) {
+        KopiNotice.toast(error.message, "error");
+      } finally {
+        paymentUpdating = false;
+        cancelButton.disabled = false;
+        await refreshOrders();
+      }
+    });
+    selectedPaymentActions.appendChild(cancelButton);
+  }
   renderRows();
   if (!panelEl.open) panelEl.showModal();
 }

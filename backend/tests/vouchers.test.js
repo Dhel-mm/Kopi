@@ -67,7 +67,30 @@ test("redeemed vouchers remain blocked while saved checkout retries remain stabl
   } finally { db.close(); }
 });
 
-test("POS retry keys include voucher choice and preserve normal manual discounts", () => {
+test("canceling an order gives its one-time voucher back; completed orders keep it used", () => {
+  const db=fixture();
+  try {
+    const vouchers=createVoucherService(db),workflow=createOrderWorkflow(db);
+    vouchers.save({code:"BACK25",amount:25,active:true});
+    const first=workflow.create(body({voucher:"BACK25",expectedTotal:135}),customer);
+    assert.equal(vouchers.list().find(row=>row.code==="BACK25").used,true);
+    assert.throws(()=>workflow.prepareQuote(body({voucher:"BACK25"})),/already been used/);
+    workflow.cancel(first.orderId,customer);
+    assert.equal(vouchers.list().find(row=>row.code==="BACK25").used,false);
+    assert.equal(db.prepare("SELECT voucher_discount FROM orders WHERE id=?").get(first.orderId).voucher_discount,25);
+    const second=workflow.create(body({voucher:"BACK25",expectedTotal:135}),customer);
+    assert.equal(second.total,135);
+    workflow.advance(second.orderId,"Preparing",admin);
+    workflow.advance(second.orderId,"Out for Delivery",admin);
+    workflow.advance(second.orderId,"Arrived",admin);
+    workflow.advance(second.orderId,"Completed",admin);
+    assert.throws(()=>workflow.prepareQuote(body({voucher:"BACK25"})),/already been used/);
+    assert.equal(workflow.cancel(first.orderId,customer).status,"Canceled");
+    assert.throws(()=>workflow.prepareQuote(body({voucher:"BACK25"})),/already been used/);
+  } finally {db.close();}
+});
+
+test("POS retry keys include voucher choice and reject manual discounts", () => {
   const db=fixture();
   try {
     const vouchers=createVoucherService(db),workflow=createOrderWorkflow(db);
@@ -77,7 +100,7 @@ test("POS retry keys include voucher choice and preserve normal manual discounts
     assert.throws(()=>workflow.create({...request,voucher:"KOPI10"},admin,true),/different order/);
     vouchers.save({amount:20,active:false},"SAVE10");
     assert.equal(workflow.create(request,admin,true).orderId,order.orderId);
-    assert.equal(workflow.create(body({serviceType:"Dine-in",discount:15,expectedTotal:145}),admin,true).total,145);
+    assert.throws(()=>workflow.create(body({serviceType:"Dine-in",discount:15,expectedTotal:145}),admin,true),/Manual discounts are not allowed/);
   } finally {db.close();}
 });
 

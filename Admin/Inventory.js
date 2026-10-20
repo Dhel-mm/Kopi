@@ -306,13 +306,13 @@ function addRecipeRow(term = {}) {
   row.className="recipe-line";
   const item=inventory.find(item=>item.sku===term.sku);
   row.innerHTML=`
-    <label>Ingredient<select data-sku required>
+    <label>Ingredient<span class="recipe-select"><select data-sku required>
       <option value="">Choose inventory product</option>
       ${term.sku&&!item?`<option value="${escapeHtml(term.sku)}" selected>Missing: ${escapeHtml(term.sku)}</option>`:""}
       ${inventory.map(entry=>`<option value="${escapeHtml(entry.sku)}" ${entry.sku===term.sku?"selected":""}>${escapeHtml(entry.productName)} (${escapeHtml(entry.measurement)})</option>`).join("")}
-    </select></label>
+    </select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
     <label>Amount<input data-amount type="number" min="0.001" step="0.001" required value="${Number(term.amount)||""}"></label>
-    <label>Unit<select data-unit><option>g</option><option>ml</option><option>pcs</option></select></label>
+    <label>Unit<span class="recipe-select"><select data-unit><option>g</option><option>ml</option><option>pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
     <button type="button" data-remove aria-label="Remove ingredient">×</button>`;
   row.querySelector("[data-unit]").value=term.unit||item?.measurement||"g";
   row.querySelector("[data-sku]").addEventListener("change",()=>{

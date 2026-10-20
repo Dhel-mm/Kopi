@@ -55,6 +55,22 @@ test("rejection button is below Verify; confirmation and double-click protection
   assert.match(h.get("selectedPaymentActions").textContent,/payment was not received/);
 });
 
+test("admin can cancel a preparing Cash order after confirming; unpaid GCash orders show only the review buttons", async () => {
+  const h=harness();
+  Object.assign(h.order,{status:"Preparing",payment:"Cash",paymentStatus:"Unpaid",paymentReference:null});
+  await tick();h.select();
+  const children=h.get("selectedPaymentActions").children;
+  const cancel=children.find(child=>child.className.includes("admin-cancel-order-btn"));
+  assert.ok(cancel);assert.equal(cancel.textContent,"Cancel order");
+  h.confirm(false);await cancel.listeners.click();
+  assert.equal(h.calls.filter(call=>call.options).length,0);
+  h.confirm(true);await cancel.listeners.click();
+  const sent=h.calls.find(call=>call.options);
+  assert.equal(sent.url,"/orders/7/cancel");assert.equal(sent.options.method,"PATCH");
+  const g=harness();await tick();g.select();
+  assert.ok(!g.get("selectedPaymentActions").children.some(child=>String(child.className).includes("admin-cancel-order-btn")));
+});
+
 test("failed rejection keeps the order unchanged and allows retry", async () => {
   const h=harness();await tick();h.select();h.fail(true);
   await h.get("selectedPaymentActions").children[1].listeners.click();

@@ -1,0 +1,115 @@
+/* Shared finishing touches for the customer pages.
+   Loaded after each page's own stylesheet so the pages match the Admin side:
+   warm tan highlights, gentle hover feedback and smooth dropdowns. */
+:root {
+  --theme-tan: #f3ddab;
+  --theme-tan-hover: rgba(212, 155, 67, 0.16);
+  --theme-gold: #d49b43;
+  --theme-ink: #211508;
+  --theme-ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+::selection {
+  background: var(--theme-tan);
+  color: var(--theme-ink);
+}
+
+/* Keyboard focus ring for anything that has no focus style of its own. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid rgba(212, 155, 67, 0.55);
+  outline-offset: 2px;
+}
+
+/* Buttons and links change colour smoothly unless a page already animates them. */
+:where(button, a) {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+/* ---------- Top navigation ---------- */
+.site-header {
+  box-shadow: 0 6px 18px rgba(61, 43, 22, 0.05);
+}
+
+.site-header .nav-link {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.site-header .nav-link:not(.active):hover {
+  background: var(--theme-tan-hover);
+}
+
+.site-header .nav-link.active {
+  background: var(--theme-tan);
+  color: var(--theme-ink);
+}
+
+.site-header .nav-link i {
+  transition: transform 200ms var(--theme-ease);
+}
+
+.site-header .nav-link:not(.active):hover i {
+  transform: translateY(-2px);
+}
+
+/* Phones highlight the icon instead of the whole link. */
+@media (max-width: 500px) {
+  .site-header .nav-link:not(.active):hover,
+  .site-header .nav-link.active {
+    background: transparent;
+  }
+
+  .site-header .nav-link.active i {
+    background: var(--theme-tan);
+  }
+}
+
+.nav-is-moving .site-header .nav-link,
+.nav-is-moving .site-header .nav-link i {
+  background: transparent;
+}
+
+/* ---------- Dropdowns ---------- */
+.payment-select .bi-chevron-down {
+  transition: transform 260ms var(--theme-ease);
+}
+
+.payment-select[aria-expanded="true"] {
+  border-color: var(--theme-gold);
+}
+
+/* The list slides open and fades out instead of appearing all at once. */
+.payment-choices {
+  transform-origin: top center;
+  transition: opacity 180ms ease, transform 220ms var(--theme-ease), display 220ms allow-discrete;
+}
+
+.payment-choices[hidden] {
+  display: none;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+}
+
+@starting-style {
+  .payment-choices:not([hidden]) {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+.payment-choices [data-payment] {
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, a),
+  .site-header .nav-link,
+  .site-header .nav-link i,
+  .payment-select .bi-chevron-down,
+  .payment-choices {
+    transition: none;
+  }
+
+  .site-header .nav-link:not(.active):hover i {
+    transform: none;
+  }
+}

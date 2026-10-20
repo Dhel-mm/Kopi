@@ -50,7 +50,11 @@ test("server prices override browser prices, names, fees and fake voucher discou
     assert.equal(createOrderWorkflow(db).prepareQuote(body({voucher:"kopi10",voucherDiscount:999})).total,150);
   } finally {db.close();}
   assert.throws(()=>quote(body({voucher:"FREE"})),/not valid/);
-  assert.throws(()=>quote(body({discount:999}),true),/exceed/);
+  for (const discount of [999,15,0.01]) {
+    assert.throws(()=>quote(body({discount}),true),/Manual discounts are not allowed/);
+    assert.throws(()=>quote(body({discount}),false),/Manual discounts are not allowed/);
+  }
+  assert.equal(quote(body({discount:0}),true).total,160);
 });
 test("reject missing size, invalid products/options, fractional and non-finite quantities",()=>{
   for(const quantity of [0,-1,1.5,Infinity,NaN,"1",101]) assert.throws(()=>quote(body({items:[{productId:"caramel-frappe",quantity}]})));
@@ -134,12 +138,14 @@ test("new-order cancellation restores only its allocations exactly once, even af
     assert.throws(()=>workflow.advance(order.orderId,"Preparing",admin),/Invalid/);
   } finally {db.close();}
 });
-test("preparing cancellations keep consumed stock; completed orders cannot be canceled",()=>{
+test("customers cannot cancel once preparing; admin cancellations keep consumed stock; completed orders cannot be canceled",()=>{
   const db=fixture(),workflow=createOrderWorkflow(db);
   try {
     const order=workflow.create(body(),customer),after=stock(db,"coffee-beans");
     workflow.advance(order.orderId,"Preparing",admin);
-    assert.equal(workflow.cancel(order.orderId,customer).inventoryState,"consumed");
+    assert.throws(()=>workflow.cancel(order.orderId,customer),/already being prepared/);
+    assert.equal(db.prepare("SELECT status FROM orders WHERE id=?").get(order.orderId).status,"Preparing");
+    assert.equal(workflow.cancel(order.orderId,admin).inventoryState,"consumed");
     assert.equal(stock(db,"coffee-beans"),after);
     const pos=workflow.create(body({serviceType:"Dine-in"}),admin,true);
     assert.equal(pos.status,"Preparing");

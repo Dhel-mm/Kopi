@@ -119,7 +119,8 @@ test("delivery notices are online-only, not sent before preparation, and cancele
     assert.throws(() => delivery.save(pos.orderId, input(), admin), /online/);
     flow.advance(fresh.orderId, "Preparing", admin);
     delivery.save(fresh.orderId, input(), admin);
-    flow.cancel(fresh.orderId, customer);
+    assert.throws(() => flow.cancel(fresh.orderId, customer), /already being prepared/);
+    flow.cancel(fresh.orderId, admin);
     assert.equal(delivery.pending(customer).length, 0);
     assert.equal(delivery.read(fresh.orderId).riderFee, 80);
     assert.throws(() => delivery.save(fresh.orderId, input({fee:90,revision:1}), admin), /being prepared/);

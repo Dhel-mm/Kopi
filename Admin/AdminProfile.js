@@ -25,7 +25,14 @@ if(adminProfile) {
   headerAvatar.className = "admin-header-avatar";
   headerAvatar.setAttribute("aria-hidden","true");
   adminProfile.querySelector(":scope > .bi-person-circle")?.replaceWith(headerAvatar);
-  const close=()=>{menu?.remove();menu=null;adminProfile.setAttribute("aria-expanded","false");};
+  const close=()=>{
+    if(!menu)return;
+    const closing=menu;menu=null;adminProfile.setAttribute("aria-expanded","false");
+    // Let the menu fade out before it leaves the page.
+    if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){closing.remove();return;}
+    closing.classList.add("is-closing");
+    setTimeout(()=>closing.remove(),180);
+  };
   const refreshHeader=()=>{
     const name=adminProfile.querySelector(".profile-text strong");
     if(name)name.textContent=user.firstName;

@@ -44,7 +44,7 @@
   </div>
   <dialog class="workspace-dialog" id="statusDialog" aria-labelledby="statusDialogTitle" aria-describedby="statusDialogMessage">
     <form method="dialog">
-      <header><h2 id="statusDialogTitle">Update order status</h2><button type="submit" value="cancel" aria-label="Close confirmation">×</button></header>
+      <header><h2 id="statusDialogTitle">Update order status</h2><button class="close-panel" type="submit" value="cancel" aria-label="Close confirmation"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
       <p id="statusDialogMessage"></p>
       <div class="workspace-dialog-actions">
         <button class="workspace-btn secondary" type="submit" value="cancel" autofocus>Keep current status</button>
@@ -54,7 +54,7 @@
   </dialog>
   <dialog class="workspace-dialog delivery-workspace-dialog" id="deliveryDialog" aria-labelledby="deliveryDialogTitle">
     <form id="deliveryForm">
-      <header><h2 id="deliveryDialogTitle">Send Delivery Details</h2><button type="button" id="closeDeliveryDialog" aria-label="Close delivery details">×</button></header>
+      <header><h2 id="deliveryDialogTitle">Send Delivery Details</h2><button class="close-panel" type="button" id="closeDeliveryDialog" aria-label="Close delivery details"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
       <div class="delivery-order-details" id="deliveryOrderDetails"></div>
       <p class="workspace-intro">Book the rider in Lalamove, then enter the rider fee and live tracking link. The fee is paid directly to the rider and is not added to the order total.</p>
       <label class="workspace-field">Delivery Fee (₱)<input id="riderFee" type="number" min="0" max="1000000" step="0.01" required placeholder="80.00"></label>

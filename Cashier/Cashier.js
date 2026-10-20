@@ -6,7 +6,7 @@
   const dialog = document.createElement("dialog");
   dialog.className="workspace-dialog";
   dialog.setAttribute("aria-labelledby","receiptTitle");
-  dialog.innerHTML=`<header><h2 id="receiptTitle">Order receipt</h2><button type="button" aria-label="Close receipt">×</button></header><div class="workspace-receipt"></div>`;
+  dialog.innerHTML=`<header><h2 id="receiptTitle">Order receipt</h2><button class="close-panel" type="button" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="workspace-receipt"></div>`;
   document.body.append(dialog);
   dialog.querySelector("header button").addEventListener("click",()=>dialog.close());
   dialog.addEventListener("click",event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});

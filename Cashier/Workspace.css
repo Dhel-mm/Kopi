@@ -7,7 +7,10 @@
 .workspace-label { margin: 0 10px 26px; color: var(--muted); font-size: 12px; letter-spacing: .06em; }
 .workspace-sidebar-note { margin: auto 10px 8px; padding-top: 35px; font-size: 11px; color: var(--muted); }
 .workspace-profile { border: 0; background: transparent; color: var(--ink); }
-.workspace-profile .bi-chevron-down { transition: transform .2s ease; }
+.workspace-profile .bi-chevron-down { transition: transform 260ms cubic-bezier(.22, 1, .36, 1); }
+.workspace-menu { transform-origin: top right; transition: opacity 180ms ease, transform 220ms cubic-bezier(.22, 1, .36, 1), display 220ms allow-discrete; }
+.workspace-menu[hidden] { display: none; opacity: 0; transform: translateY(-6px) scale(.98); }
+@starting-style { .workspace-menu:not([hidden]) { opacity: 0; transform: translateY(-6px) scale(.98); } }
 .workspace-profile[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
 .workspace-avatar { width: 38px; height: 38px; object-fit: cover; border: 1px solid var(--dark); border-radius: 50%; }
 .workspace-menu { position: absolute; top: calc(100% - 8px); right: 24px; padding: 18px; width: 250px; z-index: 60; background: var(--paper); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 32px #21150818; }
@@ -75,7 +78,7 @@
 .workspace-dialog::backdrop { background: #21150870; }
 .workspace-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .workspace-dialog h2 { font-size: 20px; margin: 0; }
-.workspace-dialog header button { padding: 5px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 25px; color: var(--ink); }
+.workspace-dialog header button:not(.close-panel) { padding: 5px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 25px; color: var(--ink); }
 .workspace-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 .workspace-dialog p { font-size: 13px; line-height: 1.7; }
 .workspace-field { display: grid; gap: 7px; margin-top: 14px; font-size: 12px; font-weight: 700; }
@@ -136,7 +139,7 @@
   .workspace-tools .workspace-select { flex: 1; font-size: 12px; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .workspace-profile .bi-chevron-down { transition: none; }
+  .workspace-profile .bi-chevron-down, .workspace-menu { transition: none; }
 }
 @media print {
   body > :not(.workspace-dialog) { display: none !important; }

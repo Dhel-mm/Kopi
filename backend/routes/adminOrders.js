@@ -31,16 +31,8 @@ module.exports = function adminOrderRouter(db) {
     catch (error) { sendError(response, error); }
   });
   router.patch("/orders/:id/verify-payment",(request,response)=>{
-    const order = db.prepare("SELECT * FROM orders WHERE id=?").get(request.params.id);
-    if (!order) return response.status(404).json({message:"Order was not found."});
-    if (order.payment!=="GCash" || !order.payment_reference || order.status==="Canceled") {
-      return response.status(400).json({message:"This order has no GCash payment available for verification."});
-    }
-    if (request.body?.confirmedReceived!==true) return response.status(400).json({message:"Check the reference and amount in your GCash account first."});
-    const updated = db.prepare(`UPDATE orders SET payment_status='Verified',payment_verified_at=CURRENT_TIMESTAMP,payment_verified_by=?
-      WHERE id=? AND payment_status!='Verified' AND status!='Canceled'`).run(request.user.id,order.id);
-    if (!updated.changes && order.payment_status !== "Verified") return response.status(409).json({message:"This order changed. Refresh its payment details before continuing."});
-    response.json({message:"GCash payment marked as verified by staff."});
+    try { response.json(paymentReview.verify(request.params.id, request.body, request.user)); }
+    catch (error) { sendError(response, error); }
   });
   router.patch("/orders/:id/reject-payment", (request, response) => {
     try {

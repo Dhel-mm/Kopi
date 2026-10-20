@@ -68,13 +68,12 @@ function quote(body, inStore = false, resolveVoucher) {
   if (body.voucher != null && typeof body.voucher !== "string") throw new OrderError("Invalid voucher.");
   const voucher = (body.voucher || "").trim().toUpperCase();
   let discountCents = 0;
-  if (inStore) {
-    // The cashier is authenticated as Admin; only this route permits a manual discount.
-    discountCents = money(body.discount ?? 0, "Discount");
-    if (discountCents > subtotalCents) throw new OrderError("Discount cannot exceed the subtotal.");
+  // Manual discounts are not allowed for anyone. They left no reason or approval
+  // on record. Price reductions must come from an admin-created voucher.
+  if (body.discount != null && body.discount !== 0) {
+    throw new OrderError("Manual discounts are not allowed. Ask an administrator to create a voucher instead.");
   }
   if (voucher) {
-    if (discountCents > 0) throw new OrderError("Use either a voucher or a manual discount, not both.");
     if (!resolveVoucher) throw new OrderError("That voucher code is not valid.");
     discountCents = Math.min(resolveVoucher(voucher), subtotalCents);
   }

@@ -62,6 +62,12 @@ function createVoucherService(db) {
     }
   }
 
+  // A canceled order no longer uses its voucher. The order keeps its recorded
+  // discount for history, but the code becomes usable again.
+  function release(orderId) {
+    return db.prepare("DELETE FROM voucher_redemptions WHERE order_id=?").run(orderId).changes > 0;
+  }
+
   function save(input, existingCode) {
     const code = normalizeCode(existingCode ?? input.code);
     const amount = money(input.amount, "Voucher deduction");
@@ -91,7 +97,7 @@ function createVoucherService(db) {
     if (!result.changes) throw new OrderError("Voucher was not found.", 404);
     return {message: "Voucher removed. Its redemption history is preserved."};
   }
-  return {list, resolve, redeem, save, remove};
+  return {list, resolve, redeem, release, save, remove};
 }
 
 module.exports = {createVoucherService, migrateVouchers};

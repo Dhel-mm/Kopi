@@ -69,7 +69,7 @@ for(const payment of ["Cash","GCash"]) test(`${payment} cancellation dialog has 
   const result=context.confirmOrderCancellation({payment});
   const dialog=body.children[0],message=dialog.children[1],actions=dialog.children[2];
   assert.equal(dialog.open,true);
-  assert.equal(message.textContent,"Cancel this order? If preparation has started, ingredients remain deducted.");
+  assert.equal(message.textContent,"Cancel this order? You can cancel only before the shop starts preparing it.");
   if(payment==="GCash") {
     const link=message.children.find(child=>child.tag==="a");
     assert.equal(link.textContent,"Contact the shop");

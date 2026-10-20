@@ -161,8 +161,15 @@ function createOrderWorkflow(db) {
       if (!order || (user.role!=="Admin" && order.user_id!==user.id)) throw new OrderError("Order was not found.",404);
       if (order.status==="Canceled") return result(id);
       if (!["New","Preparing"].includes(order.status)) throw new OrderError("Only new or preparing orders can be canceled.",409);
+      // Once staff start preparing, ingredients are used. Only an administrator
+      // may cancel then (for example, after the customer calls the shop).
+      if (user.role!=="Admin" && order.status!=="New") {
+        throw new OrderError("This order is already being prepared and can no longer be canceled online. Please contact the shop.",409);
+      }
       const canRestore = order.status==="New" && order.inventory_state!=="consumed";
       if (canRestore) stock.restore(id);
+      // Give a one-time voucher back so the customer can use it on a new order.
+      vouchers.release(id);
       db.prepare(`UPDATE orders SET status='Canceled',canceled_at=CURRENT_TIMESTAMP,inventory_state=?,
         refund_status=CASE WHEN payment='GCash' THEN 'Needs staff review' ELSE 'Not required' END WHERE id=?`)
         .run(canRestore?"returned":"consumed",id);

@@ -63,8 +63,10 @@
         <p class="prep-meta">${esc(order.customer)}<br>${esc(date(order.createdAt))}</p>
         ${order.orderType==="Online" ? `<dl class="prep-contact"><div><dt>Address:</dt><dd>${esc(order.address||"Not provided")}</dd></div><div><dt>Phone No.:</dt><dd>${esc(order.phone||"Not provided")}</dd></div></dl>` : ""}
         <ul>${order.items.map(item=>`<li><strong>${item.quantity} × ${esc(item.name)}</strong><small>${esc(Object.entries(item.options).filter(([,value])=>value).map(([key,value])=>key+": "+value).join(" · "))}</small></li>`).join("")}</ul>
-        <footer><button type="button" class="workspace-btn" data-order="${order.id}" data-next="${next}" ${blocked||pending.has(order.id)?"disabled":""}>${blocked?"Waiting for payment verification":pending.has(order.id)?"Updating…":label}</button>
-        ${blocked?"<p>Ask the administrator to verify this GCash payment.</p>":""}</footer></article>`;
+        <footer>${blocked
+          ? `<button type="button" class="workspace-btn" data-verify="${order.id}" ${pending.has(order.id)?"disabled":""}>${pending.has(order.id)?"Updating…":"Confirm GCash received"}</button>
+        <p>GCash reference ${esc(order.paymentReference||"not provided")} · ${money(order.total)}. Check the shop's GCash account before confirming.</p>`
+          : `<button type="button" class="workspace-btn" data-order="${order.id}" data-next="${next}" ${pending.has(order.id)?"disabled":""}>${pending.has(order.id)?"Updating…":label}</button>`}</footer></article>`;
     }).join("");
     document.getElementById("queueEmpty").hidden=filtered.length>0;
   }
@@ -92,6 +94,21 @@
       document.querySelectorAll("[data-status]").forEach(other=>{const active=other===button;other.classList.toggle("active",active);other.setAttribute("aria-pressed",String(active));});render();
     }));
     document.getElementById("preparationQueue").addEventListener("click",async event=>{
+      const verifyButton=event.target.closest("[data-verify]");
+      if(verifyButton) {
+        if(updating||verifyButton.disabled)return;
+        const id=Number(verifyButton.dataset.verify);
+        const order=rows.find(row=>row.id===id);if(!order)return;
+        const question=`Open the shop's GCash account. Confirm only if you can see reference ${order.paymentReference||"(none)"} for exactly ${money(order.total)}. Has this payment been received?`;
+        if(!await confirmStatus(order,question))return;
+        updating=true;version++;pending.add(id);render();
+        try {
+          await KopiApi.request("/workforce/preparation/"+id+"/verify-payment",{method:"PATCH",body:JSON.stringify({confirmedReceived:true})});
+          KopiNotice.toast(order.orderNumber+" — GCash payment confirmed","success");
+        } catch(error) {KopiNotice.toast(error.message,"error");}
+        finally {updating=false;pending.delete(id);await load(true);refresh.focus();}
+        return;
+      }
       const button=event.target.closest("[data-order]");if(!button||updating||button.disabled)return;
       const id=Number(button.dataset.order),next=button.dataset.next;
       const order=rows.find(row=>row.id===id);if(!order)return;

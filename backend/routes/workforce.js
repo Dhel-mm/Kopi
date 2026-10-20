@@ -11,6 +11,7 @@ module.exports = function workforceRouter(db) {
   const workflow = createOrderWorkflow(db);
   const delivery = createDeliveryService(db);
   const availability = require("../services/productAvailability").createProductAvailability(db);
+  const paymentReview = require("../services/paymentReview").createPaymentReviewService(db);
   const cashier = requireRole("Cashier");
   const staff = requireRole("Admin", "Staff");
   router.use(authFor(db), requireRole("Admin", "Cashier", "Staff"));
@@ -98,6 +99,10 @@ module.exports = function workforceRouter(db) {
       }).immediate();
       res.json(result);
     } catch (error) {sendError(res, error);}
+  });
+  router.patch("/preparation/:id/verify-payment", staff, (req, res) => {
+    try {res.json(paymentReview.verify(req.params.id, req.body || {}, req.user));}
+    catch (error) {sendError(res, error);}
   });
   router.put("/preparation/:id/delivery", staff, (req, res) => {
     try {res.json({delivery:delivery.save(req.params.id, req.body || {}, req.user)});}

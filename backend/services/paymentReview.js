@@ -23,6 +23,23 @@ function createPaymentReviewService(db) {
       return workflow.result(id);
     }).immediate();
   }
+  // Admin or Staff confirm that the money actually arrived in the shop's GCash
+  // account. The database records who confirmed it and when.
+  function verify(id, input, user) {
+    if (!["Admin", "Staff"].includes(user.role)) throw new OrderError("Administrator or staff access is required.", 403);
+    return db.transaction(() => {
+      const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
+      if (!order) throw new OrderError("Order was not found.", 404);
+      if (order.payment !== "GCash" || !order.payment_reference || order.status === "Canceled") {
+        throw new OrderError("This order has no GCash payment available for verification.");
+      }
+      if (input?.confirmedReceived !== true) throw new OrderError("Check the reference and amount in your GCash account first.");
+      if (order.payment_status === "Verified") return {message: "GCash payment was already verified."};
+      db.prepare(`UPDATE orders SET payment_status='Verified',payment_verified_at=CURRENT_TIMESTAMP,payment_verified_by=?
+        WHERE id=?`).run(user.id, order.id);
+      return {message: "GCash payment marked as verified by staff."};
+    }).immediate();
+  }
   function pending(user) {
     return db.prepare(`SELECT id AS orderId, order_number AS orderNumber,
       cancellation_reason AS message, 'cancellation' AS type, 1 AS revision
@@ -35,6 +52,6 @@ function createPaymentReviewService(db) {
     if (!updated.changes) throw new OrderError("Cancellation notice was not found.", 404);
     return {message: "Cancellation notice acknowledged."};
   }
-  return {reject, pending, acknowledge};
+  return {reject, verify, pending, acknowledge};
 }
 module.exports = {createPaymentReviewService, rejectionMessage};

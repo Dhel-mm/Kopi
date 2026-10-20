@@ -61,7 +61,10 @@ test("order cards retain rider fees after acknowledgement without adding them to
   assert.match(html,/Order total<\/span><strong>₱160\.00/);
   assert.match(html,/Lalamove Delivery Fee<\/span><strong>₱80\.00/);
   assert.match(html,/href="https:\/\/share\.lalamove\.com\/\?order=1&amp;sign=test" target="_blank" rel="noopener noreferrer"/);
-  assert.ok(html.indexOf('>Track</a>')<html.indexOf('>Cancel Order</button>'));
+  assert.match(html,/>Track<\/a>/);
+  // Preparing orders can no longer be canceled by the customer online.
+  assert.doesNotMatch(html,/cancel-order-btn/);
+  assert.match(html,/To cancel, please contact the shop/);
 });
 
 test("order cards hide unsaved rider fees and reject unsafe tracking links",async()=>{

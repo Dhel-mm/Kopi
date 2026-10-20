@@ -94,7 +94,17 @@ test("Staff receives delivery details and completes verified GCash delivery only
   assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,409);
   assert.equal((await request(path,"PATCH",{status:"Completed"},5)).status,403);
   assert.equal((await request(`/admin/orders/${id}/verify-payment`,"PATCH",{confirmedReceived:true},5)).status,403);
-  await request(`/admin/orders/${id}/verify-payment`,"PATCH",{confirmedReceived:true},2);
+  // Staff confirm GCash from their own workspace; Cashiers and Customers cannot.
+  const verify=`/workforce/preparation/${id}/verify-payment`;
+  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},4)).status,403);
+  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},1)).status,403);
+  assert.equal((await request(verify,"PATCH",{},5)).status,400);
+  assert.equal(db.prepare("SELECT payment_status FROM orders WHERE id=?").get(id).payment_status,"Pending verification");
+  const verified=await request(verify,"PATCH",{confirmedReceived:true},5);
+  assert.equal(verified.status,200,JSON.stringify(verified.data));
+  assert.deepEqual({...db.prepare("SELECT payment_status,payment_verified_by FROM orders WHERE id=?").get(id)},{payment_status:"Verified",payment_verified_by:5});
+  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},5)).status,200);
+  assert.equal((await request(`/admin/orders/${id}/verify-payment`,"PATCH",{confirmedReceived:true},2)).status,200);
   assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,200);
   assert.equal((await request(path,"PATCH",{status:"Completed",deliveryConfirmed:true},5)).status,403);
   assert.equal((await request(path,"PATCH",{status:"Canceled"},5)).status,403);

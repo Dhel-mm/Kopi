@@ -43,10 +43,10 @@
         </section>
         <dialog id="recipeDialog" class="recipe-dialog">
           <form id="recipeForm">
-            <div class="recipe-dialog-heading"><h2>Recipe setup</h2><button type="button" id="closeRecipes" aria-label="Close recipe setup">×</button></div>
+            <div class="recipe-dialog-heading"><h2>Recipe setup</h2><button class="close-panel" type="button" id="closeRecipes" aria-label="Close recipe setup"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
             <p>Resolve missing ingredients and unit differences using your measured amounts. Changes affect new orders only. Add missing stock products with Add Product first.</p>
             <label for="recipeSelect">Product, size or modifier</label>
-            <select id="recipeSelect"></select>
+            <span class="recipe-select"><select id="recipeSelect"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
             <p id="recipeIssues" role="status"></p>
             <div class="recipe-lines" id="recipeLines"></div>
             <div class="recipe-form-actions">
@@ -57,14 +57,14 @@
         </dialog>
         <dialog id="conversionDialog" class="recipe-dialog">
           <form id="conversionForm">
-            <div class="recipe-dialog-heading"><h2>Ingredient unit conversion</h2><button type="button" id="closeConversions" aria-label="Close unit conversions">×</button></div>
+            <div class="recipe-dialog-heading"><h2>Ingredient unit conversion</h2><button class="close-panel" type="button" id="closeConversions" aria-label="Close unit conversions"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
             <p>Set the measurement of full packages, for example 1 L = 1 bottle or 500 g = 1 bag. Recipe amount uses the Measurement column; stock amount and stock unit describe the Stock column. Saving updates the package size and label, keeping the remaining measurement unchanged.</p>
             <label for="conversionIngredient">Ingredient</label>
-            <select id="conversionIngredient" required></select>
+            <span class="recipe-select"><select id="conversionIngredient" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
             <p id="conversionCurrentStock"></p>
             <div class="conversion-fields">
               <label>Recipe amount<input id="conversionRecipeAmount" type="number" min="0.001" step="0.001" required></label>
-              <label>Recipe unit<select id="conversionRecipeUnit"><option value="L">L</option><option value="kg">kg</option><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select></label>
+              <label>Recipe unit<span class="recipe-select"><select id="conversionRecipeUnit"><option value="L">L</option><option value="kg">kg</option><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
               <label>Equals this stock amount<input id="conversionStockAmount" type="number" min="1" step="1" required></label>
               <label>Stock unit<input id="conversionStockUnit" type="text" maxlength="40" placeholder="e.g. bottle, bag, pack" required></label>
             </div>
@@ -81,7 +81,7 @@
               <p id="physicalConversionIngredient"></p>
               <div class="conversion-fields">
                 <label>Recipe amount<input id="physicalRecipeAmount" type="number" min="0.001" step="0.001" required></label>
-                <label>Recipe unit<select id="physicalRecipeUnit"><option>g</option><option>ml</option><option>pcs</option></select></label>
+                <label>Recipe unit<span class="recipe-select"><select id="physicalRecipeUnit"><option>g</option><option>ml</option><option>pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
                 <label>Measured equivalent<input id="physicalStockAmount" type="number" min="0.001" step="0.001" required></label>
                 <label>Measurement unit<input id="physicalStockUnit" readonly></label>
               </div>
@@ -93,7 +93,7 @@
           </details>
         </dialog>
         <dialog id="movementDialog" class="recipe-dialog">
-          <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button type="button" id="closeMovements" aria-label="Close stock movements">×</button></div>
+          <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button class="close-panel" type="button" id="closeMovements" aria-label="Close stock movements"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
           <p>Negative amounts are deducted or reserved. Positive amounts are added or returned. Canceling a preparing order does not return consumed ingredients.</p>
           <div id="movementList" role="status"></div>
         </dialog>

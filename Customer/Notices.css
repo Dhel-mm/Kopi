@@ -171,6 +171,35 @@
   outline: 2px solid #e6c38b;
   outline-offset: 3px;
 }
+/* Shared dialog close button; matches the admin order-details close button. */
+button.close-panel {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: #77808c;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+button.close-panel:hover,
+button.close-panel:focus-visible {
+  border-color: rgba(61, 43, 22, 0.18);
+  background: #fff;
+  color: #211508;
+  outline: 0;
+}
+button.close-panel:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 @media (max-width: 500px) {
   .kopi-notice {
     font-size: 12px;

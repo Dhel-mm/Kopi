@@ -119,9 +119,9 @@ async function loadMyOrders() {
 
         <div class="order-actions">
           ${trackingLink ? `<a class="outline-btn track-order-btn" href="${escapeHtml(trackingLink)}" target="_blank" rel="noopener noreferrer">Track</a>` : ""}
-          ${["New", "Preparing"].includes(order.status)
+          ${order.status === "New"
             ? `<button class="outline-btn cancel-order-btn" type="button" data-order-id="${order.id}">Cancel Order</button>`
-            : ""}
+            : order.status === "Preparing" ? `<span class="order-cancel-note">Being prepared. To cancel, please contact the shop.</span>` : ""}
         </div>
       </article>
     `; }).join("");
@@ -328,7 +328,7 @@ function confirmOrderCancellation(order) {
     title.textContent = "Cancel order";
     const message = document.createElement("p");
     message.id = "cancelOrderMessage";
-    message.textContent = "Cancel this order? If preparation has started, ingredients remain deducted.";
+    message.textContent = "Cancel this order? You can cancel only before the shop starts preparing it.";
     if (order.payment === "GCash") {
       const contact = document.createElement("a");
       contact.href = "https://www.facebook.com/kopiest2021";

@@ -118,10 +118,21 @@
 .recipe-dialog h2 { font-size: 21px; margin: 0; }
 .recipe-dialog p { font-size: 12px; }
 .recipe-dialog select, .recipe-dialog input { width: 100%; min-width: 0; padding: 9px; border: 1px solid #c9b99e; border-radius: 7px; background: white; font: inherit; font-size: 12px; }
+/* Recipe and conversion dropdowns: tan border and a chevron that flips while the list is open. */
+.recipe-select { position: relative; display: block; min-width: 0; }
+.recipe-dialog input:not([type="checkbox"]) { border-color: rgba(192, 142, 66, .45); border-radius: 9px; transition: border-color 200ms ease, box-shadow 200ms ease; }
+.recipe-dialog input:not([type="checkbox"]):focus-visible { outline: 0; border-color: var(--tan); box-shadow: 0 0 0 3px rgba(212, 155, 67, .18); }
+.recipe-dialog .recipe-select select { appearance: none; -webkit-appearance: none; padding-right: 32px; border-color: rgba(192, 142, 66, .45); border-radius: 9px; color: var(--ink); cursor: pointer; transition: border-color 200ms ease, box-shadow 200ms ease; }
+.recipe-dialog .recipe-select select:hover { border-color: var(--tan); }
+.recipe-dialog .recipe-select select:focus-visible { outline: 0; border-color: var(--tan); box-shadow: 0 0 0 3px rgba(212, 155, 67, .18); }
+.recipe-select > .bi-chevron-down { position: absolute; top: 50%; right: 12px; margin-top: -6px; font-size: 11px; line-height: 1; color: var(--muted); pointer-events: none; transition: transform 260ms cubic-bezier(.22, 1, .36, 1), color 200ms ease; }
+.recipe-select:hover > .bi-chevron-down, .recipe-select:focus-within > .bi-chevron-down { color: var(--dark); }
+.recipe-select:has(select:open) > .bi-chevron-down { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .recipe-dialog .recipe-select select, .recipe-select > .bi-chevron-down { transition: none; } }
 .recipe-dialog button { cursor: pointer; }
 .recipe-dialog label { font-size: 12px; }
 .recipe-line { display: grid; grid-template-columns: minmax(0, 1fr) 100px 75px 30px; align-items: end; gap: 9px; margin: 12px 0; }
-.recipe-line button, #closeRecipes { border: 0; background: transparent; font-size: 25px; color: #825d2b; }
+.recipe-line button { border: 0; background: transparent; font-size: 25px; color: #825d2b; }
 #recipeIssues { color: #8c3f22; }
 @media (max-width: 600px) { .recipe-line { grid-template-columns: minmax(0, 1fr) 70px 60px 24px; gap: 4px; } .recipe-dialog { padding: 12px; } }
 .conversion-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }

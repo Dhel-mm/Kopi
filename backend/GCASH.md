@@ -10,11 +10,16 @@ If the amount or cart changes, it must be checked again.
 
 ## Staff verification
 
-1. Open **Admin > Operations > Online Orders** and click **Update**.
+Admin or Staff can confirm a GCash payment.
+
+1. **Admin:** open **Admin > Operations > Online Orders** and click **Update**.
+   **Staff:** open **Preparation** and find the order card.
 2. Compare the order's amount and reference with the transaction actually
    received in the shop's GCash account.
 3. Only when both match, click **Confirm GCash received** and confirm.
 4. The order can now be marked **Preparing**.
+
+Only an Admin can mark a payment as **not received** (this cancels the order).
 
 Until staff confirms receipt, the payment is **Pending verification**.
 Submitting a reference or receiving an order receipt is not proof of payment.

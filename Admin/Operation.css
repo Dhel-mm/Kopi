@@ -229,26 +229,10 @@ body:has(.order-status-panel[open]) { overflow: hidden; }
   white-space: pre-wrap;
 }
 
-.close-panel {
+.order-status-panel > .close-panel {
   position: absolute;
   top: 13px;
   right: 14px;
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  background: transparent;
-  color: #77808c;
-  font-size: 15px;
-}
-
-.close-panel:hover,
-.close-panel:focus-visible {
-  border-color: var(--border);
-  background: #fff;
-  color: var(--dark);
 }
 @media (max-width: 1100px) { .order-status-panel { grid-template-columns:1fr; }
 
@@ -320,7 +304,7 @@ body:has(.order-status-panel[open]) { overflow: hidden; }
   .selected-order { min-width: 0; }
   .selected-order h2 { padding-right: 4px; font-size: 14px; overflow-wrap: anywhere; }
   .selected-order p { font-size: 11px; overflow-wrap: anywhere; }
-  .close-panel { top: 10px; right: 10px; }
+  .order-status-panel > .close-panel { top: 10px; right: 10px; }
 }
 
 @media (max-width: 355px) {

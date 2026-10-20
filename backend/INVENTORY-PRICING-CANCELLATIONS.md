@@ -26,10 +26,13 @@ of unopened packages. The table also shows package equivalents.
 
 ## Cancellation rules
 
-- **New:** ingredients are reserved. Cancellation returns the exact allocations
-  recorded for that order, once only.
-- **Preparing:** ingredients are considered consumed. Cancellation does not put
-  prepared food or drinks back into stock.
+- **New:** ingredients are reserved. The customer or an Admin can cancel.
+  Cancellation returns the exact allocations recorded for that order, once only.
+- **Preparing:** ingredients are considered consumed. Customers can no longer
+  cancel online; an Admin can cancel from **Operations** (for example, if the
+  customer calls). Cancellation does not put prepared food or drinks back into stock.
+- A canceled order gives its one-time voucher back, so the customer can use it again.
+- Manual discounts are not accepted. Use vouchers for every price reduction.
 - **Out for Delivery, Arrived or Completed:** cancellation is rejected.
 - A recipe or unit conversion edited later never changes a historical return.
 - Canceling GCash does not issue a refund. It flags the payment for staff review.
