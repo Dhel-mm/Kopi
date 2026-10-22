@@ -113,3 +113,87 @@
     transform: none;
   }
 }
+
+/* ---------- Store location (header pin) ---------- */
+/* The pin bounces every few seconds with a pulsing "ping" under it so
+   customers notice it. On hover or keyboard focus it hops, turns gold and the
+   text gets a growing underline and a small "open map" arrow. */
+.location { position: relative; }
+.location i {
+  position: relative;
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: kopi-pin-bounce 2.8s var(--theme-ease) infinite;
+  transition: color 200ms ease;
+}
+.location i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 16px;
+  height: 6px;
+  margin-left: -8px;
+  border-radius: 50%;
+  background: rgba(212, 155, 67, 0.55);
+  animation: kopi-pin-ping 2.8s ease-out infinite;
+  pointer-events: none;
+}
+.location span {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 2px no-repeat;
+  padding-bottom: 2px;
+  transition: color 200ms ease, background-size 280ms var(--theme-ease);
+}
+.location span::after {
+  content: "↗";
+  display: inline-block;
+  margin-left: 3px;
+  opacity: 0;
+  transform: translate(-4px, 3px);
+  transition: opacity 200ms ease, transform 280ms var(--theme-ease);
+}
+.location:hover span,
+.location:focus-visible span {
+  color: #8a4b0c;
+  background-size: 100% 2px;
+}
+.location:hover span::after,
+.location:focus-visible span::after {
+  opacity: 1;
+  transform: none;
+}
+.location:hover i,
+.location:focus-visible i {
+  color: var(--theme-gold);
+  animation: kopi-pin-hop 0.7s var(--theme-ease) infinite;
+}
+.location:hover i::after,
+.location:focus-visible i::after { background: rgba(212, 155, 67, 0.45); }
+
+@keyframes kopi-pin-bounce {
+  0%, 60%, 100% { transform: translateY(0) scale(1); }
+  10% { transform: translateY(-9px) scale(1.04, 0.96); }
+  20% { transform: translateY(0) scale(1.08, 0.9); }
+  28% { transform: translateY(-4px) scale(1); }
+  36% { transform: translateY(0) scale(1.03, 0.97); }
+}
+@keyframes kopi-pin-ping {
+  0%, 18% { transform: scale(0.6); opacity: 0; }
+  22% { transform: scale(1); opacity: 0.9; }
+  55% { transform: scale(2.4); opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes kopi-pin-hop {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  35% { transform: translateY(-7px) rotate(-8deg); }
+  65% { transform: translateY(-2px) rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .location i,
+  .location i::after,
+  .location:hover i,
+  .location:focus-visible i { animation: none; }
+  .location span,
+  .location span::after { transition: none; }
+}

@@ -19,7 +19,14 @@ function migrateOrderWorkflow(db) {
       payment_rejected_by: "INTEGER REFERENCES users(id)",
       cancellation_acknowledged_at: "TEXT",
       cash_tendered: "REAL CHECK(cash_tendered >= 0)",
-      cash_change: "REAL CHECK(cash_change >= 0)"
+      cash_change: "REAL CHECK(cash_change >= 0)",
+      // Senior Citizen / PWD discount record (kept for BIR-style reporting).
+      special_discount_type: "TEXT CHECK(special_discount_type IN ('Senior Citizen','PWD'))",
+      special_discount_id: "TEXT",
+      special_discount_name: "TEXT",
+      special_discount_items_json: "TEXT",
+      special_discount: "REAL NOT NULL DEFAULT 0 CHECK(special_discount >= 0)",
+      vat_exempt: "REAL NOT NULL DEFAULT 0 CHECK(vat_exempt >= 0)"
     })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
     // Correct older cash receipts only where collection is evidenced by tender or completion.
     db.exec(`UPDATE orders SET payment_status='Paid' WHERE payment='Cash' AND payment_status='Unpaid'
@@ -70,6 +77,9 @@ function migrateOrderWorkflow(db) {
         WHERE status IN ('New','Preparing');
       `);
     }
+    require("./inventory").migrateReorderSettings(db);
+    require("./orderSafety").migrateOrderSafety(db);
+    require("./idRegistry").migrateIdRegistry(db);
     require("./inventorySetup").seedInventorySetup(db);
     require("./inventoryCatalog").migrateInventoryPackages(db);
   })();

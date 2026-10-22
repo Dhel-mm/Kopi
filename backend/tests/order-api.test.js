@@ -33,6 +33,14 @@ test("HTTP ordering, authorization, stock adjustments, recipe editing and manual
     assert.equal((await request("/orders","POST",payload)).data.orderId,id);
     assert.equal((await request("/orders","POST",body({...payload,requestKey:require("node:crypto").randomUUID()}))).status,409);
     assert.equal((await request("/orders/"+id+"/cancel","PATCH",{},{id:3,role:"Customer"})).status,404);
+    // My Orders > View Receipt: only the customer's own order.
+    const receipt=await request("/orders/"+id+"/receipt");
+    assert.equal(receipt.status,200);
+    assert.equal(receipt.data.order.orderNumber,created.data.orderNumber);
+    assert.equal(receipt.data.order.paymentReference,"0001234567890");
+    assert.ok(receipt.data.order.items.length>0&&receipt.data.order.items[0].options);
+    assert.equal((await request("/orders/"+id+"/receipt","GET",undefined,{id:3,role:"Customer"})).status,404);
+    assert.equal((await request("/orders/"+id+"/receipt","GET",undefined,null)).status,401);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{confirmedReceived:true},customer)).status,403);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{},admin)).status,400);
     assert.equal((await request("/admin/orders/"+id+"/verify-payment","PATCH",{confirmedReceived:true},admin)).status,200);

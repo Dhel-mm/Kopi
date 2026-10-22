@@ -26,7 +26,8 @@ function createApp(db,settings={}) {
     }
     next();
   });
-  app.use(express.json({limit:"400kb",strict:true}));
+  // Room for two compressed photos (GCash screenshot and Senior Citizen / PWD ID).
+  app.use(express.json({limit:"800kb",strict:true}));
   app.get("/api/health",(req,res)=>{
     try {db.prepare("SELECT 1").get();res.json({status:"ok"});}
     catch {res.status(503).json({status:"unavailable"});}
@@ -40,6 +41,7 @@ function createApp(db,settings={}) {
   app.use("/api/admin/inventory",require("./routes/inventory")(db));
   app.use("/api/admin/users",require("./routes/users")(db));
   app.use("/api/admin/vouchers",require("./routes/vouchers")(db));
+  app.use("/api/id-registry",require("./routes/idRegistry")(db));
   app.use("/api",(req,res)=>res.status(404).json({message:"API endpoint not found."}));
   app.get("/",(req,res)=>res.redirect("/splash.html"));
   // POS order entry belongs to the Cashier workspace. Preserve old bookmarks

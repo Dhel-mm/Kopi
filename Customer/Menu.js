@@ -54,9 +54,39 @@ function renderMenu() {
 }
 
 function productCard(product) {
+  const sizes = sizeChoices(product);
+  // Items with one price (rice meals, snacks) get the same white price chip.
+  const priceInfo = sizes.length
+    ? `<span class="size-chips" aria-label="Available sizes">${sizes.map(sizeChip).join("")}</span>`
+    : `<span class="size-chips" aria-label="Price"><span class="size-chip price-only"><strong>₱${basePrice(product)}</strong></span></span>`;
   return `<button class="product-card" type="button" data-product-id="${product.id}">
-    <img src="${product.image}" alt="${product.name}"><h3>${product.name}</h3><p>${priceLabel(product)}</p>
+    <img src="${product.image}" alt="${product.name}"><h3>${product.name}</h3>${priceInfo}
   </button>`;
+}
+
+// Every size a product is actually sold in, read from the shared menu prices.
+// Drinks always show their sizes; food shows them only when there is a choice
+// (for example 6pcs or 12pcs chicken wings).
+function sizeChoices(product) {
+  const option = product.options.find(entry => entry.priceKey);
+  if (!option) return [];
+  const values = option.values.filter(value => Object.hasOwn(product.prices, value));
+  if (product.type !== "drink" && values.length < 2) return [];
+  return values.map(value => ({ value, ...describeSize(value), price: product.prices[value] }));
+}
+
+function describeSize(value) {
+  const [temperature, size] = value.includes(" - ") ? value.split(" - ").map(part => part.trim()) : [null, value.trim()];
+  const label = temperature ? `${temperature.charAt(0)}${temperature.slice(1).toLowerCase()} ${size}` : size;
+  return { temperature, size, label };
+}
+
+function sizeChip(choice) {
+  const icon = choice.temperature === "HOT" ? "bi-cup-hot-fill" : choice.temperature === "ICED" ? "bi-snow" : "";
+  const tone = choice.temperature ? ` ${choice.temperature.toLowerCase()}` : "";
+  return `<span class="size-chip${tone}" data-size="${choice.value}" title="Choose ${choice.label}">
+    ${icon ? `<i class="bi ${icon}" aria-hidden="true"></i>` : ""}<span>${choice.label}</span><strong>₱${choice.price}</strong>
+  </span>`;
 }
 
 function priceLabel(product) {
@@ -80,7 +110,11 @@ function handleMenuClick(event) {
     const product = KopiStore.findProduct(card.dataset.productId);
     if (!product) return;
     if (product.customizable === false) addFixedProduct(product);
-    else openCustomizer(prepareProduct(product, card.closest(".menu-category").id));
+    else {
+      // Tapping a size chip opens the customizer with that size already chosen.
+      const chip = event.target.closest("[data-size]");
+      openCustomizer(prepareProduct(product, card.closest(".menu-category").id), null, chip ? { size: chip.dataset.size } : {});
+    }
     return;
   }
 
@@ -118,7 +152,7 @@ function addFixedProduct(product) {
   KopiStore.addToCart({ productId: product.id, name: product.name, image: product.image, options: {}, price: basePrice(product), quantity: 1 });
 }
 
-function openCustomizer(product, cartItem = null) {
+function openCustomizer(product, cartItem = null, preset = {}) {
   state.product = product;
   state.editCartId = cartItem?.cartId || null;
   state.quantity = cartItem?.quantity || 1;
@@ -129,6 +163,8 @@ function openCustomizer(product, cartItem = null) {
       ? savedChoice ?? null
       : savedChoice ?? option.defaultValue ?? (option.values.length === 1 ? option.values[0] : null);
   });
+  const sizeOption = product.options.find(option => option.priceKey);
+  if (sizeOption && sizeOption.values.includes(preset.size)) state.choices[sizeOption.key] = preset.size;
   customImage.src = product.image;
   customImage.alt = product.name;
   customTitle.textContent = product.name;
@@ -142,7 +178,7 @@ function openCustomizer(product, cartItem = null) {
 function renderOptions() {
   customOptions.innerHTML = state.product.options.map(option => `
     <fieldset><legend>${option.label}:</legend><div class="pill-row">
-      ${option.values.map(value => `<button class="pill${state.choices[option.key] === value ? " active" : ""}" type="button" data-key="${option.key}" data-value="${value}">${value}</button>`).join("")}
+      ${option.values.map(value => `<button class="pill${state.choices[option.key] === value ? " active" : ""}" type="button" data-key="${option.key}" data-value="${value}" aria-pressed="${state.choices[option.key] === value}">${value}${option.priceKey && state.product.prices[value] != null ? ` · ₱${state.product.prices[value]}` : ""}</button>`).join("")}
     </div></fieldset>
   `).join("");
   customOptions.querySelectorAll(".pill").forEach(pill => pill.addEventListener("click", () => {

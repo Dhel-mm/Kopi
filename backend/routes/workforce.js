@@ -2,7 +2,7 @@ const express = require("express");
 const {authFor, requireRole} = require("../middleware/auth");
 const {createOrderWorkflow, sendError} = require("../services/orderWorkflow");
 const {OrderError} = require("../services/pricing");
-const {lowStockLevel, round} = require("../services/inventory");
+const {stockLevels} = require("../services/inventory");
 const {createDeliveryService} = require("../services/delivery");
 
 // Employee workspaces deliberately do not reuse the unrestricted Admin API.
@@ -12,6 +12,8 @@ module.exports = function workforceRouter(db) {
   const delivery = createDeliveryService(db);
   const availability = require("../services/productAvailability").createProductAvailability(db);
   const paymentReview = require("../services/paymentReview").createPaymentReviewService(db);
+  const safety = require("../services/orderSafety").createOrderSafety(db);
+  const rowFor = db.prepare("SELECT * FROM orders WHERE id=?");
   const cashier = requireRole("Cashier");
   const staff = requireRole("Admin", "Staff");
   router.use(authFor(db), requireRole("Admin", "Cashier", "Staff"));
@@ -46,6 +48,7 @@ module.exports = function workforceRouter(db) {
       service_type AS serviceType,customer_name AS customer,payment,
       payment_status AS paymentStatus,subtotal,voucher_discount AS voucherDiscount,
       total,cash_tendered AS cashTendered,cash_change AS cashChange,
+      special_discount_type AS specialDiscountType,special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,special_discount AS specialDiscount,vat_exempt AS vatExempt,
       created_at AS createdAt FROM orders WHERE id=? AND order_type='In-store'`).get(req.params.id);
     if (!order) return res.status(404).json({message:"In-store order was not found."});
     res.json({order:{...order,items:items(order.id, true)}});
@@ -67,6 +70,8 @@ module.exports = function workforceRouter(db) {
     const orders = db.prepare(`SELECT o.id,o.order_number AS orderNumber,o.order_type AS orderType,
       o.service_type AS serviceType,o.status,o.payment,o.payment_status AS paymentStatus,
       o.payment_reference AS paymentReference,o.address,o.phone,o.total,
+      o.special_discount_type AS specialDiscountType,o.special_discount_id AS specialDiscountId,o.special_discount_name AS specialDiscountName,o.special_discount AS specialDiscount,o.vat_exempt AS vatExempt,
+      o.special_discount_status AS specialDiscountStatus,
       o.delivery_revision AS deliveryRevision,o.rider_fee_cents / 100.0 AS riderFee,
       o.delivery_tracking_url AS trackingUrl,o.created_at AS createdAt,
       COALESCE(NULLIF(o.customer_name,''),u.first_name || ' ' || u.last_name) AS customer
@@ -74,7 +79,7 @@ module.exports = function workforceRouter(db) {
       WHERE o.status IN ('New','Preparing')
         OR (o.order_type='Online' AND o.status IN ('Out for Delivery','Arrived'))
       ORDER BY o.id`).all();
-    res.json({orders:orders.map(order => ({...order,items:items(order.id)}))});
+    res.json({orders:orders.map(order => ({...order,items:items(order.id),...safety.describe(rowFor.get(order.id))}))});
   });
   router.patch("/preparation/:id/status", staff, (req, res) => {
     try {
@@ -91,6 +96,13 @@ module.exports = function workforceRouter(db) {
         if (!allowed && !(requested === order.status && ["Preparing",next,"Completed"].includes(requested))) {
           throw new OrderError("Start preparation, hand the order to the rider, then confirm delivery before completing it.", 403);
         }
+        // Flagged cash-on-delivery orders are confirmed with the customer first.
+        if (order.status === "New" && requested === "Preparing" && safety.needsPhoneConfirmation(order)) {
+          if (req.body?.customerConfirmed !== true) {
+            throw new OrderError("This cash order is flagged. Call or text the customer to confirm the order and address before preparing it, or reject it.", 409);
+          }
+          safety.confirmCustomer(order, req.user);
+        }
         if (completingDelivery && req.body?.deliveryConfirmed !== true) {
           throw new OrderError("Confirm that the rider delivered the complete order to the customer.", 400);
         }
@@ -104,17 +116,36 @@ module.exports = function workforceRouter(db) {
     try {res.json(paymentReview.verify(req.params.id, req.body || {}, req.user));}
     catch (error) {sendError(res, error);}
   });
+  router.patch("/preparation/:id/reject", staff, (req, res) => {
+    try {res.json({...safety.reject(req.params.id, req.body || {}, req.user, workflow), message:"Order rejected. Reserved ingredients were returned and the customer will be notified."});}
+    catch (error) {sendError(res, error);}
+  });
+  router.get("/preparation/:id/payment-proof", staff, (req, res) => {
+    try {res.json(safety.proof(req.params.id));}
+    catch (error) {sendError(res, error);}
+  });
+  router.get("/preparation/:id/id-proof", staff, (req, res) => {
+    try {res.json(safety.idProof(req.params.id));}
+    catch (error) {sendError(res, error);}
+  });
+  router.patch("/preparation/:id/verify-id", staff, (req, res) => {
+    try {res.json(safety.verifyId(req.params.id, req.body || {}, req.user));}
+    catch (error) {sendError(res, error);}
+  });
+  router.patch("/preparation/:id/not-approve-id", staff, (req, res) => {
+    try {res.json({...safety.disapproveId(req.params.id, req.body || {}, req.user, workflow), message:"Discount not approved. The order continues at the normal price and the customer will be notified."});}
+    catch (error) {sendError(res, error);}
+  });
   router.put("/preparation/:id/delivery", staff, (req, res) => {
     try {res.json({delivery:delivery.save(req.params.id, req.body || {}, req.user)});}
     catch (error) {sendError(res, error);}
   });
   router.get("/stock", staff, (req, res) => {
-    const items = db.prepare(`SELECT * FROM inventory_items WHERE is_archived=0
-      ORDER BY category,product_name`).all().map(item => ({
+    const items = stockLevels(db).map(({item, level}) => ({
         id:item.id,productName:item.product_name,category:item.category,
-        quantity:round(item.quantity),measurement:item.measurement,
-        status:item.quantity<=0?"Out of Stock":item.quantity<=lowStockLevel(item)?"Low Stock":"In Stock"
-      }));
+        quantity:level.quantity,measurement:item.measurement,reorderLevel:level.reorderLevel,
+        daysLeft:level.daysLeft,status:level.status
+      })).sort((a,b)=>a.category.localeCompare(b.category)||a.productName.localeCompare(b.productName));
     res.json({items});
   });
   return router;

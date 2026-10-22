@@ -58,7 +58,9 @@ test("new and saved recipes use oat milk, deduct 1 L from 20 bottles, and cancel
     const allTerms=db.prepare("SELECT terms_json FROM menu_recipes").all().flatMap(row=>JSON.parse(row.terms_json));
     assert.equal(allTerms.some(term=>term.sku==="fresh-milk"),false);
     const workflow=createOrderWorkflow(db);
-    const payload=body({items:[{productId:"caramel-frappe",quantity:10,options:{Size:"16oz"}}],expectedTotal:1600});
+    // ₱1,600 is above the cash-on-delivery limit, so this large order is prepaid by GCash.
+    const payload=body({items:[{productId:"caramel-frappe",quantity:10,options:{Size:"16oz"}}],expectedTotal:1600,
+      payment:"GCash",paymentReference:"1000000000017"});
     const order=workflow.create(payload,customer);
     assert.equal(stock(db,"oat-milk").quantity,19000);
     assert.equal(stock(db,"oat-milk").quantity/stock(db,"oat-milk").initial_quantity,19);

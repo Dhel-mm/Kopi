@@ -6,7 +6,7 @@ const Database=require("better-sqlite3");
 test("manual reference validation never automatically verifies a payment",()=>{
   assert.deepEqual(parseManualPayment("GCash"," 0001234567890 "),{payment:"GCash",reference:"0001234567890",status:"Pending verification"});
   assert.deepEqual(parseManualPayment("Cash","1234567890"),{payment:"Cash",reference:null,status:"Unpaid"});
-  for(const value of ["","123","abc",123456789,"1".repeat(31)]) assert.throws(()=>parseManualPayment("GCash",value));
+  for(const value of ["","123","abc",123456789,"1".repeat(31),"123456789012","12345678901234","12345678901AB","1234 5678 9012"]) assert.throws(()=>parseManualPayment("GCash",value));
   assert.throws(()=>parseManualPayment("Unknown",""));
 });
 test("payment migration is repeatable and preserves historic orders",()=>{

@@ -35,11 +35,12 @@
           <label class="category-select"><i class="bi bi-funnel"></i><select id="categoryFilter"><option value="All">All Categories</option></select></label>
           <button class="add-product" id="addProduct" type="button"><i class="bi bi-plus-lg"></i> Add Product</button>
         </section>
-        <section class="inventory-table-card"><div class="table-scroll"><table class="inventory-table"><thead><tr><th>Product Name</th><th>Category</th><th>Stock</th><th>Measurement</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventoryRows"></tbody></table></div><p class="inventory-empty" id="inventoryEmpty" hidden>No inventory products found.</p><footer class="inventory-footer"><span id="inventoryRange"></span></footer></section>
+        <section class="inventory-table-card"><div class="table-scroll"><table class="inventory-table"><thead><tr><th>Product Name</th><th>Category</th><th>Stock</th><th>Measurement</th><th>Reorder level</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventoryRows"></tbody></table></div><p class="inventory-empty" id="inventoryEmpty" hidden>No inventory products found.</p><footer class="inventory-footer"><span id="inventoryRange"></span></footer></section>
         <section class="recipe-tools">
           <p id="recipeSummary" role="status">Checking recipe setup…</p>
           <p id="conversionSummary" role="status"></p>
-          <p>Stock counts full and partly used packages as whole numbers. A package remains counted until empty. Measurement shows the total amount left. Set the full package size in Ingredient unit conversion. Low stock means 25% of one package remains; Sugar, Condensed Milk and Sprite are low at one package or less.</p>
+          <p>Stock counts full and partly used packages as whole numbers. A package remains counted until empty. Measurement shows the total amount left. Set the full package size in Ingredient unit conversion.</p>
+          <p><strong>Low stock parameters.</strong> An ingredient becomes Low Stock when its available amount reaches its <em>reorder level</em>. The reorder level uses four parameters: (1) the package baseline — 25% of one package, or one package for Sugar, Condensed Milk and Sprite; (2) average daily usage from orders in the last 14 days; (3) lead time — days a restock takes to arrive; and (4) safety stock days. Reorder level = the higher of the package baseline and average daily usage × (lead time + safety days). You can also save a manual reorder level per ingredient with the <i class="bi bi-sliders" aria-hidden="true"></i> button. Zero is Out of Stock.</p>
         </section>
         <dialog id="recipeDialog" class="recipe-dialog">
           <form id="recipeForm">
@@ -91,6 +92,19 @@
             </form>
             <ul id="conversionList"></ul>
           </details>
+        </dialog>
+        <dialog id="reorderDialog" class="recipe-dialog">
+          <form id="reorderForm">
+            <div class="recipe-dialog-heading"><h2 id="reorderTitle">Low-stock settings</h2><button class="close-panel" type="button" id="closeReorder" aria-label="Close low-stock settings"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+            <dl class="reorder-facts" id="reorderFacts"></dl>
+            <div class="conversion-fields">
+              <label>Lead time (days)<input id="reorderLeadTime" type="number" min="0" max="60" step="0.5" required></label>
+              <label>Safety stock (days)<input id="reorderSafety" type="number" min="0" max="30" step="0.5" required></label>
+              <label>Manual reorder level <small id="reorderUnit"></small><input id="reorderManual" type="number" min="0" step="0.001" placeholder="Blank = automatic"></label>
+            </div>
+            <p class="reorder-preview" id="reorderPreview" role="status"></p>
+            <button class="add-product" type="submit" id="saveReorder">Save low-stock settings</button>
+          </form>
         </dialog>
         <dialog id="movementDialog" class="recipe-dialog">
           <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button class="close-panel" type="button" id="closeMovements" aria-label="Close stock movements"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>

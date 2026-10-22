@@ -30,7 +30,7 @@ test("legacy receipt repair marks only evidenced cash as paid and leaves GCash v
     const completed=flow.create(body(),customer);
     const pending=flow.create(body(),customer);
     const pos=flow.create(body({serviceType:"Dine-in"}),admin,true);
-    const gcash=flow.create(body({payment:"GCash",paymentReference:"123456789123"}),customer);
+    const gcash=flow.create(body({payment:"GCash",paymentReference:"1234567891234"}),customer);
     db.prepare("UPDATE orders SET status='Completed' WHERE id=?").run(completed.orderId);
     db.prepare("UPDATE orders SET payment_status='Unpaid' WHERE id=?").run(pos.orderId);
     migrateOrderWorkflow(db); migrateOrderWorkflow(db);

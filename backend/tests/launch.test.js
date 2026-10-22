@@ -31,7 +31,7 @@ test("private files are never served; JSON errors are safe and health reveals no
     assert.ok(!message.includes("node_modules"));
     const foreign=await fetch(base+"/api/health",{headers:{Origin:"https://attacker.invalid"}});
     assert.equal(foreign.status,403);
-    const oversized=await fetch(base+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({value:"x".repeat(450000)})});
+    const oversized=await fetch(base+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({value:"x".repeat(900000)})});
     assert.equal(oversized.status,413);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
@@ -77,4 +77,14 @@ test("online backup and restore to a new file preserve data without overwriting 
     for(const name of fs.readdirSync(temporary))fs.unlinkSync(path.join(temporary,name));
     fs.rmdirSync(temporary);
   }
+});
+
+test("TRUST_PROXY supports loopback, a hop count, and hosted platforms such as Render",()=>{
+  const {config}=require("../config");
+  const base={JWT_SECRET:"x".repeat(40)};
+  assert.equal(config(base).trustProxy,false);
+  assert.equal(config({...base,TRUST_PROXY:"loopback"}).trustProxy,"loopback");
+  assert.equal(config({...base,TRUST_PROXY:"2"}).trustProxy,2);
+  assert.equal(config({...base,TRUST_PROXY:"true"}).trustProxy,true);
+  assert.equal(config({...base,TRUST_PROXY:"yes please"}).trustProxy,false);
 });

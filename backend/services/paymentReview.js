@@ -43,15 +43,27 @@ function createPaymentReviewService(db) {
   function pending(user) {
     return db.prepare(`SELECT id AS orderId, order_number AS orderNumber,
       cancellation_reason AS message, 'cancellation' AS type, 1 AS revision
-      FROM orders WHERE user_id=? AND status='Canceled' AND payment_rejected_at IS NOT NULL
-        AND cancellation_acknowledged_at IS NULL ORDER BY id`).all(user.id);
+      FROM orders WHERE user_id=? AND status='Canceled' AND (payment_rejected_at IS NOT NULL OR shop_rejected_at IS NOT NULL)
+        AND cancellation_acknowledged_at IS NULL
+      UNION ALL
+      SELECT id, order_number, special_discount_note, 'discount', 1
+      FROM orders WHERE user_id=? AND special_discount_status='Not approved' AND special_discount_note IS NOT NULL
+        AND discount_notice_acknowledged_at IS NULL
+      ORDER BY 1`).all(user.id, user.id);
+  }
+  // Customer read the "discount not approved" notice.
+  function acknowledgeDiscount(id, user) {
+    const updated = db.prepare(`UPDATE orders SET discount_notice_acknowledged_at=COALESCE(discount_notice_acknowledged_at,CURRENT_TIMESTAMP)
+      WHERE id=? AND user_id=? AND special_discount_status='Not approved'`).run(id, user.id);
+    if (!updated.changes) throw new OrderError("Discount notice was not found.", 404);
+    return {message: "Discount notice acknowledged."};
   }
   function acknowledge(id, user) {
     const updated = db.prepare(`UPDATE orders SET cancellation_acknowledged_at=COALESCE(cancellation_acknowledged_at,CURRENT_TIMESTAMP)
-      WHERE id=? AND user_id=? AND status='Canceled' AND payment_rejected_at IS NOT NULL`).run(id, user.id);
+      WHERE id=? AND user_id=? AND status='Canceled' AND (payment_rejected_at IS NOT NULL OR shop_rejected_at IS NOT NULL)`).run(id, user.id);
     if (!updated.changes) throw new OrderError("Cancellation notice was not found.", 404);
     return {message: "Cancellation notice acknowledged."};
   }
-  return {reject, verify, pending, acknowledge};
+  return {reject, verify, pending, acknowledge, acknowledgeDiscount};
 }
 module.exports = {createPaymentReviewService, rejectionMessage};

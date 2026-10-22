@@ -95,12 +95,13 @@
   .inventory-table { min-width: 0; table-layout: fixed; }
   .inventory-table th, .inventory-table td { padding: 11px 12px; overflow-wrap: anywhere; }
   .inventory-table th { position: sticky; top: 0; z-index: 1; }
-  .inventory-table th:nth-child(1) { width: 25%; }
-  .inventory-table th:nth-child(2) { width: 25%; }
-  .inventory-table th:nth-child(3) { width: 12%; }
+  .inventory-table th:nth-child(1) { width: 20%; }
+  .inventory-table th:nth-child(2) { width: 18%; }
+  .inventory-table th:nth-child(3) { width: 11%; }
   .inventory-table th:nth-child(4) { width: 12%; }
   .inventory-table th:nth-child(5) { width: 15%; }
   .inventory-table th:nth-child(6) { width: 11%; }
+  .inventory-table th:nth-child(7) { width: 13%; }
   .stock-status { padding: 5px 8px; max-width: 100%; }
 }
 /* Recipe setup follows the existing coffee-and-cream inventory palette. */
@@ -149,3 +150,12 @@
 .stock-movements li { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid #e6d9c7; }
 .stock-movements small { overflow-wrap: anywhere; color: #756958; }
 @media (max-width: 500px) { .conversion-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* Low-stock parameters (panel feedback). */
+.reorder-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:4px 0 16px; }
+.reorder-facts div { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fffaf1; }
+.reorder-facts dt { color:var(--muted); font-size:11px; }
+.reorder-facts dd { margin:2px 0 0; font-size:14px; font-weight:800; }
+.reorder-preview { margin:12px 0; padding:10px 12px; border-radius:10px; background:#f4efe5; font-size:12.5px; }
+#reorderDialog .conversion-fields label small { color:var(--muted); font-weight:500; }
+@media (max-width:600px) { .reorder-facts { grid-template-columns:minmax(0,1fr); } }

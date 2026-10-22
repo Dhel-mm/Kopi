@@ -2099,3 +2099,56 @@ button, input {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ---------- My Orders: View Receipt ---------- */
+#customerOrders .view-receipt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-width: 0; margin: 0; padding: 9px 15px; font: 600 12px "Poppins", sans-serif; }
+#customerOrders .view-receipt-btn i { font-size: 14px; }
+.order-receipt-dialog { width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 0; overflow: hidden; border: 0; border-radius: 14px; background: #fff; color: #2f2921; box-shadow: 0 24px 60px rgb(0 0 0 / 25%); }
+.order-receipt-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.order-receipt-dialog::backdrop { background: rgb(0 0 0 / 40%); }
+.order-receipt-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px 8px 18px; background: #ecc98c; border-bottom: 3px solid #b8792a; }
+.order-receipt-heading h2 { margin: 0; font-size: 17px; font-weight: 800; }
+.order-receipt-tools { display: flex; align-items: center; gap: 6px; }
+.order-receipt-print { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #2f2921; border-radius: 8px; background: #2f2921; color: #fff; font: 600 12px "Poppins", sans-serif; cursor: pointer; }
+.order-receipt-print:disabled { opacity: .5; cursor: wait; }
+.order-receipt-close { border: 0; background: transparent; color: #17120d; font-size: 20px; cursor: pointer; }
+.order-receipt-close:hover { opacity: .7; }
+.order-receipt-paper { min-height: 0; padding: 18px 28px 22px; overflow-y: auto; overscroll-behavior: contain; font-size: 13px; }
+.order-receipt-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; text-align: center; }
+.order-receipt-brand img { width: 52px; height: 52px; }
+.order-receipt-brand h3 { margin: 0; font-family: Georgia, serif; font-size: 28px; line-height: 1; }
+.order-receipt-brand p, .order-receipt-meta p { margin: 0; font-size: 11.5px; font-weight: 800; line-height: 1.4; }
+.order-receipt-meta { display: grid; gap: 2px; margin: 0 0 10px; }
+.order-receipt-meta p { font-size: 12.5px; }
+.order-receipt-table { padding-bottom: 8px; border-bottom: 3px dotted #342d25; }
+.order-receipt-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 96px; gap: 6px; padding: 7px 2px; font-weight: 800; }
+.order-receipt-row small { display: block; color: #7a6a55; font-size: 10.5px; font-weight: 500; }
+.order-receipt-row span:last-child { text-align: right; }
+.order-receipt-head { border-top: 2px solid #5f5a52; border-bottom: 2px solid #5f5a52; }
+.order-receipt-breakdown { display: grid; gap: 6px; padding-top: 12px; }
+.order-receipt-breakdown > div { display: flex; justify-content: space-between; gap: 16px; }
+.order-receipt-breakdown strong { font-weight: 600; }
+.order-receipt-breakdown .is-discount { color: #49613e; }
+.order-receipt-note { margin: 0; color: #49613e; font-size: 11px; }
+.order-receipt-note.is-warning { color: #a8342e; font-weight: 600; }
+.order-receipt-total { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 2px 0; color: #211508; font-size: 16px; font-weight: 800; }
+.order-receipt-total strong { color: #8a4b0c; font-size: 19px; }
+.order-receipt-thanks { display: grid; justify-items: center; margin-top: 36px; text-align: center; }
+.order-receipt-thanks strong { font-size: 20px; }
+.order-receipt-thanks span { font-size: 12px; font-weight: 800; }
+@media (max-width: 600px) {
+  #customerOrders .view-receipt-btn { flex: 1 1 auto; }
+  .order-receipt-paper { padding: 14px 16px 18px; }
+  .order-receipt-row { grid-template-columns: 34px minmax(0, 1fr) 80px; font-size: 12px; }
+  .order-receipt-brand h3 { font-size: 22px; }
+  .order-receipt-thanks strong { font-size: 16px; }
+}
+/* Print only the receipt. */
+@media print {
+  body.printing-receipt > *:not(#orderReceiptDialog) { display: none !important; }
+  body.printing-receipt { background: #fff !important; }
+  .order-receipt-dialog { position: static; width: 100%; max-height: none; border-radius: 0; box-shadow: none; overflow: visible; }
+  .order-receipt-dialog::backdrop { display: none; }
+  .order-receipt-heading { display: none !important; }
+  .order-receipt-paper { overflow: visible; }
+}

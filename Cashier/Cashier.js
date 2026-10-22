@@ -15,13 +15,16 @@
     try {
       const {order} = await KopiApi.request("/workforce/orders/"+encodeURIComponent(id));
       const discount = Math.max(0,order.subtotal-order.total);
+      const special = order.specialDiscountType ? `<p class="receipt-line"><span>VAT exemption (12%)</span><span>− ${money(order.vatExempt)}</span></p>
+        <p class="receipt-line"><span>${esc(order.specialDiscountType)} discount (20%)</span><span>− ${money(order.specialDiscount)}</span></p>
+        <p class="receipt-line"><small>${esc(order.specialDiscountType)} ID ${esc(order.specialDiscountId)} · ${esc(order.specialDiscountName)}</small></p>` : "";
       dialog.querySelector(".workspace-receipt").innerHTML=`<h3>Kopi; Calamba</h3>
         <p><strong>${esc(order.orderNumber)}</strong> · ${esc(order.serviceType)}</p>
         <p>${esc(order.customer || "Walk-in Customer")}<br>${esc(date(order.createdAt))}</p>
         <p>Status: <strong>${esc(order.status)}</strong><br>Payment: ${esc(order.payment)} · ${esc(order.paymentStatus === "Verified" ? "Paid" : order.paymentStatus)}</p>
         <ul>${order.items.map(item=>`<li><div class="receipt-line"><span>${item.quantity} × ${esc(item.name)}</span><strong>${money(item.price*item.quantity)}</strong></div><small>${esc(Object.values(item.options).filter(Boolean).join(" · "))}</small></li>`).join("")}</ul>
         <p class="receipt-line"><span>Subtotal</span><span>${money(order.subtotal)}</span></p>
-        <p class="receipt-line"><span>Discounts</span><span>− ${money(discount)}</span></p>
+        ${special}<p class="receipt-line"><span>Total discounts</span><span>− ${money(discount)}</span></p>
         <p class="receipt-line receipt-total"><span>Total</span><span>${money(order.total)}</span></p>
         ${order.payment === "Cash" ? `<p class="receipt-line"><span>Cash received</span><span>${money(order.cashTendered)}</span></p><p class="receipt-line"><span>Cash change</span><strong>${money(order.cashChange)}</strong></p>` : ""}
         <p class="workspace-receipt-note">Order record only. Payment confirmation is shown separately above. Thank you for choosing Kopi; Calamba.</p>`;

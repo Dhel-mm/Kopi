@@ -19,8 +19,13 @@ of unopened packages. The table also shows package equivalents.
 
 - Add stock: enter the actual amount received in the displayed base unit.
 - Set stock: enter available stock, excluding ingredients reserved for open orders.
-- Low stock: 25% of one package or less, but more than zero.
-- Sugar, Condensed Milk and Sprite: one package or less is low stock.
+- Low stock: available stock at or below the ingredient's **reorder level**.
+  The reorder level uses four parameters: the package baseline (25% of one
+  package; one package for Sugar, Condensed Milk and Sprite), average daily
+  order usage over the last 14 days, lead time in days (default 2) and safety
+  stock days (default 1). Reorder level = the higher of the baseline and
+  daily usage × (lead time + safety days). Admin can change lead time and
+  safety days, or save a manual reorder level, with the sliders button.
 - Zero is out of stock. Orders that need it are blocked.
 - The history button shows every recorded addition, deduction and stock return.
 
@@ -33,6 +38,35 @@ of unopened packages. The table also shows package equivalents.
   customer calls). Cancellation does not put prepared food or drinks back into stock.
 - A canceled order gives its one-time voucher back, so the customer can use it again.
 - Manual discounts are not accepted. Use vouchers for every price reduction.
+- Senior Citizen and PWD discount: 20% plus VAT exemption on the cardholder's
+  own order (one drink and one food item). The ID number and name are saved
+  on the order; cashiers must check the physical ID, and riders check it on
+  delivery. It cannot be combined with a voucher. If the shop is not
+  VAT-registered, set `vatRegistered: false` in `services/pricing.js`.
+- ID checks:
+  - **ID number format.** PWD IDs follow the NCDA/DOH format
+    `RR-PPMM-BBB-NNNNNNN` (Philippine Standard Geographic Code region,
+    province, city/municipality and barangay, then the sequence number), e.g.
+    `04-3405-012-0001234` for Calamba City, Laguna. A 5-digit sequence is also
+    accepted because some LGUs use it, and the region code must be 01 to 18.
+    Senior Citizen (OSCA) IDs have no single nationwide format, so any control
+    number of 4 to 30 letters and numbers with at least 3 digits is accepted.
+  - **Online orders: ID photo checked by staff.** The customer must upload a
+    photo of the ID before applying the discount. The order is saved with the
+    ID status "Pending verification" and cannot be prepared until Admin
+    (Operations > order details > Senior Citizen / PWD discount box) or Staff
+    (Preparation Queue card) opens **View ID**, compares the photo with the name
+    and ID number, and clicks **ID is valid**. **Not approved** keeps the order but removes the
+    discount: the order goes back to its normal price, the customer gets a
+    "Discount not approved" notice, and for a GCash order (already paid at the
+    discounted price) the rider collects the difference in cash. In Operations,
+    orders still waiting for this check show a **Verify Order** button. Riders still
+    check the physical ID on delivery.
+  - **In-store orders: unchanged.** The cashier checks the physical ID and
+    ticks "I checked the physical ID"; the POS also checks the ID against the
+    simulated OSCA/NCDA registry (`services/idRegistry.js`, seven sample records
+    such as `OSCA-CAL-2016-00123` Juan Dela Cruz). The registry no longer has an
+    admin screen.
 - **Out for Delivery, Arrived or Completed:** cancellation is rejected.
 - A recipe or unit conversion edited later never changes a historical return.
 - Canceling GCash does not issue a refund. It flags the payment for staff review.

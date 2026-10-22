@@ -16,7 +16,9 @@
     current = null;
   }
   function show(notification, token) {
-    const canceled = notification.type === "cancellation";
+    // Cancellation and "discount not approved" notices are text only.
+    const discount = notification.type === "discount";
+    const canceled = notification.type === "cancellation" || discount;
     const link = KopiDeliveryInfo.trackingUrl(notification.trackingUrl);
     if (!canceled && !link) return;
     const previousFocus = document.activeElement;
@@ -27,11 +29,21 @@
     dialog.setAttribute("aria-describedby", "deliveryNoticeMessage");
     const title = document.createElement("h2");
     title.id = "deliveryNoticeTitle";
-    title.textContent = `${canceled ? "Order canceled" : "Delivery details"} · ${notification.orderNumber}`;
+    title.textContent = `${discount ? "Discount not approved" : canceled ? "Order canceled" : "Delivery details"} · ${notification.orderNumber}`;
     const message = document.createElement("p");
     message.id = "deliveryNoticeMessage";
     message.className = "delivery-notice-message";
-    if (canceled) message.textContent = notification.message;
+    if (discount) {
+      // Bold, gold key points: the discount removed and what to pay the rider.
+      const key = /(\(the ₱[\d,.]+ discount was removed\)|[Pp]lease pay (?:the remaining )?₱[\d,.]+ (?:in cash )?to the rider\.)/;
+      String(notification.message || "").split(key).forEach((text, index) => {
+        if (!text) return;
+        const part = document.createElement("span");
+        if (index % 2 === 1) part.className = "delivery-notice-value discount-notice-key";
+        part.textContent = text;
+        message.appendChild(part);
+      });
+    } else if (canceled) message.textContent = notification.message;
     else KopiDeliveryInfo.messageParts(notification.riderFee, link, notification.payment, notification.total).forEach((text, index) => {
       const part = document.createElement("span");
       if (index % 2 === 1) part.className = "delivery-notice-value";
@@ -62,7 +74,7 @@
       acknowledging = true;
       ok.disabled = true;
       try {
-        await KopiApi.request(`/orders/${notification.orderId}/${canceled ? "cancellation" : "delivery"}/acknowledge`, {
+        await KopiApi.request(`/orders/${notification.orderId}/${discount ? "discount" : canceled ? "cancellation" : "delivery"}/acknowledge`, {
           method: "PATCH", body: JSON.stringify({revision: notification.revision})
         });
         dismiss();

@@ -11,6 +11,15 @@ function checkConfig(env) {
   }catch {issues.push("Set APP_ORIGIN to your HTTPS website origin before production.");}
   return issues;
 }
+// Behind a hosting proxy (for example Render) the visitor's address comes from
+// X-Forwarded-For. "loopback" = a proxy on this machine, a number = how many
+// proxies to trust, "true" = trust the forwarded address (hosted platforms).
+function trustProxy(value) {
+  if (value==="loopback") return "loopback";
+  if (value==="true") return true;
+  if (/^[1-9]$/.test(value||"")) return Number(value);
+  return false;
+}
 function config(env=process.env) {
   const production=env.NODE_ENV==="production";
   const port=Number(env.PORT||3000);
@@ -19,7 +28,7 @@ function config(env=process.env) {
   const problems=checkConfig(env);
   if (production&&problems.length) throw new Error("Production configuration blocked: "+problems.join(" "));
   return {production,port,host:env.HOST||"127.0.0.1",origin:env.APP_ORIGIN||"http://localhost:"+port,
-    trustProxy:env.TRUST_PROXY==="loopback"?"loopback":false,
+    trustProxy:trustProxy(env.TRUST_PROXY),
     databasePath:env.DATABASE_PATH?path.resolve(env.DATABASE_PATH):path.join(__dirname,"data","kopi.db")};
 }
 module.exports={config,checkConfig};

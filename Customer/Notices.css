@@ -32,6 +32,10 @@
   color: #d49b43;
   font-weight: 700;
 }
+/* Key points of the "Discount not approved" notice, in a darker gold. */
+.delivery-notice-message .discount-notice-key {
+  color: #8a4b0c;
+}
 .delivery-notice a {
   color: #8a5308;
   text-decoration: underline;

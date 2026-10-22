@@ -134,7 +134,10 @@ test("Staff confirms Cash delivery, including older orders already marked Arrive
     const created=await request("/orders","POST",body(),1);
     assert.equal(created.status,201);
     const id=created.data.orderId,path=`/workforce/preparation/${id}/status`;
-    assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,200);
+    // The customer's first cash order is flagged: staff confirm it with the customer
+    // first. After a completed order, the next small cash order is not flagged.
+    if(!arrived) assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,409);
+    assert.equal((await request(path,"PATCH",{status:"Preparing",...(arrived?{}:{customerConfirmed:true})},5)).status,200);
     assert.equal((await request(path,"PATCH",{status:"Out for Delivery"},5)).status,200);
     if(arrived) db.prepare("UPDATE orders SET status='Arrived' WHERE id=?").run(id);
     assert.ok((await request("/workforce/preparation","GET",undefined,5)).data.orders.some(order=>order.id===id));

@@ -146,3 +146,8 @@
   .workspace-dialog[open] { display: block; position: static; width: 100%; max-height: none; border: 0; overflow: visible; }
   .workspace-dialog header button,.workspace-dialog > .workspace-btn { display: none; }
 }
+
+/* Senior Citizen / PWD reminder on preparation cards. */
+.prep-special { margin: 12px 17px 0; padding: 7px 10px; border-radius: 8px; background: #eef5e8; color: #355a26; font-size: 12px; font-weight: 600; line-height: 1.45; }
+.prep-card > .risk-flags { margin: 10px 17px 0; }
+.prep-card > .payment-wait { margin: 10px 17px 0; }

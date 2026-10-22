@@ -108,6 +108,7 @@ function render() {
       <td>${escapeHtml(item.category)}</td>
       <td>${escapeHtml(packageStock(item))}</td>
       <td>${escapeHtml(displayMeasurement(item))}<small class="stock-pack-size">${escapeHtml(displayMeasurement(item,item.initialQuantity))} / ${escapeHtml(item.packageUnit || "package")}</small></td>
+      <td>${escapeHtml(displayMeasurement(item, item.reorderLevel ?? 0))}<small class="stock-pack-size">${escapeHtml(reorderNote(item))}</small></td>
       <td>
         <span class="stock-status ${statusClass(item.status)}">
           ${escapeHtml(item.status)}
@@ -130,6 +131,7 @@ function render() {
             aria-label="Set stock">
             <i class="bi bi-pencil-fill"></i>
           </button>
+          <button type="button" data-reorder="${item.id}" aria-label="Low-stock settings for ${escapeHtml(item.productName)}" title="Low-stock settings"><i class="bi bi-sliders"></i></button>
           <button type="button" data-movements="${item.id}" aria-label="View stock movements for ${escapeHtml(item.productName)}" title="Stock movement history"><i class="bi bi-clock-history"></i></button>
         </div>
       </td>
@@ -152,7 +154,83 @@ function render() {
       setStock(Number(button.dataset.edit));
     });
   });
+
+  rowsEl.querySelectorAll("[data-reorder]").forEach(button => {
+    button.addEventListener("click", () => openReorderSettings(Number(button.dataset.reorder)));
+  });
 }
+
+function reorderNote(item) {
+  const basis = { Manual: "Manual level", Usage: "Based on usage", Package: "Package baseline" }[item.reorderBasis] || "";
+  const days = item.daysLeft == null ? "no recent usage" : `≈ ${item.daysLeft} day${item.daysLeft === 1 ? "" : "s"} left`;
+  return `${basis} · ${days}`;
+}
+
+/* ---------- Low-stock parameters ---------- */
+const reorderDialog = document.getElementById("reorderDialog");
+let reorderItem = null;
+
+function reorderPreviewLevel() {
+  if (!reorderItem) return 0;
+  const manual = document.getElementById("reorderManual").value.trim();
+  if (manual !== "") return Number(manual);
+  const lead = Number(document.getElementById("reorderLeadTime").value) || 0;
+  const safety = Number(document.getElementById("reorderSafety").value) || 0;
+  return Math.max(reorderItem.packageLevel, Math.round(reorderItem.averageDailyUsage * (lead + safety) * 1000) / 1000);
+}
+
+function paintReorderPreview() {
+  const level = reorderPreviewLevel();
+  const status = reorderItem.quantity <= 0 ? "Out of Stock" : reorderItem.quantity <= level ? "Low Stock" : "In Stock";
+  document.getElementById("reorderPreview").textContent =
+    `Reorder level: ${displayMeasurement(reorderItem, level)}. With ${displayMeasurement(reorderItem)} available, the status will be ${status}.`;
+}
+
+function openReorderSettings(id) {
+  reorderItem = inventory.find(entry => entry.id === id);
+  if (!reorderItem) return;
+  document.getElementById("reorderTitle").textContent = `Low-stock settings · ${reorderItem.productName}`;
+  document.getElementById("reorderFacts").innerHTML = [
+    ["Available now", displayMeasurement(reorderItem)],
+    ["Package baseline", displayMeasurement(reorderItem, reorderItem.packageLevel)],
+    ["Average daily usage (14 days)", reorderItem.averageDailyUsage ? `${displayMeasurement(reorderItem, reorderItem.averageDailyUsage)} / day` : "No order usage yet"],
+    ["Estimated days left", reorderItem.daysLeft == null ? "—" : `${reorderItem.daysLeft} days`]
+  ].map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+  document.getElementById("reorderLeadTime").value = reorderItem.leadTimeDays;
+  document.getElementById("reorderSafety").value = reorderItem.safetyDays;
+  document.getElementById("reorderManual").value = reorderItem.manualReorderLevel ?? "";
+  document.getElementById("reorderUnit").textContent = `(${reorderItem.measurement})`;
+  paintReorderPreview();
+  reorderDialog.showModal();
+}
+
+["reorderLeadTime", "reorderSafety", "reorderManual"].forEach(id =>
+  document.getElementById(id).addEventListener("input", paintReorderPreview));
+document.getElementById("closeReorder").addEventListener("click", () => reorderDialog.close());
+document.getElementById("reorderForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!reorderItem) return;
+  const button = document.getElementById("saveReorder");
+  const manual = document.getElementById("reorderManual").value.trim();
+  button.disabled = true;
+  try {
+    const result = await KopiApi.request(`/admin/inventory/${reorderItem.id}/reorder-settings`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        leadTimeDays: Number(document.getElementById("reorderLeadTime").value),
+        safetyDays: Number(document.getElementById("reorderSafety").value),
+        reorderLevel: manual === "" ? null : Number(manual)
+      })
+    });
+    KopiNotice.toast(result.message, "success");
+    reorderDialog.close();
+    refreshInventory();
+  } catch (error) {
+    KopiNotice.set(document.getElementById("reorderPreview"), error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 async function refreshInventory() {
   try {

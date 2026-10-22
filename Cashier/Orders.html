@@ -86,6 +86,8 @@
                 <strong id="subtotalAmount">₱0.00</strong>
               </div>
               <div class="summary-line" id="posVoucherLine" hidden><span>Voucher deduction</span><strong id="posVoucherAmount">₱0.00</strong></div>
+              <div class="summary-line" id="posVatExemptLine" hidden><span>VAT exemption (12%)</span><strong id="posVatExemptAmount">₱0.00</strong></div>
+              <div class="summary-line" id="posSpecialLine" hidden><span id="posSpecialLabel">Senior Citizen discount (20%)</span><strong id="posSpecialAmount">₱0.00</strong></div>
             </div>
 
             <div class="order-total-line">
@@ -113,6 +115,22 @@
                 <button id="applyPosVoucher" type="button">Apply</button>
               </div>
               <p id="posVoucherStatus" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="pos-special">
+              <label class="pos-special-toggle"><input type="checkbox" id="posSpecialToggle" aria-controls="posSpecialFields"> Senior Citizen / PWD discount</label>
+              <div class="pos-special-fields" id="posSpecialFields" hidden>
+                <select id="posSpecialType" aria-label="Discount type">
+                  <option value="Senior Citizen">Senior Citizen (OSCA ID)</option>
+                  <option value="PWD">PWD ID</option>
+                </select>
+                <input id="posSpecialId" type="text" maxlength="30" autocomplete="off" placeholder="OSCA no. e.g. OSCA-CAL-2016-00123" aria-label="ID number">
+                <input id="posSpecialName" type="text" maxlength="120" autocomplete="off" placeholder="Name on ID" aria-label="Name on ID">
+                <label class="pos-special-check"><input type="checkbox" id="posSpecialChecked"> I checked the physical ID</label>
+                <button id="applyPosSpecial" type="button">Apply discount</button>
+                <small>Checked against the Senior Citizen / PWD ID registry (active, not expired, name matches, seniors 60+). PWD format: 04-3405-012-0001234. 20% off + VAT exemption on 1 drink + 1 food. Not combinable with vouchers.</small>
+              </div>
+              <p id="posSpecialStatus" role="status" aria-live="polite"></p>
             </div>
 
             <button type="button" class="place-order-btn" id="placeOrderBtn">

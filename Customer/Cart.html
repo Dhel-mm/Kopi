@@ -73,7 +73,11 @@
             </div>
             <div class="item-actions">
               <button type="button" data-action="edit">Edit</button>
-              <span data-cart-quantity>x 1</span>
+              <div class="cart-qty" role="group" aria-label="Quantity">
+                <button type="button" data-action="decrease" aria-label="Decrease quantity"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                <span data-cart-quantity aria-live="polite">1</span>
+                <button type="button" data-action="increase" aria-label="Increase quantity"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+              </div>
               <button class="delete-btn" type="button" data-action="delete">Remove</button>
             </div>
           </article>
@@ -140,6 +144,47 @@
           </div>
         </div>
 
+        <section class="discount-panel" aria-labelledby="specialDiscountTitle">
+          <div class="discount-panel-heading">
+            <i class="bi bi-person-vcard" aria-hidden="true"></i>
+            <div>
+              <h2 id="specialDiscountTitle">Senior Citizen / PWD Discount</h2>
+              <p>20% off plus VAT exemption on the cardholder's own order (1 drink and 1 food item).</p>
+            </div>
+            <label class="discount-switch"><input id="specialDiscountToggle" type="checkbox" aria-controls="specialDiscountFields"><span>Apply</span></label>
+          </div>
+          <div class="discount-fields" id="specialDiscountFields" hidden>
+            <div class="field-group">
+              <label for="specialDiscountType">Discount type</label>
+              <select id="specialDiscountType">
+                <option value="Senior Citizen">Senior Citizen (OSCA ID)</option>
+                <option value="PWD">Person with Disability (PWD ID)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="specialDiscountId">ID number</label>
+              <input id="specialDiscountId" type="text" autocomplete="off" maxlength="30" placeholder="e.g. OSCA-CAL-2016-00123" aria-describedby="specialDiscountIdHint">
+              <small class="discount-hint" id="specialDiscountIdHint">OSCA control number exactly as printed on your Senior Citizen ID.</small>
+            </div>
+            <div class="field-group">
+              <label for="specialDiscountName">Name on ID</label>
+              <input id="specialDiscountName" type="text" autocomplete="name" maxlength="120" placeholder="Cardholder's full name">
+            </div>
+            <div class="field-group id-proof">
+              <label for="specialDiscountProof">Photo of the ID <span class="required-tag">required</span></label>
+              <input id="specialDiscountProof" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="specialDiscountProofStatus">
+              <div class="id-proof-preview" id="specialDiscountProofPreview" hidden>
+                <img id="specialDiscountProofImage" alt="Your Senior Citizen or PWD ID photo">
+                <button type="button" id="removeSpecialDiscountProof"><i class="bi bi-x-lg" aria-hidden="true"></i> Remove</button>
+              </div>
+              <small id="specialDiscountProofStatus" role="status">Take a clear photo of the front of the ID. The name and ID number must be readable.</small>
+            </div>
+            <button type="button" class="dark-btn discount-apply" id="applySpecialDiscountBtn">Apply discount</button>
+            <div class="discount-verified" id="specialDiscountVerified" aria-live="polite" hidden></div>
+            <p class="discount-note" id="specialDiscountNote"><i class="bi bi-shield-check" aria-hidden="true"></i> Our staff check your ID photo, like a GCash payment, before your order is prepared: the name and ID number must match what you typed and the ID must be valid. If the ID cannot be verified, your order is not canceled: the discount is removed, the order continues at the normal price and you are notified. Not combinable with vouchers. Show the same ID to our rider when your order arrives.</p>
+          </div>
+        </section>
+
         <div class="checkout-recovery" id="checkoutRecovery" hidden>
           <p>A previous checkout may have been saved. Recover it before placing another order. If it was not saved, this retries the original order using the same request.</p>
           <button type="button" class="dark-btn" id="recoverCheckoutBtn">Recover previous order</button>
@@ -171,9 +216,18 @@
             </ol>
             <div class="field-group">
               <label for="gcashReference">GCash Reference Number</label>
-              <input id="gcashReference" name="gcashReference" type="text" inputmode="numeric" autocomplete="off" placeholder="Enter your GCash reference number" pattern="[0-9]{6,30}" minlength="6" maxlength="30" title="Enter the reference number from your receipt using 6 to 30 digits." aria-describedby="gcashVerificationNote" disabled>
+              <input id="gcashReference" name="gcashReference" type="text" inputmode="numeric" autocomplete="off" placeholder="13-digit Ref No. from your GCash receipt" pattern="[0-9]{13}" minlength="13" maxlength="13" title="Enter the 13-digit reference number (numbers only) from your GCash receipt." aria-describedby="gcashVerificationNote" disabled>
             </div>
-            <p class="gcash-notice" id="gcashVerificationNote"><i class="bi bi-info-circle" aria-hidden="true"></i> Your payment will be checked by our staff. A reference number does not automatically confirm payment. If you change the order or apply a voucher, check the amount again before sending.</p>
+            <div class="field-group gcash-proof">
+              <label for="gcashProof">Receipt screenshot <span class="optional-tag">optional</span></label>
+              <input id="gcashProof" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="gcashProofStatus">
+              <div class="gcash-proof-preview" id="gcashProofPreview" hidden>
+                <img id="gcashProofImage" alt="Your GCash receipt screenshot">
+                <button type="button" id="removeGcashProof"><i class="bi bi-x-lg" aria-hidden="true"></i> Remove</button>
+              </div>
+              <small id="gcashProofStatus" role="status">Helps our staff find your payment faster.</small>
+            </div>
+            <p class="gcash-notice" id="gcashVerificationNote"><i class="bi bi-info-circle" aria-hidden="true"></i> Your payment will be checked by our staff in the shop's GCash account. A reference number or screenshot does not automatically confirm payment. If GCash is delayed, your order simply waits as "Pending verification" — do not send the payment again. If you change the order or apply a discount, check the amount again before sending.</p>
           </div>
         </section>
 
@@ -194,6 +248,8 @@
             <div><span>Subtotal</span><strong id="subtotalAmount">PHP 0.00</strong></div>
             <div><span>Delivery Fee <span class="rider-fee-note">(Pay Delivery Fee directly to the Lalamove Rider)</span></span><strong id="deliveryAmount">PHP 0.00</strong></div>
             <div><span>Voucher</span><strong id="voucherAmount">- PHP 0.00</strong></div>
+            <div id="vatExemptLine" hidden><span>VAT exemption (12%)</span><strong id="vatExemptAmount">- PHP 0.00</strong></div>
+            <div id="specialDiscountLine" hidden><span id="specialDiscountLabel">Senior Citizen discount (20%)</span><strong id="specialDiscountAmount">- PHP 0.00</strong></div>
           </div>
           <div class="summary-total">
             <span>Total</span>
@@ -251,6 +307,9 @@
           <div class="receipt-breakdown">
             <div><span>Subtotal</span><span id="receiptSubtotal">₱ 0.00</span></div>
             <div id="receiptVoucherRow" class="receipt-voucher" hidden><span id="receiptVoucherCode">Voucher deduction</span><strong id="receiptVoucherDiscount">− ₱ 0.00</strong></div>
+            <div id="receiptVatExemptRow" class="receipt-voucher" hidden><span>VAT exemption (12%)</span><strong id="receiptVatExempt">− ₱ 0.00</strong></div>
+            <div id="receiptSpecialRow" class="receipt-voucher" hidden><span id="receiptSpecialLabel">Senior Citizen discount (20%)</span><strong id="receiptSpecialDiscount">− ₱ 0.00</strong></div>
+            <p id="receiptSpecialHolder" class="receipt-special-holder" hidden></p>
             <div id="receiptDeliveryRow" hidden><span>Delivery fee</span><span id="receiptDeliveryFee">₱ 0.00</span></div>
           </div>
           <div class="receipt-total"><span>Total Amount:</span><strong id="receiptTotal">PHP 0</strong></div>

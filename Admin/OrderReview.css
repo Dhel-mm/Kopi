@@ -1,0 +1,63 @@
+/* Order review: risk flags, GCash waiting time, screenshot and reject dialogs. */
+.risk-flags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.risk-flag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: #fdecd6; color: #8a4b0c; font-size: 11px; font-weight: 700; }
+.risk-flag[data-flag="past-rejections"] { background: #fbe1df; color: #9b2f2a; }
+.risk-flag.confirmed { background: #e4f3e5; color: #276437; }
+.payment-wait { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: #eef4fb; color: #24527f; font-size: 11.5px; line-height: 1.45; }
+.payment-wait.overdue { background: #fff1e0; color: #8a4b0c; border: 1px solid #f0c48c; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.review-actions button { flex: 1 1 auto; }
+.review-link-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 12px; border: 1px solid #d8c9ad; border-radius: 9px; background: #fff; color: #3b2a16; font: 600 12px "Poppins", sans-serif; cursor: pointer; }
+.review-link-btn:hover { background: #fbf3e4; }
+.review-link-btn.danger { border-color: #e6b6b1; color: #9b2f2a; }
+.review-link-btn.danger:hover { background: #fbe9e7; }
+.review-link-btn:focus-visible { outline: 2px solid #d59a3e; outline-offset: 2px; }
+.review-dialog { width: min(520px, calc(100% - 24px)); max-height: 90dvh; padding: 22px; overflow: auto; border: 1px solid #e3d6bf; border-radius: 18px; background: #fffdf8; color: #2b2015; font-family: "Poppins", sans-serif; }
+.review-dialog::backdrop { background: #21150870; }
+.review-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.review-dialog h2 { margin: 0; font-size: 18px; }
+.review-dialog .close-panel { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e3d6bf; border-radius: 50%; background: #fff; cursor: pointer; }
+.review-note { margin: 0 0 12px; color: #6d5d48; font-size: 12.5px; line-height: 1.55; }
+.reject-reasons { display: grid; gap: 7px; margin: 0 0 12px; padding: 12px; border: 1px solid #e3d6bf; border-radius: 12px; }
+.reject-reasons legend { padding: 0 6px; font-size: 12px; font-weight: 700; }
+.reject-reasons label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.review-dialog .workspace-field { display: grid; gap: 5px; font-size: 12px; font-weight: 600; }
+.review-dialog textarea { width: 100%; padding: 9px 11px; border: 1px solid #cdbfa8; border-radius: 9px; font: inherit; font-size: 13px; resize: vertical; }
+.review-dialog .workspace-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.review-dialog .workspace-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 9px 16px; border: 1px solid #2b2015; border-radius: 10px; background: #2b2015; color: #fff; font: 600 12px "Poppins", sans-serif; cursor: pointer; }
+.review-dialog .workspace-btn.secondary { border-color: #e3d6bf; background: #fff; color: #2b2015; }
+.review-dialog .workspace-btn.danger { border-color: #a8342e; background: #a8342e; }
+.review-dialog .workspace-status:empty { display: none; }
+.proof-image { display: grid; place-items: center; min-height: 160px; padding: 8px; border: 1px solid #e3d6bf; border-radius: 12px; background: #fff; font-size: 12px; }
+.proof-image img { max-width: 100%; max-height: 65dvh; border-radius: 8px; object-fit: contain; }
+
+/* Senior Citizen / PWD ID photo review (online discount orders). */
+.id-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.id-status.pending { background: #fff3dc; color: #8a5a00; border: 1px solid #f0cf8f; }
+.id-status.verified { background: #e9f6ea; color: #24592c; border: 1px solid #b9dcb9; }
+.id-status.rejected { background: #fdeeec; color: #8f2c25; border: 1px solid #ecb9b4; }
+.id-proof-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 0 0 12px; font-size: 13px; }
+.id-proof-details[hidden] { display: none; }
+.id-proof-details div { min-width: 0; }
+.id-proof-details dt { color: #6b6257; font-size: 11.5px; }
+.id-proof-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.prep-discount { margin: 12px 17px 0; padding: 10px 12px; border: 1px solid #cfe2c4; border-radius: 10px; background: #f3f9ef; color: #355a26; font-size: 12px; line-height: 1.45; }
+.prep-discount.not-approved { border-color: #ecb9b4; background: #fdf3f1; color: #7d2b25; }
+.prep-discount.pending { border-color: #f0cf8f; background: #fffaf0; color: #5c4210; }
+.prep-discount-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.prep-discount-head strong { font-size: 12.5px; }
+.prep-discount p { margin: 6px 0 0; overflow-wrap: anywhere; }
+.prep-discount .review-actions { margin-top: 8px; }
+.prep-discount .review-actions:empty { display: none; }
+.review-link-btn.verify { border-color: #9cc79e; color: #24592c; }
+.review-link-btn.verify:hover { background: #eef8ee; }
+.review-link-btn:disabled { opacity: .6; cursor: wait; }
+/* Values staff must check (GCash reference number), bold and gold. */
+.key-value { color: #8a4b0c; font-weight: 700; }
+.confirm-dialog .confirm-message { font-size: 14px; line-height: 1.6; }
+/* Staff card: the GCash reference line sits above the confirm button. */
+.prep-card footer p:first-child { margin: 0 0 10px; }
+/* Staff card: delivery address and phone sit under the customer and time. */
+.prep-meta-contact { display: block; margin-top: 4px; color: #8a4b0c; }
+.prep-meta-contact strong { font-weight: 700; }
+.prep-meta-contact .prep-meta-value { color: #1f160d; font-weight: 700; }

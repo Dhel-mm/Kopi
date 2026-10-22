@@ -3,6 +3,8 @@ const { quote, money, OrderError } = require("./pricing");
 const { createInventoryService } = require("./inventory");
 const { parseManualPayment } = require("./manualPayment");
 const { createVoucherService } = require("./vouchers");
+const { cashOnDelivery, paymentProof, idPhoto } = require("./orderSafety");
+const { createIdRegistry } = require("./idRegistry");
 
 function text(value, label, max, optional = false) {
   if (optional && (value == null || value === "")) return "";
@@ -32,14 +34,23 @@ function requestFingerprint(body, inStore) {
     address:inStore?"":body.address,phone:inStore?"":body.phone,
     customerName:inStore?(body.customerName||"Walk-in Customer"):"",
     voucher:body.voucher||"",discount:inStore?(body.discount??0):0,
+    specialDiscount:body.specialDiscount ?? null,
     expectedTotal:body.expectedTotal,confirmedReceived:inStore?body.confirmedReceived:null,
     cashTendered:inStore?body.cashTendered:null
   };
   return "v2:"+createHash("sha256").update(JSON.stringify(stable(intent))).digest("hex");
 }
+function specialDiscountRecord(row) {
+  if (!row.special_discount_type) return null;
+  return {type:row.special_discount_type,idNumber:row.special_discount_id,name:row.special_discount_name,
+    status:row.special_discount_status||"Verified",removed:row.special_discount_removed||0,
+    discount:row.special_discount,vatExempt:row.vat_exempt,deduction:Math.round((row.special_discount+row.vat_exempt)*100)/100,
+    coveredItems:JSON.parse(row.special_discount_items_json||"[]")};
+}
 function createOrderWorkflow(db) {
   const stock = createInventoryService(db);
   const vouchers = createVoucherService(db);
+  const registry = createIdRegistry(db);
 
   // Called inside the immediate creation transaction, so simultaneous checkouts
   // cannot allocate the same number. Keep historical order numbers untouched.
@@ -59,11 +70,14 @@ function createOrderWorkflow(db) {
     if (!["Dine-in","Takeout"].includes(type)) throw new OrderError("Choose Dine-in or Takeout.");
     return type;
   }
+  // In-store, the cashier checks the physical ID and the registry. Online, the
+  // customer uploads a photo of the ID and staff verify it before preparation.
+  const priceOrder = (body, inStore) => quote(body,inStore,vouchers.resolve,inStore?registry.verify:null);
   function prepareQuote(body, inStore = false) {
-    const priced = quote(body,inStore,vouchers.resolve);
+    const priced = priceOrder(body,inStore);
     const serviceType = service(body,inStore);
     stock.check(priced.items,serviceType!=="Dine-in");
-    return { ...priced,serviceType };
+    return { ...priced,serviceType,...(inStore?{}:{cashOnDelivery:cashOnDelivery(priced)}) };
   }
   function result(id) {
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
@@ -72,6 +86,7 @@ function createOrderWorkflow(db) {
       paymentStatus:row.payment_status,paymentReference:row.payment_reference,
       inventoryState:row.inventory_state,refundStatus:row.refund_status,
       subtotal:row.subtotal,deliveryFee:row.delivery_fee,voucher:row.voucher,voucherDiscount:row.voucher_discount,total:row.total,
+      specialDiscount:specialDiscountRecord(row),
       cashTendered:row.cash_tendered,cashChange:row.cash_change,
       items:db.prepare("SELECT product_id AS productId,product_name AS name,quantity,price,options_json FROM order_items WHERE order_id=?").all(id)
         .map(item=>({productId:item.productId,name:item.name,quantity:item.quantity,price:item.price,options:JSON.parse(item.options_json)}))
@@ -87,7 +102,7 @@ function createOrderWorkflow(db) {
       return result(previous.id);
     }
     const serviceType = service(body,inStore);
-    let priced = quote(body,inStore,vouchers.resolve);
+    let priced = priceOrder(body,inStore);
     const paymentName = body.payment === "gCash" ? "GCash" : (body.payment ?? "Cash");
     let payment;
     if (inStore && !["Cash","GCash"].includes(paymentName)) {
@@ -110,11 +125,18 @@ function createOrderWorkflow(db) {
       cashChange = (tenderedCents - totalCents) / 100;
       payment.status = "Paid";
     }
+    const proof = inStore ? null : paymentProof(body.paymentProof, payment.payment);
+    const idImage = inStore ? null : idPhoto(body.specialDiscountProof, priced.specialDiscount);
+    if (!inStore && payment.payment==="Cash") {
+      const cod = cashOnDelivery(priced);
+      if (!cod.allowed) throw new OrderError(cod.message,409);
+    }
     const address = inStore?"":text(body.address,"delivery address",500);
     const phone = inStore?"":text(body.phone,"phone number",11);
     if (!inStore && !/^09[0-9]{9}$/.test(phone)) throw new OrderError("Enter an 11-digit phone number beginning with 09.");
     const customerName = inStore?text(body.customerName||"Walk-in Customer","customer name",120):"";
-    const payload = {items:priced.items.map(({cartId,image,...item})=>item),payment,serviceType,address,phone,customerName,voucher:priced.voucher,total:priced.total,inStore};
+    const payload = {items:priced.items.map(({cartId,image,...item})=>item),payment,serviceType,address,phone,customerName,voucher:priced.voucher,
+      specialDiscount:priced.specialDiscount,total:priced.total,inStore};
     const fingerprint = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
     return db.transaction(() => {
       const existing = db.prepare("SELECT id,request_hash FROM orders WHERE user_id=? AND request_key=?").get(user.id,requestKey);
@@ -124,26 +146,34 @@ function createOrderWorkflow(db) {
         return result(existing.id);
       }
       // Recheck the current voucher inside the write transaction before charging.
-      priced = quote(body,inStore,vouchers.resolve);
+      priced = priceOrder(body,inStore);
       if (body.expectedTotal == null || money(body.expectedTotal)!==money(priced.total)) {
         throw new OrderError("The order total changed. Review the updated price before placing the order.",409);
       }
       stock.check(priced.items,serviceType!=="Dine-in");
+      const special = priced.specialDiscount;
       const status = inStore?"Preparing":"New";
       const orderNumber = nextOrderNumber(inStore);
       const inserted = db.prepare(`
         INSERT INTO orders (
           order_number,user_id,customer_name,order_type,service_type,status,payment,address,phone,voucher,
           subtotal,delivery_fee,voucher_discount,total,payment_reference,payment_status,
-          payment_verified_at,payment_verified_by,inventory_state,request_key,request_hash,cash_tendered,cash_change
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          payment_verified_at,payment_verified_by,inventory_state,request_key,request_hash,cash_tendered,cash_change,
+          special_discount_type,special_discount_id,special_discount_name,special_discount_items_json,special_discount,vat_exempt,
+          special_discount_status,special_discount_verified_at,special_discount_verified_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(orderNumber,user.id,customerName,inStore?"In-store":"Online",serviceType,status,payment.payment,
         address,phone,priced.voucher,priced.subtotal,priced.deliveryFee,priced.voucherDiscount,priced.total,
         payment.reference,payment.status,payment.status==="Verified"?new Date().toISOString():null,
-        payment.status==="Verified"?user.id:null,inStore?"consumed":"reserved",requestKey,intentHash,cashTendered,cashChange);
+        payment.status==="Verified"?user.id:null,inStore?"consumed":"reserved",requestKey,intentHash,cashTendered,cashChange,
+        special?.type??null,special?.idNumber??null,special?.name??null,special?JSON.stringify(special.coveredItems):null,
+        special?.discount??0,special?.vatExempt??0,
+        special?(inStore?"Verified":"Pending verification"):null,special&&inStore?new Date().toISOString():null,special&&inStore?user.id:null);
       const id = inserted.lastInsertRowid;
       for (const item of priced.items) db.prepare("INSERT INTO order_items(order_id,product_id,product_name,quantity,price,options_json) VALUES(?,?,?,?,?,?)")
         .run(id,item.productId,item.name,item.quantity,item.price,JSON.stringify(item.options));
+      if (proof) db.prepare("INSERT INTO order_payment_proofs(order_id,image_data) VALUES(?,?)").run(id,proof);
+      if (idImage) db.prepare("INSERT INTO order_id_proofs(order_id,image_data) VALUES(?,?)").run(id,idImage);
       vouchers.redeem(priced.voucher,id,user.id);
       stock.deduct(priced.items,id,serviceType!=="Dine-in");
       return result(id);
@@ -155,10 +185,12 @@ function createOrderWorkflow(db) {
     if (!order) throw new OrderError("No saved order was found for this checkout request.",404);
     return result(order.id);
   }
-  function cancel(id, user) {
+  // asShop: Admin or Staff rejecting a New online order (see orderSafety.js).
+  function cancel(id, user, {asShop = false} = {}) {
     return db.transaction(() => {
       const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
-      if (!order || (user.role!=="Admin" && order.user_id!==user.id)) throw new OrderError("Order was not found.",404);
+      const shopRejection = asShop && ["Admin","Staff"].includes(user.role);
+      if (!order || (user.role!=="Admin" && !shopRejection && order.user_id!==user.id)) throw new OrderError("Order was not found.",404);
       if (order.status==="Canceled") return result(id);
       if (!["New","Preparing"].includes(order.status)) throw new OrderError("Only new or preparing orders can be canceled.",409);
       // Once staff start preparing, ingredients are used. Only an administrator
@@ -187,6 +219,9 @@ function createOrderWorkflow(db) {
         && order.order_type === "Online" && order.status === "Out for Delivery" && next === "Completed";
       if (!delivered && (flow.indexOf(order.status)<0 || flow[flow.indexOf(order.status)+1]!==next)) throw new OrderError("Invalid order status transition.",409);
       if (order.payment==="GCash" && order.payment_status!=="Verified") throw new OrderError("Verify the GCash payment first.",409);
+      if (order.special_discount_type && order.special_discount_status==="Pending verification") {
+        throw new OrderError("Verify the customer's Senior Citizen / PWD ID photo first.",409);
+      }
       db.prepare(`UPDATE orders SET status=?,inventory_state='consumed',
         payment_status=CASE WHEN ?='Completed' AND payment='Cash' THEN 'Paid' ELSE payment_status END,
         completed_at=CASE WHEN ?='Completed' THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id=?`).run(next,next,next,id);
@@ -203,4 +238,4 @@ function sendError(response,error,customerFacing = false) {
   console.error("Order request failed:",error.code||error.name);
   return response.status(500).json({message:"Could not save the order. Please retry the same checkout request."});
 }
-module.exports = {createOrderWorkflow,sendError};
+module.exports = {createOrderWorkflow,sendError,specialDiscountRecord};

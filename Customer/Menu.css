@@ -377,6 +377,9 @@ input {
 }
 
 .product-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   min-height: 260px;
   padding: 14px 14px 18px;
   border: 2px solid transparent;
@@ -424,6 +427,56 @@ input {
   margin: 0;
   font-size: 15px;
   font-weight: 500;
+}
+
+/* Available sizes on each card (panel feedback). */
+.size-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.size-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid rgba(178, 118, 34, 0.45);
+  border-radius: 999px;
+  background: #fffef3;
+  color: #3a2814;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.size-chip strong {
+  font-weight: 800;
+}
+
+.size-chip i {
+  font-size: 12px;
+}
+
+.size-chip.hot i {
+  color: #c2561a;
+}
+
+.size-chip.iced i {
+  color: #2f78ad;
+}
+
+.size-chip.price-only {
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
+.size-chip:hover {
+  border-color: var(--gold-deep);
+  background: #fff;
+  transform: translateY(-1px);
 }
 
 .empty-state {
@@ -978,6 +1031,15 @@ legend {
     font-size: 12px;
   }
 
+  .size-chips {
+    gap: 4px;
+  }
+
+  .size-chip {
+    padding: 4px 7px;
+    font-size: 10.5px;
+  }
+
   .slider-buttons {
     display: none;
   }
@@ -1317,6 +1379,22 @@ legend {
 
   .product-card p {
     font-size: 11px;
+  }
+
+  .size-chips {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .size-chip {
+    justify-content: center;
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .size-chip i {
+    font-size: 10px;
   }
 
   .slider-buttons {

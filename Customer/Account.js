@@ -107,12 +107,14 @@ async function loadMyOrders() {
           <span class="order-status" data-status="${escapeHtml(order.status)}">${escapeHtml(order.status)}</span>
           <div class="order-amounts">
             <div class="order-total"><span>Order total</span><strong>₱${Number(order.total || 0).toFixed(2)}</strong></div>
+            ${order.specialDiscountType ? `<div class="order-total order-special"><span>${escapeHtml(order.specialDiscountType)} discount</span><strong>${order.specialDiscountStatus === "Not approved" ? "Not approved" : `− ₱${(Number(order.specialDiscount || 0) + Number(order.vatExempt || 0)).toFixed(2)}`}</strong><small>${order.specialDiscountStatus === "Not approved" ? `We could not verify your ID photo, so the ₱${Number(order.discountRemoved || 0).toFixed(2)} discount was removed and the normal price applies.${order.payment === "GCash" ? ` Please pay the remaining ₱${Number(order.discountRemoved || 0).toFixed(2)} in cash to the rider.` : ""}` : `${order.specialDiscountStatus === "Pending verification" && order.status !== "Canceled" ? "ID photo: waiting for staff to verify" : "ID verified"} · Show ID ${escapeHtml(order.specialDiscountId)} on delivery`}</small></div>` : ""}
             ${hasRiderFee ? `<div class="order-total order-rider-fee"><span>Lalamove Delivery Fee</span><strong>₱${order.riderFee.toFixed(2)}</strong><small>Pay directly to the rider · not included in order total</small></div>` : ""}
           </div>
         </div>
         ${order.payment === "GCash" ? `
           <div class="order-payment"><p><img class="gcash-logo" src="HomePic/gcash.png" alt="" width="26" height="26">Payment: GCash — ${escapeHtml(order.paymentStatus || "Pending verification")}</p>
           <p>Reference: ${escapeHtml(order.paymentReference || "Not provided")}</p>
+          ${order.paymentStatus === "Pending verification" && order.status !== "Canceled" ? `<p class="order-payment-wait">We are checking your payment in our GCash account. If the transfer is delayed, your order stays reserved and we start preparing it as soon as the money arrives. Please do not send it again — call the shop if it takes longer than 30 minutes.</p>` : ""}
           ${order.status === "Canceled" ? `<p class="order-cancellation-reason">${escapeHtml(order.cancellationReason || "If you already sent payment, contact the shop about a refund. Canceling an order does not automatically refund GCash.")}</p>` : ""}
           </div>
         ` : ""}
@@ -122,9 +124,14 @@ async function loadMyOrders() {
           ${order.status === "New"
             ? `<button class="outline-btn cancel-order-btn" type="button" data-order-id="${order.id}">Cancel Order</button>`
             : order.status === "Preparing" ? `<span class="order-cancel-note">Being prepared. To cancel, please contact the shop.</span>` : ""}
+          <button class="outline-btn view-receipt-btn" type="button" data-receipt-id="${order.id}"><i class="bi bi-receipt" aria-hidden="true"></i>View Receipt</button>
         </div>
       </article>
     `; }).join("");
+
+    target.querySelectorAll("[data-receipt-id]").forEach(button => {
+      button.addEventListener("click", () => showOrderReceipt(button.dataset.receiptId, button));
+    });
 
     target.querySelectorAll("[data-order-id]").forEach(button => {
       button.addEventListener("click", async () => {
@@ -314,6 +321,79 @@ window.addEventListener("focus", () => {
 
 
 setInterval(()=>{if(!document.hidden&&!document.getElementById("orders").hidden)loadMyOrders();},30000);
+// Receipt of a previous order, in the same style as the checkout receipt.
+async function showOrderReceipt(id, opener) {
+  if (document.getElementById("orderReceiptDialog")) return;
+  const peso = value => `₱ ${Number(value || 0).toLocaleString("en-PH", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  const dialog = document.createElement("dialog");
+  dialog.id = "orderReceiptDialog";
+  dialog.className = "order-receipt-dialog";
+  dialog.setAttribute("aria-labelledby", "orderReceiptTitle");
+  dialog.innerHTML = `<div class="order-receipt-heading">
+      <h2 id="orderReceiptTitle">Receipt</h2>
+      <div class="order-receipt-tools">
+        <button type="button" class="order-receipt-print" disabled><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
+        <button type="button" class="order-receipt-close" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div class="order-receipt-paper" aria-live="polite" aria-busy="true">Loading receipt…</div>`;
+  const close = () => dialog.close();
+  dialog.querySelector(".order-receipt-close").addEventListener("click", close);
+  dialog.querySelector(".order-receipt-print").addEventListener("click", () => window.print());
+  dialog.addEventListener("click", event => { if (event.target === dialog) close(); });
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+    document.body.classList.remove("printing-receipt");
+    if (opener?.isConnected) opener.focus();
+  });
+  document.body.appendChild(dialog);
+  document.body.classList.add("printing-receipt");
+  dialog.showModal();
+  const paper = dialog.querySelector(".order-receipt-paper");
+  try {
+    const {order} = await KopiApi.request(`/orders/${encodeURIComponent(id)}/receipt`);
+    const time = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(order.createdAt) ? order.createdAt : order.createdAt.replace(" ", "T") + "Z")
+      .toLocaleString("en-PH", {timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short"});
+    const options = item => Object.entries(item.options || {}).filter(([, value]) => value).map(([key, value]) => `${key}: ${value}`).join(" · ");
+    const special = order.specialDiscountType;
+    const notApproved = order.specialDiscountStatus === "Not approved";
+    const line = (label, value, extra = "") => `<div class="${extra}"><span>${label}</span><strong>${value}</strong></div>`;
+    paper.removeAttribute("aria-busy");
+    paper.innerHTML = `<div class="order-receipt-brand">
+        <img src="HomePic/Logo.png" alt="Kopi logo">
+        <div><h3>Kopi; Calamba</h3><p>72 Villanueva Subdivision Camia St.<br>Brgy. Lingga Calamba, Laguna</p></div>
+      </div>
+      <div class="order-receipt-meta">
+        <p><strong>ORDER NO.</strong> ${escapeHtml(order.orderNumber)}</p>
+        <p>${escapeHtml(time)} · ${escapeHtml(order.orderType === "Online" ? "Delivery" : order.serviceType || order.orderType)}</p>
+        <p><strong>PAYMENT:</strong> ${escapeHtml(order.payment)}${order.payment === "GCash" ? ` — ${escapeHtml(order.paymentStatus || "Pending verification")}` : ""}</p>
+        ${order.paymentReference ? `<p><strong>REFERENCE:</strong> ${escapeHtml(order.paymentReference)}</p>` : ""}
+        <p><strong>STATUS:</strong> ${escapeHtml(order.status)}</p>
+      </div>
+      <div class="order-receipt-table">
+        <div class="order-receipt-row order-receipt-head"><span>QTY</span><span>ITEM</span><span>PRICE</span></div>
+        ${order.items.map(item => `<div class="order-receipt-row"><span>${item.quantity}X</span>
+          <span>${escapeHtml(item.name).toUpperCase()}${options(item) ? `<small>${escapeHtml(options(item))}</small>` : ""}</span>
+          <span>${peso(item.price * item.quantity)}</span></div>`).join("")}
+      </div>
+      <div class="order-receipt-breakdown">
+        ${line("Subtotal", peso(order.subtotal))}
+        ${order.voucherDiscount > 0 ? line(`Voucher${order.voucher ? ` (${escapeHtml(order.voucher)})` : ""}`, "− " + peso(order.voucherDiscount), "is-discount") : ""}
+        ${special && !notApproved ? line("VAT exemption (12%)", "− " + peso(order.vatExempt), "is-discount") + line(`${escapeHtml(special)} discount (20%)`, "− " + peso(order.specialDiscount), "is-discount")
+          + `<p class="order-receipt-note">${escapeHtml(special)} ID ${escapeHtml(order.specialDiscountId)} · ${escapeHtml(order.specialDiscountName)}</p>` : ""}
+        ${special && notApproved ? `<p class="order-receipt-note is-warning">${escapeHtml(special)} discount not approved (ID not verified) · ${peso(order.discountRemoved)} removed</p>` : ""}
+        ${order.deliveryFee > 0 ? line("Delivery fee", peso(order.deliveryFee)) : ""}
+      </div>
+      <div class="order-receipt-total"><span>Total Amount:</span><strong>${peso(order.total)}</strong></div>
+      ${order.cashTendered != null ? `<div class="order-receipt-breakdown">${line("Cash received", peso(order.cashTendered))}${line("Change", peso(order.cashChange))}</div>` : ""}
+      ${order.status === "Canceled" ? `<p class="order-receipt-note is-warning">This order was canceled.</p>` : ""}
+      <div class="order-receipt-thanks"><strong>THANK YOU FOR YOUR ORDER!</strong><span>www.kopi.com</span></div>`;
+    dialog.querySelector(".order-receipt-print").disabled = false;
+  } catch (error) {
+    paper.textContent = error.message;
+  }
+}
+
 function confirmOrderCancellation(order) {
   if (document.getElementById("cancelOrderDialog")) return Promise.resolve(false);
   return new Promise(resolve => {

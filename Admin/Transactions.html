@@ -34,13 +34,49 @@
       </header>
 
       <main class="admin-content transaction-content">
-        <section class="transaction-summary" aria-label="Sales report">
-          <article class="report-card"><span>Today's Sale</span><strong id="todaySales">₱0.00</strong><small id="todayComparison">Completed orders today</small></article>
-          <article class="report-card"><span>Total Transaction</span><strong id="transactionCount">0</strong><small id="transactionComparison">Completed and canceled records</small></article>
-          <article class="report-card"><span>Total Sales (This Month)</span><strong id="monthSales">₱0.00</strong><small id="monthComparison">Completed orders this month</small></article>
+
+        <section class="sales-summary" aria-labelledby="salesSummaryTitle">
+          <header class="sales-summary-head">
+            <div>
+              <h2 id="salesSummaryTitle">Sales summary</h2>
+              <p id="salesSummaryRange">Loading…</p>
+            </div>
+            <div class="sales-summary-controls">
+              <div class="summary-segmented" role="group" aria-label="Summary period">
+                <button type="button" data-summary-period="day" aria-pressed="true">Daily</button>
+                <button type="button" data-summary-period="week" aria-pressed="false">Weekly</button>
+                <button type="button" data-summary-period="month" aria-pressed="false">Monthly</button>
+                <button type="button" data-summary-period="year" aria-pressed="false">Yearly</button>
+              </div>
+              <label class="summary-picker"><span class="visually-hidden">Summary date</span><input type="date" id="summaryDate"></label>
+              <label class="summary-picker" hidden id="summaryMonthLabel"><span class="visually-hidden">Summary month</span><input type="month" id="summaryMonth"></label>
+              <label class="summary-picker" hidden id="summaryYearLabel"><span class="visually-hidden">Summary year</span><select id="summaryYear"></select></label>
+              <button class="report-action" id="printSummary" type="button"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
+            </div>
+          </header>
+          <p class="sales-summary-status" id="salesSummaryStatus" role="status"></p>
+          <div class="sales-kpis" id="salesKpis"></div>
+          <div class="sales-breakdown">
+            <article class="sales-panel sales-panel-wide">
+              <h3 id="salesSeriesTitle">Sales by hour</h3>
+              <div class="sales-bars" id="salesBars" role="img" aria-label="Sales chart"></div>
+            </article>
+            <article class="sales-panel">
+              <h3>By payment</h3><ul class="sales-list" id="salesPayments"></ul>
+              <h3>By order type</h3><ul class="sales-list" id="salesTypes"></ul>
+            </article>
+            <article class="sales-panel">
+              <h3>Top items</h3><ol class="sales-list" id="salesTopItems"></ol>
+            </article>
+          </div>
+        </section>
+
+        <section class="transaction-toolbar" aria-label="Search transactions">
+          <h2>Transactions</h2>
           <div class="transaction-tools">
-            <label class="transaction-search"><i class="bi bi-search"></i><input id="transactionSearch" type="search" placeholder="Search transaction or customer ..."></label>
-            <button class="transaction-filter" id="transactionFilter" type="button"><i class="bi bi-funnel"></i>Filter</button>
+            <label class="transaction-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search transactions</span><input id="transactionSearch" type="search" placeholder="Search order ID, transaction ID or customer…"></label>
+            <button class="transaction-filter" id="transactionFilter" type="button" aria-expanded="false" aria-controls="reportFilters"><i class="bi bi-funnel" aria-hidden="true"></i>Filter</button>
+            <button class="report-action" id="exportReport" type="button"><i class="bi bi-download" aria-hidden="true"></i>Download CSV</button>
           </div>
         </section>
 
@@ -54,11 +90,11 @@
           <button class="report-action" id="clearFilters" type="button">Clear</button>
         </form>
         <p id="reportStatus" class="report-status" role="status"></p>
-        <div class="report-export"><span id="filteredSales"></span><button class="report-action" id="exportReport" type="button"><i class="bi bi-download" aria-hidden="true"></i>Download CSV</button></div>
+        <p class="report-export" id="filteredSales"></p>
         <section class="transaction-table-card">
           <div class="table-scroll">
             <table class="transaction-table">
-              <thead><tr><th>Transaction ID</th><th>Date and Time</th><th>Type</th><th>Order ID</th><th>Customer</th><th>Payment Method</th><th>Amount</th><th>Status</th><th>Cashier</th></tr></thead>
+              <thead><tr><th>Transaction ID</th><th>Date and Time</th><th>Type</th><th>Order ID</th><th>Customer</th><th>Payment Method</th><th>Amount</th><th>Status</th><th>Receipt</th></tr></thead>
               <tbody id="transactionRows"></tbody>
             </table>
           </div>
@@ -68,10 +104,20 @@
       </main>
     </div>
   </div>
+  <dialog class="tx-receipt-dialog" id="receiptDialog" aria-labelledby="receiptDialogTitle">
+    <header><h2 id="receiptDialogTitle">Order receipt</h2>
+      <div class="tx-receipt-actions">
+        <button class="report-action" type="button" id="printReceipt"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
+        <button class="tx-receipt-close" type="button" id="closeReceipt" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+    </header>
+    <div class="tx-receipt" id="receiptBody" role="status">Loading receipt…</div>
+  </dialog>
   <script src="../Customer/Api.js"></script>
 <script src="AdminGuard.js"></script>
 <script src="AdminNav.js"></script>
 <script src="Transactions.js"></script>
+<script src="SalesSummary.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

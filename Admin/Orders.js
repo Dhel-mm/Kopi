@@ -48,8 +48,10 @@ function showAdminReceipt(order) {
   }
   const rows = order.items.map(item => `<p class="receipt-line"><span>${item.quantity} × ${escapeReceipt(item.name)}</span><strong>${formatMoney(item.price * item.quantity)}</strong></p>`).join("");
   const discounts = Math.max(0, order.subtotal - order.total);
+  const special = order.specialDiscount;
+  const specialRows = special ? `<p class="receipt-line"><span>VAT exemption (12%)</span><span>− ${formatMoney(special.vatExempt)}</span></p><p class="receipt-line"><span>${escapeReceipt(special.type)} discount (20%)</span><span>− ${formatMoney(special.discount)}</span></p><p class="receipt-line"><small>${escapeReceipt(special.type)} ID ${escapeReceipt(special.idNumber)} · ${escapeReceipt(special.name)}</small></p>` : "";
   const receiptPaymentStatus = order.paymentStatus === "Verified" ? "Paid" : order.paymentStatus;
-  dialog.querySelector(".pos-receipt-body").innerHTML = `<h3>Kopi; Calamba</h3><p><strong>${escapeReceipt(order.orderNumber)}</strong> · ${escapeReceipt(order.serviceType)}</p><p>Status: <strong>${escapeReceipt(order.status)}</strong><br>Payment: ${escapeReceipt(order.payment)} · ${escapeReceipt(receiptPaymentStatus)}</p>${rows}<p class="receipt-line"><span>Subtotal</span><span>${formatMoney(order.subtotal)}</span></p><p class="receipt-line"><span>Discounts</span><span>− ${formatMoney(discounts)}</span></p><p class="receipt-line receipt-total"><span>Total</span><span>${formatMoney(order.total)}</span></p>${order.payment === "Cash" ? `<p class="receipt-line"><span>Cash received</span><span>${formatMoney(order.cashTendered)}</span></p><p class="receipt-line"><span>Cash change</span><strong>${formatMoney(order.cashChange)}</strong></p>` : ""}`;
+  dialog.querySelector(".pos-receipt-body").innerHTML = `<h3>Kopi; Calamba</h3><p><strong>${escapeReceipt(order.orderNumber)}</strong> · ${escapeReceipt(order.serviceType)}</p><p>Status: <strong>${escapeReceipt(order.status)}</strong><br>Payment: ${escapeReceipt(order.payment)} · ${escapeReceipt(receiptPaymentStatus)}</p>${rows}<p class="receipt-line"><span>Subtotal</span><span>${formatMoney(order.subtotal)}</span></p>${specialRows}<p class="receipt-line"><span>Total discounts</span><span>− ${formatMoney(discounts)}</span></p><p class="receipt-line receipt-total"><span>Total</span><span>${formatMoney(order.total)}</span></p>${order.payment === "Cash" ? `<p class="receipt-line"><span>Cash received</span><span>${formatMoney(order.cashTendered)}</span></p><p class="receipt-line"><span>Cash change</span><strong>${formatMoney(order.cashChange)}</strong></p>` : ""}`;
   dialog.showModal();
 }
 
@@ -103,6 +105,7 @@ const state = {
   orderType: "Dine-in",
   voucher: "",
   voucherQuote: null,
+  specialDiscount: null, // Senior Citizen / PWD details sent with the quote
   paymentMethod: "Cash"
 };
 
@@ -190,6 +193,77 @@ function init() {
   });
 
   placeOrderBtn.addEventListener("click", placeOrder);
+  bindSpecialDiscount();
+}
+
+/* ---------- Senior Citizen / PWD discount ---------- */
+function bindSpecialDiscount() {
+  const toggle = document.getElementById("posSpecialToggle");
+  if (!toggle) return;
+  const fields = document.getElementById("posSpecialFields");
+  const inputs = ["posSpecialType", "posSpecialId", "posSpecialName", "posSpecialChecked"].map(id => document.getElementById(id));
+  toggle.addEventListener("change", () => {
+    fields.hidden = !toggle.checked;
+    if (!toggle.checked) {
+      state.specialDiscount = null;
+      document.getElementById("posSpecialStatus").textContent = "";
+      renderOrder();
+    } else document.getElementById("posSpecialId").focus();
+    syncPlaceOrderButton();
+  });
+  inputs.forEach(input => input.addEventListener(input.type === "checkbox" ? "change" : "input", () => {
+    if (!state.specialDiscount) return syncPlaceOrderButton();
+    state.specialDiscount = null;
+    renderOrder();
+    document.getElementById("posSpecialStatus").textContent = "Details changed. Click Apply discount again.";
+  }));
+  const [typeInput, idInput] = inputs;
+  typeInput.addEventListener("change", () => {
+    idInput.placeholder = typeInput.value === "PWD" ? "PWD no. e.g. 04-3405-012-0001234" : "OSCA no. e.g. OSCA-CAL-2016-00123";
+  });
+  idInput.addEventListener("input", () => {
+    if (typeInput.value !== "PWD") return;
+    const digits = idInput.value.replace(/\D/g, "").slice(0, 16);
+    idInput.value = [digits.slice(0, 2), digits.slice(2, 6), digits.slice(6, 9), digits.slice(9)].filter(Boolean).join("-");
+  });
+  document.getElementById("applyPosSpecial").addEventListener("click", async event => {
+    const [type, idNumber, name, checked] = inputs;
+    const details = { type: type.value === "PWD" ? "PWD" : "Senior Citizen", idNumber: idNumber.value.trim(), name: name.value.trim() };
+    const statusEl = document.getElementById("posSpecialStatus");
+    if (!checked.checked) { KopiNotice.set(statusEl, `Check the customer's physical ${details.type} ID first.`, "error"); return; }
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      // Verify with the ID registry before applying the discount.
+      const {record} = await KopiApi.request("/id-registry/verify?" + new URLSearchParams(details));
+      idNumber.value = record.idNumber;
+      state.specialDiscount = { ...details, idNumber: record.idNumber, idChecked: true };
+      renderOrder();
+    } catch (error) {
+      state.specialDiscount = null;
+      KopiNotice.set(statusEl, error.message, "error");
+    } finally { button.disabled = false; }
+  });
+}
+
+function specialDiscountPending() {
+  return Boolean(document.getElementById("posSpecialToggle")?.checked && !state.voucherQuote?.specialDiscount);
+}
+
+function syncPlaceOrderButton() {
+  placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim() && !state.voucherQuote) || specialDiscountPending();
+}
+
+function paintSpecialDiscount(quote) {
+  const special = quote?.specialDiscount;
+  const line = document.getElementById("posSpecialLine");
+  if (!line) return;
+  line.hidden = !special;
+  document.getElementById("posVatExemptLine").hidden = !special || !(special.vatExempt > 0);
+  if (!special) return;
+  document.getElementById("posSpecialLabel").textContent = `${special.type} discount (20%)`;
+  document.getElementById("posSpecialAmount").textContent = "− " + formatMoney(special.discount);
+  document.getElementById("posVatExemptAmount").textContent = "− " + formatMoney(special.vatExempt);
 }
 
 /* ---------- Categories ---------- */
@@ -486,33 +560,40 @@ function renderOrder() {
   orderTotalEl.textContent = formatMoney(total);
   document.getElementById("posVoucherLine").hidden = !state.voucher;
   document.getElementById("posVoucherAmount").textContent = "₱0.00";
-  placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim());
-  if (state.voucher && state.cart.length) refreshPosVoucher(version);
+  placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim()) || specialDiscountPending();
+  paintSpecialDiscount(null);
+  if ((state.voucher || state.specialDiscount) && state.cart.length) refreshPosVoucher(version);
   else if (state.voucher) posVoucherStatus.textContent = "Add an item to check this voucher.";
   else if (!posVoucherCode.value.trim()) posVoucherStatus.textContent = "";
+  if (state.specialDiscount && !state.cart.length) document.getElementById("posSpecialStatus").textContent = "Add the cardholder's items first.";
   updateCashCalculator();
 }
 
+// Checks vouchers and the Senior Citizen / PWD discount with the server.
 async function refreshPosVoucher(version) {
-  KopiNotice.set(posVoucherStatus, "Checking voucher…", "loading");
+  const statusEl = state.voucher ? posVoucherStatus : document.getElementById("posSpecialStatus");
+  KopiNotice.set(statusEl, state.voucher ? "Checking voucher…" : "Checking discount…", "loading");
   try {
     const quote = await KopiApi.request(POS_ORDER_API + "/quote", {
       method: "POST",
-      body: JSON.stringify({items: state.cart, voucher: state.voucher, serviceType: state.orderType})
+      body: JSON.stringify({items: state.cart, voucher: state.voucher, specialDiscount: state.specialDiscount, serviceType: state.orderType})
     });
     if (version !== posQuoteVersion) return;
     state.voucherQuote = quote;
     subtotalAmountEl.textContent = formatMoney(quote.subtotal);
     document.getElementById("posVoucherAmount").textContent = "− " + formatMoney(quote.voucherDiscount);
     orderTotalEl.textContent = formatMoney(quote.total);
+    paintSpecialDiscount(quote);
     updateCashCalculator();
-    KopiNotice.set(posVoucherStatus, `${quote.voucher} applied: ${formatMoney(quote.voucherDiscount)} off.`, "success");
-    placeOrderBtn.disabled = false;
+    if (quote.voucher) KopiNotice.set(posVoucherStatus, `${quote.voucher} applied: ${formatMoney(quote.voucherDiscount)} off.`, "success");
+    if (quote.specialDiscount) KopiNotice.set(document.getElementById("posSpecialStatus"),
+      `${quote.specialDiscount.type} discount: ${formatMoney(quote.specialDiscount.deduction)} off (${quote.specialDiscount.coveredItems.map(item => item.quantity + " × " + item.name).join(", ")}).`, "success");
+    syncPlaceOrderButton();
   } catch (error) {
     if (version !== posQuoteVersion) return;
     state.voucherQuote = null;
     placeOrderBtn.disabled = true;
-    KopiNotice.set(posVoucherStatus, error.message, "error");
+    KopiNotice.set(statusEl, error.message, "error");
   }
 }
 
@@ -560,7 +641,10 @@ function formatOrderItemLine(item) {
 function renderPaymentExtra() {
   if (state.paymentMethod === "GCash") {
     paymentExtraEl.hidden = false;
-    paymentExtraEl.innerHTML = `<input type="text" id="gcashRef" placeholder="Enter GCash reference number">`;
+    paymentExtraEl.innerHTML = `<input type="text" id="gcashRef" inputmode="numeric" maxlength="13" placeholder="13-digit GCash Ref. No." aria-label="GCash reference number">`;
+    document.getElementById("gcashRef").addEventListener("input", event => {
+      event.target.value = event.target.value.replace(/\D/g, "").slice(0, 13);
+    });
   } else {
     paymentExtraEl.hidden = false;
     paymentExtraEl.innerHTML = `<label for="cashTendered">Cash received
@@ -624,7 +708,7 @@ async function placeOrder() {
   try {
     const quote = await KopiApi.request(POS_ORDER_API + "/quote", {
       method: "POST",
-      body: JSON.stringify({items:state.cart,voucher:state.voucher,serviceType:state.orderType})
+      body: JSON.stringify({items:state.cart,voucher:state.voucher,specialDiscount:state.specialDiscount,serviceType:state.orderType})
     });
     const displayedTotal = state.voucherQuote?.total ?? state.cart.reduce((sum,item)=>sum+item.price*item.quantity,0);
     if (Math.abs(displayedTotal-quote.total)>0.001) {
@@ -637,7 +721,7 @@ async function placeOrder() {
     const reference = document.getElementById("gcashRef")?.value.trim() || "";
     const cashInput = document.getElementById("cashTendered");
     const cashTendered = Number(cashInput?.value);
-    if (gcash && !/^[0-9]{6,30}$/.test(reference)) throw new Error("Enter the GCash reference number.");
+    if (gcash && !/^[0-9]{13}$/.test(reference)) throw new Error("Enter the 13-digit GCash reference number (numbers only).");
     if (gcash && !window.confirm(`Have you received ${formatMoney(quote.total)} with reference ${reference} in the shop GCash account?`)) return;
     if (!gcash && (!cashInput?.value.trim() || !cashInput.validity.valid || !Number.isFinite(cashTendered) || cashTendered < quote.total)) {
       updateCashCalculator(true);
@@ -648,6 +732,7 @@ async function placeOrder() {
         serviceType: state.orderType,
         payment: state.paymentMethod,
         voucher: state.voucher,
+        specialDiscount: state.specialDiscount,
         paymentReference: reference,
         cashTendered: gcash ? null : cashTendered,
         confirmedReceived: gcash,
@@ -673,7 +758,7 @@ async function placeOrder() {
     KopiNotice.toast(error.message || "Could not place the in-store order.", "error");
   } finally {
     if (checkoutSurface) checkoutSurface.inert = false;
-    placeOrderBtn.disabled = state.cart.length === 0 || Boolean(posVoucherCode.value.trim() && !state.voucherQuote);
+    syncPlaceOrderButton();
     recoverPosBtn.hidden = !KopiApi.hasPendingOrder(POS_ORDER_API);
   }
 }
@@ -682,7 +767,16 @@ function resetOrder() {
   state.cart = [];
   state.voucher = "";
   state.voucherQuote = null;
+  state.specialDiscount = null;
   posVoucherCode.value = "";
+  const specialToggle = document.getElementById("posSpecialToggle");
+  if (specialToggle) {
+    specialToggle.checked = false;
+    document.getElementById("posSpecialFields").hidden = true;
+    ["posSpecialId", "posSpecialName"].forEach(id => { document.getElementById(id).value = ""; });
+    document.getElementById("posSpecialChecked").checked = false;
+    document.getElementById("posSpecialStatus").textContent = "";
+  }
   state.orderType = "Dine-in";
   state.paymentMethod = "Cash";
 

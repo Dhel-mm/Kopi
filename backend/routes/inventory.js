@@ -1,6 +1,6 @@
 const express = require("express");
 const { authFor,requireRole } = require("../middleware/auth");
-const { createInventoryService,validateTerms,lowStockLevel,round } = require("../services/inventory");
+const { createInventoryService,validateTerms,lowStockLevel,round,stockLevels } = require("../services/inventory");
 const { OrderError } = require("../services/pricing");
 const { sendError } = require("../services/orderWorkflow");
 const { packageLabel, packageDefinition } = require("../services/inventoryPackages");
@@ -18,14 +18,30 @@ module.exports = function inventoryRouter(db) {
   const service = createInventoryService(db);
   router.use(requireAuth,requireRole("Admin"));
   router.get("/",(req,res)=>{
-    const items = db.prepare("SELECT * FROM inventory_items WHERE is_archived=0 ORDER BY catalog_order IS NULL,catalog_order,category,product_name").all().map(item=>{
-      const low = lowStockLevel(item);
-      return {id:item.id,sku:item.sku,productName:item.product_name,category:item.category,
-        quantity:round(item.quantity),measurement:item.measurement,initialQuantity:item.initial_quantity,
-        packageUnit:item.package_unit,
-        lowStockLevel:low,status:item.quantity<=0?"Out of Stock":item.quantity<=low?"Low Stock":"In Stock"};
-    });
+    const items = stockLevels(db).map(({item,level})=>({id:item.id,sku:item.sku,productName:item.product_name,category:item.category,
+        quantity:level.quantity,measurement:item.measurement,initialQuantity:item.initial_quantity,
+        packageUnit:item.package_unit,lowStockLevel:level.reorderLevel,...level}));
     res.json({items});
+  });
+  // Low-stock parameters: lead time, safety days and an optional manual level.
+  router.patch("/:id/reorder-settings",(req,res)=>{
+    try {
+      const b=req.body||{};
+      const days=(value,label,max)=>{
+        if (typeof value!=="number"||!Number.isFinite(value)||value<0||value>max||Math.round(value*10)!==value*10) {
+          throw new OrderError(`${label} must be from 0 to ${max} days (up to one decimal place).`);
+        }
+        return value;
+      };
+      const leadTime=days(b.leadTimeDays,"Lead time",60);
+      const safety=days(b.safetyDays,"Safety stock",30);
+      const manual=b.reorderLevel===null||b.reorderLevel===""||b.reorderLevel===undefined?null:quantity(b.reorderLevel);
+      const changed=db.prepare(`UPDATE inventory_items SET lead_time_days=?,safety_days=?,reorder_level_override=?,
+        updated_at=CURRENT_TIMESTAMP WHERE id=? AND is_archived=0`).run(leadTime,safety,manual,req.params.id);
+      if (!changed.changes) throw new OrderError("Inventory item was not found.",404);
+      const saved=stockLevels(db).find(row=>row.item.id===Number(req.params.id));
+      res.json({message:"Low-stock settings saved.",item:saved?.level});
+    } catch(error) { sendError(res,error); }
   });
   router.get("/recipes",(req,res)=>res.json({recipes:service.recipes()}));
   router.put("/package-conversion/:sku",(req,res)=>{

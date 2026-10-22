@@ -479,6 +479,18 @@
 .pos-voucher-input button { min-height:36px; padding:8px 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font:700 11px "Poppins",sans-serif; cursor:pointer; }
 #posVoucherStatus { margin:0; font-size:11px; line-height:1.5; }
 #posVoucherStatus:empty, #posVoucherLine[hidden] { display:none; }
+/* Senior Citizen / PWD discount at the counter (panel feedback). */
+.pos-special { display:grid; gap:7px; margin:0 0 12px; padding:10px; border:1px solid var(--border); border-radius:10px; background:#fffaf1; }
+.pos-special-toggle { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; cursor:pointer; }
+.pos-special-toggle input, .pos-special-check input { width:16px; height:16px; accent-color:#4f7a3a; }
+.pos-special-fields { display:grid; gap:7px; }
+.pos-special-fields[hidden] { display:none; }
+.pos-special-fields select, .pos-special-fields input[type="text"] { min-width:0; width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--white); font:inherit; font-size:12px; }
+.pos-special-check { display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; }
+.pos-special-fields button { min-height:36px; padding:8px 13px; border:0; border-radius:8px; background:var(--dark); color:#fff; font:700 11px "Poppins",sans-serif; cursor:pointer; }
+.pos-special-fields small { color:var(--muted); font-size:10.5px; line-height:1.45; }
+#posSpecialStatus { margin:0; font-size:11px; line-height:1.5; }
+#posSpecialStatus:empty, #posSpecialLine[hidden], #posVatExemptLine[hidden] { display:none; }
 
 .payment-logo {
   width: 24px;

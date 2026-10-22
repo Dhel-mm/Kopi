@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="../Admin/Admin.css">
   <link rel="stylesheet" href="../Cashier/Workspace.css">
+  <link rel="stylesheet" href="../Admin/OrderReview.css">
   <link rel="stylesheet" href="../Customer/Notices.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
   <title>Kopi; Staff - Preparation Queue</title>
@@ -38,7 +39,7 @@
         <p class="workspace-status" id="queueMessage" role="status" aria-live="polite"></p>
         <section class="workspace-queue" id="preparationQueue" aria-label="Order tickets"></section>
         <div class="workspace-empty" id="queueEmpty" hidden><i class="bi bi-cup-hot" aria-hidden="true"></i><h2>All caught up</h2><p>No orders match this view. New orders will appear here automatically.</p></div>
-        <p class="workspace-status">Updates every 15 seconds while this page is visible. Confirm delivery with the rider before completing an online order. Admin handles payment verification and cancellations.</p>
+        <p class="workspace-status">Updates every 15 seconds while this page is visible. Confirm delivery with the rider before completing an online order. GCash orders are prepared only after the payment appears in the shop's GCash account. Flagged cash orders are confirmed with the customer by phone first; reject an order you cannot confirm.</p>
       </main>
     </div>
   </div>
@@ -70,6 +71,7 @@
   <script src="../Customer/DeliveryInfo.js"></script>
   <script src="../Cashier/Workspace.js"></script>
   <script src="../Admin/AdminNav.js"></script>
+  <script src="../Admin/OrderReview.js"></script>
   <script src="Staff.js"></script>
 </body>
 </html>

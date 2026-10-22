@@ -17,6 +17,10 @@ module.exports = function orderRouter(db) {
     try { response.json(paymentReview.acknowledge(request.params.id, request.user)); }
     catch (error) { sendError(response, error); }
   });
+  router.patch("/:id/discount/acknowledge", requireRole("Customer"), (request, response) => {
+    try { response.json(paymentReview.acknowledgeDiscount(request.params.id, request.user)); }
+    catch (error) { sendError(response, error); }
+  });
   router.get("/delivery-notifications", requireRole("Customer"), (request, response) => {
     response.json({notifications: delivery.pending(request.user)});
   });
@@ -40,7 +44,9 @@ module.exports = function orderRouter(db) {
     const orders = db.prepare(`
       SELECT id,order_number AS orderNumber,order_type AS orderType,status,payment,
         payment_reference AS paymentReference,payment_status AS paymentStatus,
-        refund_status AS refundStatus,inventory_state AS inventoryState,total,
+        refund_status AS refundStatus,inventory_state AS inventoryState,subtotal,voucher_discount AS voucherDiscount,total,
+        special_discount_type AS specialDiscountType,special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,special_discount AS specialDiscount,vat_exempt AS vatExempt,
+        special_discount_status AS specialDiscountStatus,special_discount_removed AS discountRemoved,
         cancellation_reason AS cancellationReason,
         rider_fee_cents / 100.0 AS riderFee,delivery_tracking_url AS trackingUrl,
         delivery_message AS deliveryMessage,delivery_revision AS deliveryRevision,
@@ -49,6 +55,23 @@ module.exports = function orderRouter(db) {
       FROM orders WHERE user_id=? ORDER BY id DESC
     `).all(request.user.id);
     response.json({orders});
+  });
+  // Receipt of one of the customer's own orders (My Orders > View receipt).
+  router.get("/:id/receipt", (request, response) => {
+    const order = db.prepare(`
+      SELECT id,order_number AS orderNumber,order_type AS orderType,service_type AS serviceType,status,payment,
+        payment_status AS paymentStatus,payment_reference AS paymentReference,subtotal,delivery_fee AS deliveryFee,
+        voucher,voucher_discount AS voucherDiscount,special_discount_type AS specialDiscountType,
+        special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,
+        special_discount AS specialDiscount,vat_exempt AS vatExempt,special_discount_status AS specialDiscountStatus,
+        special_discount_removed AS discountRemoved,total,cash_tendered AS cashTendered,cash_change AS cashChange,
+        address,created_at AS createdAt,completed_at AS completedAt,canceled_at AS canceledAt
+      FROM orders WHERE id=? AND user_id=?
+    `).get(request.params.id, request.user.id);
+    if (!order) return response.status(404).json({message:"Order was not found."});
+    const items = db.prepare("SELECT product_name AS name,quantity,price,options_json FROM order_items WHERE order_id=? ORDER BY id")
+      .all(order.id).map(item => ({name:item.name,quantity:item.quantity,price:item.price,options:JSON.parse(item.options_json)}));
+    response.json({order:{...order,items}});
   });
   router.patch("/:id/cancel",(request,response)=>{
     try {

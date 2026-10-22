@@ -1,12 +1,22 @@
 const express=require("express");
 const {authFor,requireRole}=require("../middleware/auth");
-const {createReports,csv}=require("../services/reports");
+const {createReports,csv,summaryCsv}=require("../services/reports");
 const {sendError}=require("../services/orderWorkflow");
 module.exports=function reportsRouter(db,clock) {
   const router=express.Router(),reports=createReports(db,clock);
   router.use(authFor(db),requireRole("Admin"));
   router.get("/dashboard",(req,res)=>{
     try {res.json(reports.dashboard(req.query));}catch(error){sendError(res,error);}
+  });
+  router.get("/reports/summary",(req,res)=>{
+    try {res.json(reports.salesSummary(req.query));}catch(error){sendError(res,error);}
+  });
+  router.get("/reports/summary/export",(req,res)=>{
+    try {
+      const data=reports.salesSummary(req.query);
+      const name=`kopi-sales-${["day","week"].includes(data.period)?data.start:data.period==="year"?data.start.slice(0,4):data.start.slice(0,7)}.csv`;
+      res.set("Content-Disposition",`attachment; filename="${name}"`).type("text/csv").send(summaryCsv(data));
+    }catch(error){sendError(res,error);}
   });
   router.get("/transactions",(req,res)=>{
     try {res.json(reports.transactions(req.query));}catch(error){sendError(res,error);}

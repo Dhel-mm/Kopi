@@ -28,8 +28,9 @@ function parseManualPayment(payment, reference) {
     return { payment, reference: null, status: "Unpaid" };
   }
   const cleanReference = typeof reference === "string" ? reference.trim() : "";
-  if (!/^[0-9]{6,30}$/.test(cleanReference)) {
-    throw new Error("Enter the GCash reference number from your receipt using 6 to 30 digits.");
+  // Current GCash receipts show a purely numeric 13-digit Ref. No.
+  if (!/^[0-9]{13}$/.test(cleanReference)) {
+    throw new Error("Enter the 13-digit GCash reference number (numbers only) from your receipt.");
   }
   // A reference number is a claim to be checked by staff, never proof of payment.
   return { payment, reference: cleanReference, status: "Pending verification" };

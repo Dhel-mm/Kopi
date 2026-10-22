@@ -27,6 +27,39 @@ Duplicate GCash references are rejected. The database records who confirmed
 receipt and when. Canceling an order does not send a refund; staff must handle
 any refund separately.
 
+## Reference number format
+
+GCash receipts show a purely numeric **13-digit** Ref. No. The checkout and the
+cashier screen accept numbers only (letters and spaces are removed as you type)
+and require exactly 13 digits. The same reference cannot be used on two orders.
+
+## Delayed payments and fake orders
+
+- A GCash order stays **Pending verification** until staff see the money in the
+  shop's GCash history. It cannot be prepared before that, so a delayed
+  transfer costs nothing: the order simply waits. The customer is told not to
+  send the payment again.
+- Staff and Admin see how long each payment has waited. After 5 minutes the
+  card turns orange: check the GCash history again, then call the customer.
+  Admin can mark **GCash not received**, which cancels the order and notifies
+  the customer.
+- Customers may attach a GCash receipt screenshot (optional). It helps staff
+  find the transaction, but a screenshot can be edited, so it is never proof.
+- Online Senior Citizen / PWD discounts work the same way: the customer uploads
+  a photo of the ID, and Admin or Staff open **View ID** and verify it before the
+  order can be prepared. If the ID is not approved, the order is not canceled:
+  the discount is removed, the order continues at the normal price and the
+  customer is notified. For a GCash order the rider collects the difference in cash.
+- Cash on delivery is limited to ₱1,500 and 10 items. Larger online orders must
+  be paid by GCash before they are prepared.
+- Online orders show checks: first order, large order, earlier orders the shop
+  rejected, and a phone number different from the account. A flagged cash order
+  can only be started after staff call or text the customer to confirm it.
+- Admin or Staff can **Reject** a new online order with a reason (unreachable
+  phone, fake address, duplicate, suspicious, other). Reserved ingredients are
+  returned and the customer sees the reason. Repeat offenders can be set to
+  Inactive in **Users**.
+
 ## Local development
 
 Restart the backend after deploying these changes:

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="Admin.css">
   <link rel="stylesheet" href="Operation.css">
   <link rel="stylesheet" href="Vouchers.css">
+  <link rel="stylesheet" href="OrderReview.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
   <link rel="stylesheet" href="../Customer/Notices.css">
 </head>
@@ -62,7 +63,10 @@
               <div><dt>Address:</dt><dd id="orderAddress">Not provided</dd></div>
               <div><dt>Phone No.:</dt><dd id="orderPhone">Not provided</dd></div>
             </dl>
-            <div class="selected-payment-actions" id="selectedPaymentActions"></div>
+            <div class="selected-side">
+              <div class="selected-payment-actions" id="selectedPaymentActions"></div>
+              <div class="selected-payment-actions selected-discount-actions" id="selectedDiscountActions" hidden></div>
+            </div>
           </div>
           <button class="close-panel" id="closePanel" type="button" aria-label="Close order details"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </dialog>
@@ -102,6 +106,7 @@
   <script src="../Customer/Api.js"></script>
 <script src="AdminGuard.js"></script>
 <script src="AdminNav.js"></script>
+  <script src="OrderReview.js"></script>
   <script src="Operation.js"></script>
   <script src="Vouchers.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>

@@ -3,6 +3,63 @@ const specialLowStock = new Set(["sugar", "condensed-milk", "sprite"]);
 const round = value => Math.round(value * 1000) / 1000;
 const lowStockLevel = item => round(item.initial_quantity * (specialLowStock.has(item.sku) ? 1 : 0.25));
 
+// ---- Low-stock parameters (panel feedback) --------------------------------
+// An ingredient is "Low Stock" when its available amount is at or below its
+// reorder level. The reorder level considers four parameters:
+//   1. package baseline   - 25% of one full package (one package for sugar,
+//                            condensed milk and Sprite), the original rule;
+//   2. average daily usage - net order usage over the last 14 days;
+//   3. lead time (days)    - how long a restock takes to arrive (default 2);
+//   4. safety stock (days) - extra buffer for busy days (default 1).
+// Reorder level = max(package baseline, average daily usage x (lead time +
+// safety days)), unless the administrator saves a manual reorder level.
+const USAGE_WINDOW_DAYS = 14;
+const DEFAULT_LEAD_TIME_DAYS = 2;
+const DEFAULT_SAFETY_DAYS = 1;
+
+function migrateReorderSettings(db) {
+  const columns = new Set(db.prepare("PRAGMA table_info(inventory_items)").all().map(row => row.name));
+  for (const [name, sql] of Object.entries({
+    reorder_level_override: "REAL CHECK(reorder_level_override IS NULL OR reorder_level_override >= 0)",
+    lead_time_days: `REAL NOT NULL DEFAULT ${DEFAULT_LEAD_TIME_DAYS} CHECK(lead_time_days >= 0)`,
+    safety_days: `REAL NOT NULL DEFAULT ${DEFAULT_SAFETY_DAYS} CHECK(safety_days >= 0)`
+  })) if (!columns.has(name)) db.exec(`ALTER TABLE inventory_items ADD COLUMN ${name} ${sql}`);
+}
+
+function usageByItem(db, now = new Date()) {
+  const since = new Date(now.getTime() - USAGE_WINDOW_DAYS * 86400000).toISOString().replace("T", " ").slice(0, 19);
+  // Reservations are negative and cancellation returns are positive, so the
+  // net order movement is the amount actually used. Admin corrections are excluded.
+  const rows = db.prepare(`SELECT inventory_item_id AS id, -SUM(change_amount) AS used
+    FROM inventory_transactions WHERE order_id IS NOT NULL AND created_at >= ? GROUP BY inventory_item_id`).all(since);
+  return new Map(rows.map(row => [row.id, Math.max(0, row.used || 0)]));
+}
+
+function describeStock(item, usage = new Map()) {
+  const quantity = round(item.quantity);
+  const packageLevel = lowStockLevel(item);
+  const averageDailyUsage = round((usage.get(item.id) || 0) / USAGE_WINDOW_DAYS);
+  const leadTimeDays = item.lead_time_days ?? DEFAULT_LEAD_TIME_DAYS;
+  const safetyDays = item.safety_days ?? DEFAULT_SAFETY_DAYS;
+  const usageLevel = round(averageDailyUsage * (leadTimeDays + safetyDays));
+  const manual = item.reorder_level_override;
+  const reorderLevel = manual != null ? round(manual) : Math.max(packageLevel, usageLevel);
+  const basis = manual != null ? "Manual" : usageLevel > packageLevel ? "Usage" : "Package";
+  return {
+    quantity, packageLevel, averageDailyUsage, leadTimeDays, safetyDays, usageLevel,
+    reorderLevel, reorderBasis: basis, manualReorderLevel: manual ?? null,
+    daysLeft: averageDailyUsage > 0 ? Math.round(quantity / averageDailyUsage * 10) / 10 : null,
+    status: quantity <= 0 ? "Out of Stock" : quantity <= reorderLevel ? "Low Stock" : "In Stock"
+  };
+}
+
+// Every active ingredient with its stock status, using one usage query.
+function stockLevels(db, now = new Date()) {
+  const usage = usageByItem(db, now);
+  return db.prepare("SELECT * FROM inventory_items WHERE is_archived=0 ORDER BY catalog_order IS NULL,catalog_order,category,product_name").all()
+    .map(item => ({ item, level: describeStock(item, usage) }));
+}
+
 function inStockUnits(term, stock, db) {
   if (stock.measurement === term.unit) return term.amount;
   const conversion = db.prepare(`
@@ -122,4 +179,5 @@ function createInventoryService(db) {
   }
   return { requirements,check,deduct,restore,recipes,readRecipe };
 }
-module.exports = { createInventoryService,validateTerms,lowStockLevel,round,inStockUnits };
+module.exports = { createInventoryService,validateTerms,lowStockLevel,round,inStockUnits,
+  migrateReorderSettings,describeStock,stockLevels,usageByItem,USAGE_WINDOW_DAYS,DEFAULT_LEAD_TIME_DAYS,DEFAULT_SAFETY_DAYS };
