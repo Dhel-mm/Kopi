@@ -51,7 +51,7 @@ window.KopiOrderReview = (() => {
     const dialog = dialogShell("proof-dialog", `${title} for ${orderNumber}`);
     dialog.innerHTML = `<header><h2>${title} · ${esc(orderNumber)}</h2><button class="close-panel" type="button" aria-label="Close ${id ? "ID photo" : "screenshot"}"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
       <p class="review-note">${id
-        ? "Check that the photo shows a real Senior Citizen (OSCA) or PWD ID card, that the name and ID number match what the customer typed, and that the ID is not expired. Ask the rider to see the same card on delivery."
+        ? "Check that the photo shows a real Senior Citizen (OSCA) or PWD ID card, that the name and ID number match what the customer typed, and that the ID is not expired. Ask to see the same card on delivery or at pickup."
         : "A screenshot can be edited. Confirm only after the same reference and amount appear in the shop's own GCash transaction history."}</p>
       <dl class="id-proof-details" hidden></dl>
       <div class="proof-image" role="status">Loading ${id ? "ID photo" : "screenshot"}…</div>`;
@@ -130,7 +130,7 @@ window.KopiOrderReview = (() => {
       const dialog = dialogShell("reject-dialog", `Discount not approved for ${order.orderNumber}`);
       dialog.innerHTML = `<form method="dialog">
         <header><h2>Not approve the discount for ${esc(order.orderNumber)}?</h2><button class="close-panel" type="submit" value="cancel" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
-        <p class="review-note">Use this when the ID photo is unclear, the name or ID number does not match, or the card is not valid. <strong>The order is not canceled.</strong> The ${esc(order.specialDiscountType)} discount of ${peso(removed)} is removed, the order goes back to the normal price of <strong>${peso(normal)}</strong>, and the customer is notified.${order.payment === "GCash" ? ` The customer paid by GCash, so the rider collects the remaining ${peso(removed)} in cash.` : ""}</p>
+        <p class="review-note">Use this when the ID photo is unclear, the name or ID number does not match, or the card is not valid. <strong>The order is not canceled.</strong> The ${esc(order.specialDiscountType)} discount of ${peso(removed)} is removed, the order goes back to the normal price of <strong>${peso(normal)}</strong>, and the customer is notified.${order.payment === "GCash" ? ` The customer paid by GCash, so ${order.serviceType === "Pickup" ? "the counter" : "the rider"} collects the remaining ${peso(removed)} in cash.` : ""}</p>
         <label class="workspace-field">What was wrong? (optional, shown to the customer)<textarea name="note" maxlength="200" rows="2" placeholder="e.g. The name on the ID does not match."></textarea></label>
         <div class="workspace-dialog-actions">
           <button class="workspace-btn secondary" type="submit" value="cancel">Go back</button>

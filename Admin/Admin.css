@@ -13,6 +13,8 @@
   --link: #3d2b16;
   --card-shadow: 0 2px 4px rgba(61, 43, 22, 0.035), 0 6px 16px rgba(61, 43, 22, 0.065);
   --dialog-shadow: 0 12px 36px rgba(61, 43, 22, 0.16);
+  /* Lifts the current page's sidebar link off the sidebar. */
+  --nav-active-shadow: 0 6px 16px rgba(138, 75, 12, 0.3), 0 2px 4px rgba(61, 43, 22, 0.12);
 }
 
 * { box-sizing: border-box; }
@@ -118,6 +120,7 @@ button { cursor: pointer; }
 .admin-nav-link.active {
   background: var(--tan);
   color: var(--dark);
+  box-shadow: var(--nav-active-shadow);
 }
 
 /* Smooth active-state handoff between Admin sidebar pages. */
@@ -133,6 +136,7 @@ button { cursor: pointer; }
   pointer-events: none;
   border-radius: 12px;
   background: var(--tan);
+  box-shadow: var(--nav-active-shadow);
   will-change: transform, width, height;
   transition:
     transform 340ms cubic-bezier(.22, 1, .36, 1),
@@ -142,6 +146,7 @@ button { cursor: pointer; }
 
 .admin-nav-is-moving .admin-nav-link {
   background: transparent;
+  box-shadow: none;
   transition: color 180ms ease;
 }
 
@@ -418,3 +423,25 @@ button { cursor: pointer; }
     box-shadow: var(--dialog-shadow);
   }
 }
+
+/* Order alert pop-up (OrderAlerts.js): new orders for Staff, verifications for Admin. */
+.order-alert { position: fixed; right: 20px; bottom: 20px; z-index: 200; width: min(360px, calc(100vw - 32px)); padding: 16px; border: 2px solid var(--tan); border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 18px 40px rgba(61, 43, 22, .25); animation: order-alert-in 280ms cubic-bezier(.22, 1, .36, 1); }
+.order-alert header { display: flex; align-items: center; gap: 10px; }
+.order-alert h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 800; }
+.order-alert-icon { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--tan); color: var(--dark); animation: order-alert-ring 1s ease-in-out 3; }
+.order-alert ul { display: grid; gap: 8px; max-height: 220px; margin: 12px 0; padding: 0; overflow-y: auto; list-style: none; }
+.order-alert li { display: grid; gap: 2px; padding: 9px 11px; border-radius: 10px; background: #fff5e2; }
+.order-alert li strong { font-size: 13px; }
+.order-alert li small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.order-alert-actions { display: flex; gap: 8px; }
+.order-alert-actions a, .order-alert-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 8px 12px; border-radius: 9px; font: 700 12px "Poppins", Arial, sans-serif; text-decoration: none; cursor: pointer; }
+.order-alert-open { border: 0; background: var(--dark); color: #fff; }
+.order-alert-ok { border: 1px solid var(--border); background: #fff; color: var(--dark); }
+.order-alert-actions a:focus-visible, .order-alert-actions button:focus-visible { outline: 3px solid var(--tan); outline-offset: 2px; }
+.order-alert-sound { position: fixed; left: 20px; bottom: 20px; z-index: 199; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--tan); border-radius: 999px; background: var(--paper); color: var(--dark); font: 700 12px "Poppins", Arial, sans-serif; box-shadow: 0 8px 20px rgba(61, 43, 22, .15); cursor: pointer; }
+.order-alert-sound[hidden] { display: none; }
+.order-alert-sound:hover { background: #fff5e2; }
+@keyframes order-alert-in { from { opacity: 0; transform: translateY(16px) scale(.98); } }
+@keyframes order-alert-ring { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 40% { transform: rotate(12deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(5deg); } }
+@media (max-width: 500px) { .order-alert { right: 16px; bottom: 16px; } .order-alert-sound { left: 16px; bottom: 16px; } }
+@media (prefers-reduced-motion: reduce) { .order-alert, .order-alert-icon { animation: none; } }

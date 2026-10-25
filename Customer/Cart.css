@@ -1861,10 +1861,10 @@ input {
   }
 
   .field-group { gap: 4px; }
-  .field-group:nth-child(1) { order: 1; }
-  .field-group:nth-child(2) { order: 3; }
-  .field-group:nth-child(3) { order: 2; }
-  .field-group:nth-child(4) { order: 4; }
+  .field-group:nth-of-type(1) { order: 1; }
+  .field-group:nth-of-type(2) { order: 3; }
+  .field-group:nth-of-type(3) { order: 2; }
+  .field-group:nth-of-type(4) { order: 4; }
 
   .gcash-panel {
     order: 4;
@@ -2210,3 +2210,77 @@ input {
 
 /* Payment details box keeps a steady height at checkout. */
 .checkout-shell .payment-details { min-height: 250px; }
+
+/* ---------- Delivery or Pickup ---------- */
+.order-type-group { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; }
+.order-type-group legend { margin-bottom: 9px; padding: 0; color: #342d25; font-size: 20px; font-weight: 800; }
+.order-type-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.order-type-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 16px;
+  border: 2px solid #a7a6a1;
+  border-radius: 15px;
+  background: #fff;
+  color: #342d25;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.order-type-option input { position: absolute; opacity: 0; pointer-events: none; }
+.order-type-option i { flex: 0 0 auto; font-size: 26px; color: #6d5537; }
+.order-type-option span { display: grid; gap: 1px; min-width: 0; }
+.order-type-option strong { font-size: 15px; font-weight: 800; }
+.order-type-option small { color: #77613e; font-size: 12px; line-height: 1.35; }
+.order-type-option:hover { border-color: var(--gold); }
+.order-type-option:has(input:checked) { border-color: var(--gold); background: #fff7e8; box-shadow: 0 0 0 3px rgba(212, 155, 67, 0.18); }
+.order-type-option:has(input:checked) i { color: #8a4b0c; }
+.order-type-option:has(input:focus-visible) { outline: 3px solid rgba(212, 155, 67, 0.55); outline-offset: 2px; }
+.order-type-option:has(input:checked)::after {
+  content: "\F26A";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: #8a4b0c;
+  font-family: "bootstrap-icons";
+  font-size: 15px;
+}
+.pickup-note { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0 0; padding: 11px 13px; border: 1px solid #e3cfa9; border-radius: 12px; background: #fffaf0; color: #5c4210; font-size: 13px; line-height: 1.55; }
+.pickup-note[hidden] { display: none; }
+.pickup-note i { margin-top: 2px; color: #8a4b0c; }
+.field-group[hidden] { display: none; }
+@media (max-width: 1100px) { .order-type-group legend { font-size: 16px; } }
+@media (max-width: 600px) {
+  .order-type-group { order: 0; }
+  .order-type-choices { gap: 8px; }
+  .order-type-option { min-height: 54px; padding: 8px 10px; gap: 8px; border-width: 1px; border-radius: 10px; }
+  .order-type-option i { font-size: 20px; }
+  .order-type-option strong { font-size: 13px; }
+  .order-type-option small { font-size: 10.5px; }
+  .order-type-group legend { font-size: 14px; margin-bottom: 6px; }
+  .pickup-note { font-size: 11.5px; padding: 9px 10px; }
+}
+
+/* Pickup or rider handover time, limited to opening hours by the server. */
+.time-slot-group { grid-column: 1 / -1; min-width: 0; margin: 0; padding: 0; border: 0; gap: 10px; }
+.time-slot-group legend { margin-bottom: 10px; padding: 0; color: #211508; font-weight: 800; }
+.time-choice { display: flex; flex-wrap: wrap; gap: 10px; }
+.time-choice-option { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; border: 2px solid #a7a6a1; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; transition: border-color 0.2s ease, background-color 0.2s ease; }
+.time-choice-option:hover { border-color: var(--gold); }
+.time-choice-option:has(input:checked) { border-color: var(--gold); background: #fff5e2; }
+.time-choice-option:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.time-slot-group .time-choice-option input { flex: none; width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; border: 0; accent-color: #8a4b0c; box-shadow: none; }
+.time-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 12px; }
+.time-inputs[hidden] { display: none; }
+.time-inputs label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
+.time-slot-group .time-inputs input { width: 100%; min-height: 49px; padding: 0 14px; border: 2px solid #a7a6a1; border-radius: 15px; background: transparent; color: #342d25; font: inherit; outline: 0; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.time-inputs input:hover { border-color: var(--gold); }
+.time-inputs input:focus-visible { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 155, 67, 0.18); }
+.time-inputs input:user-invalid { border-color: #b84c45; }
+.time-slot-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #5b4a35; font-size: 12px; line-height: 1.5; }
+.time-slot-note i { margin-top: 2px; color: #8a4b0c; }
+.time-slot-note.is-closed { padding: 9px 12px; border: 1px solid #e3cfa9; border-radius: 12px; background: #fffaf0; color: #5c4210; font-weight: 600; }
+@media (max-width: 500px) { .time-inputs { grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .time-choice-option, .time-inputs input { transition: none; } }

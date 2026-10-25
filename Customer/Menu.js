@@ -32,14 +32,19 @@ function bindEvents() {
   });
 }
 
+// Menu text comes from Menu Management, so it is escaped before it goes into HTML.
+function menuText(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, character => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"}[character]));
+}
+
 function renderMenu() {
   tabs.innerHTML = KopiStore.products.map((category, index) => `
-    <button class="tab-btn${index === 0 ? " active" : ""}" type="button" data-target="${category.id}">${category.label}</button>
+    <button class="tab-btn${index === 0 ? " active" : ""}" type="button" data-target="${menuText(category.id)}">${menuText(category.label)}</button>
   `).join("");
 
   sections.innerHTML = KopiStore.products.map((category, index) => `
-    <section class="menu-category" id="${category.id}">
-      <h2>${category.name}</h2>
+    <section class="menu-category" id="${menuText(category.id)}">
+      <h2>${menuText(category.name)}</h2>
       <div class="product-slider">
         <div class="product-row" id="product-row-${index + 1}">${category.products.map(productCard).join("")}</div>
         ${category.id === "kopi" ? `
@@ -59,8 +64,15 @@ function productCard(product) {
   const priceInfo = sizes.length
     ? `<span class="size-chips" aria-label="Available sizes">${sizes.map(sizeChip).join("")}</span>`
     : `<span class="size-chips" aria-label="Price"><span class="size-chip price-only"><strong>₱${basePrice(product)}</strong></span></span>`;
-  return `<button class="product-card" type="button" data-product-id="${product.id}">
-    <img src="${product.image}" alt="${product.name}"><h3>${product.name}</h3>${priceInfo}
+  // Items the shop marked unavailable stay visible but cannot be ordered.
+  if (product.available === false) {
+    return `<button class="product-card is-unavailable" type="button" data-product-id="${menuText(product.id)}" aria-disabled="true">
+    <span class="product-unavailable">Unavailable</span>
+    <img src="${menuText(product.image)}" alt="${menuText(product.name)}"><h3>${menuText(product.name)}</h3>${priceInfo}
+  </button>`;
+  }
+  return `<button class="product-card" type="button" data-product-id="${menuText(product.id)}">
+    <img src="${menuText(product.image)}" alt="${menuText(product.name)}"><h3>${menuText(product.name)}</h3>${priceInfo}
   </button>`;
 }
 
@@ -84,8 +96,8 @@ function describeSize(value) {
 function sizeChip(choice) {
   const icon = choice.temperature === "HOT" ? "bi-cup-hot-fill" : choice.temperature === "ICED" ? "bi-snow" : "";
   const tone = choice.temperature ? ` ${choice.temperature.toLowerCase()}` : "";
-  return `<span class="size-chip${tone}" data-size="${choice.value}" title="Choose ${choice.label}">
-    ${icon ? `<i class="bi ${icon}" aria-hidden="true"></i>` : ""}<span>${choice.label}</span><strong>₱${choice.price}</strong>
+  return `<span class="size-chip${tone}" data-size="${menuText(choice.value)}" title="Choose ${menuText(choice.label)}">
+    ${icon ? `<i class="bi ${icon}" aria-hidden="true"></i>` : ""}<span>${menuText(choice.label)}</span><strong>₱${choice.price}</strong>
   </span>`;
 }
 
@@ -109,6 +121,10 @@ function handleMenuClick(event) {
   if (card) {
     const product = KopiStore.findProduct(card.dataset.productId);
     if (!product) return;
+    if (product.available === false) {
+      KopiNotice.toast(`${product.name} is not available right now.`, "warning");
+      return;
+    }
     if (product.customizable === false) addFixedProduct(product);
     else {
       // Tapping a size chip opens the customizer with that size already chosen.

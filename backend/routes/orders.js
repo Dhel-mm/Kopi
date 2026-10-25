@@ -21,6 +21,10 @@ module.exports = function orderRouter(db) {
     try { response.json(paymentReview.acknowledgeDiscount(request.params.id, request.user)); }
     catch (error) { sendError(response, error); }
   });
+  router.patch("/:id/pickup/acknowledge", requireRole("Customer"), (request, response) => {
+    try { response.json(paymentReview.acknowledgePickup(request.params.id, request.user)); }
+    catch (error) { sendError(response, error); }
+  });
   router.get("/delivery-notifications", requireRole("Customer"), (request, response) => {
     response.json({notifications: delivery.pending(request.user)});
   });
@@ -31,6 +35,10 @@ module.exports = function orderRouter(db) {
   router.get("/requests/:key",(request,response)=>{
     try { response.json(workflow.recover(request.params.key,request.user)); }
     catch(error) { sendError(response,error); }
+  });
+  // Times a customer may choose for pickup or rider handover (opening hours only).
+  router.get("/schedule",(request,response)=>{
+    response.json(require("../services/schedule").options());
   });
   router.post("/quote",(request,response)=>{
     try { response.json(workflow.prepareQuote(request.body||{})); }
@@ -46,7 +54,7 @@ module.exports = function orderRouter(db) {
         payment_reference AS paymentReference,payment_status AS paymentStatus,
         refund_status AS refundStatus,inventory_state AS inventoryState,subtotal,voucher_discount AS voucherDiscount,total,
         special_discount_type AS specialDiscountType,special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,special_discount AS specialDiscount,vat_exempt AS vatExempt,
-        special_discount_status AS specialDiscountStatus,special_discount_removed AS discountRemoved,
+        special_discount_status AS specialDiscountStatus,special_discount_removed AS discountRemoved,service_type AS serviceType,scheduled_for AS scheduledFor,
         cancellation_reason AS cancellationReason,
         rider_fee_cents / 100.0 AS riderFee,delivery_tracking_url AS trackingUrl,
         delivery_message AS deliveryMessage,delivery_revision AS deliveryRevision,
@@ -59,7 +67,7 @@ module.exports = function orderRouter(db) {
   // Receipt of one of the customer's own orders (My Orders > View receipt).
   router.get("/:id/receipt", (request, response) => {
     const order = db.prepare(`
-      SELECT id,order_number AS orderNumber,order_type AS orderType,service_type AS serviceType,status,payment,
+      SELECT id,order_number AS orderNumber,order_type AS orderType,service_type AS serviceType,scheduled_for AS scheduledFor,status,payment,
         payment_status AS paymentStatus,payment_reference AS paymentReference,subtotal,delivery_fee AS deliveryFee,
         voucher,voucher_discount AS voucherDiscount,special_discount_type AS specialDiscountType,
         special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,

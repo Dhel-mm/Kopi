@@ -16,24 +16,34 @@
     current = null;
   }
   function show(notification, token) {
-    // Cancellation and "discount not approved" notices are text only.
+    // Cancellation, "discount not approved" and "ready for pickup" notices are text only.
     const discount = notification.type === "discount";
-    const canceled = notification.type === "cancellation" || discount;
+    const pickup = notification.type === "pickup";
+    const canceled = notification.type === "cancellation" || discount || pickup;
     const link = KopiDeliveryInfo.trackingUrl(notification.trackingUrl);
     if (!canceled && !link) return;
     const previousFocus = document.activeElement;
     current = notification;
     dialog = document.createElement("dialog");
-    dialog.className = canceled ? "delivery-notice cancellation-notice" : "delivery-notice";
+    dialog.className = canceled && !pickup ? "delivery-notice cancellation-notice" : "delivery-notice";
     dialog.setAttribute("aria-labelledby", "deliveryNoticeTitle");
     dialog.setAttribute("aria-describedby", "deliveryNoticeMessage");
     const title = document.createElement("h2");
     title.id = "deliveryNoticeTitle";
-    title.textContent = `${discount ? "Discount not approved" : canceled ? "Order canceled" : "Delivery details"} · ${notification.orderNumber}`;
+    title.textContent = `${pickup ? "Ready for pickup" : discount ? "Discount not approved" : canceled ? "Order canceled" : "Delivery details"} · ${notification.orderNumber}`;
+    if (pickup) dialog.classList.add("pickup-notice");
     const message = document.createElement("p");
     message.id = "deliveryNoticeMessage";
     message.className = "delivery-notice-message";
-    if (discount) {
+    if (pickup) {
+      String(notification.message || "").split(/(Please pay ₱[\d,.]+ at the counter\.)/).forEach((text, index) => {
+        if (!text) return;
+        const part = document.createElement("span");
+        if (index % 2 === 1) part.className = "delivery-notice-value discount-notice-key";
+        part.textContent = text;
+        message.appendChild(part);
+      });
+    } else if (discount) {
       // Bold, gold key points: the discount removed and what to pay the rider.
       const key = /(\(the ₱[\d,.]+ discount was removed\)|[Pp]lease pay (?:the remaining )?₱[\d,.]+ (?:in cash )?to the rider\.)/;
       String(notification.message || "").split(key).forEach((text, index) => {
@@ -74,7 +84,7 @@
       acknowledging = true;
       ok.disabled = true;
       try {
-        await KopiApi.request(`/orders/${notification.orderId}/${discount ? "discount" : canceled ? "cancellation" : "delivery"}/acknowledge`, {
+        await KopiApi.request(`/orders/${notification.orderId}/${pickup ? "pickup" : discount ? "discount" : canceled ? "cancellation" : "delivery"}/acknowledge`, {
           method: "PATCH", body: JSON.stringify({revision: notification.revision})
         });
         dismiss();

@@ -49,7 +49,26 @@ function createPaymentReviewService(db) {
       SELECT id, order_number, special_discount_note, 'discount', 1
       FROM orders WHERE user_id=? AND special_discount_status='Not approved' AND special_discount_note IS NOT NULL
         AND discount_notice_acknowledged_at IS NULL
-      ORDER BY 1`).all(user.id, user.id);
+      ORDER BY 1`).all(user.id, user.id).concat(pickupReady(user)).sort((a, b) => a.orderId - b.orderId);
+  }
+  // "Your order is ready for pickup" notice, shown once until the customer taps OK.
+  function pickupReady(user) {
+    const peso = value => "₱" + Number(value || 0).toLocaleString("en-PH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    return db.prepare(`SELECT id,order_number,payment,payment_status,total,special_discount_removed FROM orders
+      WHERE user_id=? AND service_type='Pickup' AND status='Ready for Pickup' AND pickup_notice_acknowledged_at IS NULL ORDER BY id`)
+      .all(user.id).map(order => {
+        const paid = order.payment === "GCash" && order.payment_status === "Verified";
+        const due = paid ? order.special_discount_removed || 0 : order.total;
+        const pay = due > 0 ? `Please pay ${peso(due)} at the counter.` : "Your GCash payment was already received, so just give your order number.";
+        return {orderId: order.id, orderNumber: order.order_number, type: "pickup", revision: 1,
+          message: `Your order ${order.order_number} is ready for pickup! Pick it up at Kopi; Calamba, 72 Villanueva Subdivision, Camia Street, Brgy. Lingga, Calamba (open Tuesday to Sunday, 4:00 PM to 11:00 PM). ${pay}`};
+      });
+  }
+  function acknowledgePickup(id, user) {
+    const updated = db.prepare(`UPDATE orders SET pickup_notice_acknowledged_at=COALESCE(pickup_notice_acknowledged_at,CURRENT_TIMESTAMP)
+      WHERE id=? AND user_id=? AND service_type='Pickup' AND status IN ('Ready for Pickup','Completed')`).run(id, user.id);
+    if (!updated.changes) throw new OrderError("Pickup notice was not found.", 404);
+    return {message: "Pickup notice acknowledged."};
   }
   // Customer read the "discount not approved" notice.
   function acknowledgeDiscount(id, user) {
@@ -64,6 +83,6 @@ function createPaymentReviewService(db) {
     if (!updated.changes) throw new OrderError("Cancellation notice was not found.", 404);
     return {message: "Cancellation notice acknowledged."};
   }
-  return {reject, verify, pending, acknowledge, acknowledgeDiscount};
+  return {reject, verify, pending, acknowledge, acknowledgeDiscount, acknowledgePickup};
 }
 module.exports = {createPaymentReviewService, rejectionMessage};

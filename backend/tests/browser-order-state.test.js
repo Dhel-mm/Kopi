@@ -83,3 +83,32 @@ test("closing a receipt removes only purchased cart quantities, not other items 
   store.consumeCheckout([{...item,options:{Size:"ICED - 16oz"},quantity:1}]);
   assert.equal(store.getCart()[0].quantity,1);
 });
+
+test("each account has its own cart and address; a guest cart moves into the account that logs in",()=>{
+  const localStorage=storage(),sessionStorage=storage();
+  const source=fs.readFileSync(path.join(__dirname,"../../Customer/Store.js"),"utf8");
+  localStorage.setItem("kopiCart",JSON.stringify([{cartId:"old",productId:"tapa",quantity:1,price:179}]));
+  localStorage.setItem("kopiAddress","Someone else's house");
+  const store=vm.runInNewContext(source+";KopiStore",{
+    localStorage,sessionStorage,KopiCatalog:{categories:[]},document:{addEventListener(){},querySelectorAll(){return [];}}
+  });
+  const login=id=>sessionStorage.setItem("kopi_api_session",JSON.stringify({user:{id}}));
+  // Unowned data from before this update is cleared.
+  assert.equal(localStorage.getItem("kopiCart"),null);
+  assert.equal(store.getCart().length,0);
+  assert.equal(store.getAddress(),"");
+  // Guest adds an item, then logs in as account 1: the item moves with them.
+  store.addToCart({productId:"americano",options:{Size:"HOT - 12oz"},quantity:2,price:100});
+  login(1);
+  assert.equal(store.getCart().length,1);
+  assert.equal(store.getCart()[0].quantity,2);
+  store.setAddress("Blk 1 Lot 2, Lingga");
+  // A different (new) account starts empty.
+  login(2);
+  assert.equal(store.getCart().length,0);
+  assert.equal(store.getAddress(),"");
+  // Account 1 still has its own cart and address.
+  login(1);
+  assert.equal(store.getCart()[0].quantity,2);
+  assert.equal(store.getAddress(),"Blk 1 Lot 2, Lingga");
+});

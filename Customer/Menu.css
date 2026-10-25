@@ -974,7 +974,7 @@ legend {
 
   .nav-link .cart-count {
     top: 2px;
-    right: 5px;
+    right: 41px;
   }
 
   .menu-page {
@@ -1658,3 +1658,10 @@ legend {
     font-size: 9px;
   }
 }
+
+/* Items marked unavailable in Menu Management. */
+.product-card.is-unavailable { position: relative; cursor: not-allowed; }
+.product-card.is-unavailable img { filter: grayscale(.85); opacity: .55; }
+.product-card.is-unavailable:hover, .product-card.is-unavailable:focus-visible { transform: none; }
+.product-card.is-unavailable:hover img { transform: none; }
+.product-unavailable { position: absolute; top: 10px; right: 10px; z-index: 1; padding: 4px 10px; border-radius: 999px; background: #fbecea; color: #b84c45; font-size: 11px; font-weight: 700; }

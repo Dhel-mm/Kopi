@@ -11,10 +11,14 @@ module.exports = function adminOrderRouter(db) {
   const workflow = require("../services/orderWorkflow").createOrderWorkflow(db);
   const rowFor = db.prepare("SELECT * FROM orders WHERE id=?");
   router.use(requireAuth,requireRole("Admin"));
+  // GCash payments and Senior Citizen / PWD IDs waiting for verification, for the Admin pop-up alert.
+  router.get("/alerts",(request,response)=>{
+    response.json(require("../services/alerts").createAlertService(db).admin());
+  });
   router.get("/orders",(request,response)=>{
     const orders = db.prepare(`
       SELECT orders.id,orders.order_number AS orderNumber,orders.order_type AS orderType,
-        orders.service_type AS serviceType,orders.status,orders.payment,
+        orders.service_type AS serviceType,orders.scheduled_for AS scheduledFor,orders.status,orders.payment,
         orders.payment_reference AS paymentReference,orders.payment_status AS paymentStatus,
         orders.inventory_state AS inventoryState,orders.refund_status AS refundStatus,
         orders.cancellation_reason AS cancellationReason,

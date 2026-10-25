@@ -2,6 +2,22 @@ const KopiStore = (() => {
   const CART_KEY = "kopiCart";
   const CHECKOUT_KEY = "kopiCheckout";
   const ADDRESS_KEY = "kopiAddress";
+  const SESSION_KEY = "kopi_api_session";
+
+  // Each account keeps its own cart, checkout and delivery address in this
+  // browser (saved as "kopiCart:user12", "kopiCart:guest", ...). A new account
+  // starts empty, and one person's cart or address never shows for another.
+  function ownerId() {
+    const stores = [typeof sessionStorage === "undefined" ? null : sessionStorage, localStorage];
+    for (const store of stores) {
+      try {
+        const id = JSON.parse(store?.getItem(SESSION_KEY) || "null")?.user?.id;
+        if (id != null) return "user" + id;
+      } catch { /* A damaged session counts as a guest. */ }
+    }
+    return "guest";
+  }
+  const scoped = key => key + ":" + ownerId();
 
   const products = KopiCatalog.categories;
 
@@ -13,19 +29,48 @@ const KopiStore = (() => {
     return allProducts().find(product => product.id === id);
   }
 
-  function read(key, fallback) {
+  function readRaw(fullKey, fallback) {
     try {
-      return JSON.parse(localStorage.getItem(key)) || fallback;
+      return JSON.parse(localStorage.getItem(fullKey)) || fallback;
     } catch {
       return fallback;
     }
   }
 
+  function read(key, fallback) {
+    return readRaw(scoped(key), fallback);
+  }
+
   function write(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(scoped(key), JSON.stringify(value));
+  }
+
+  // Items added before logging in or signing up move into that account.
+  function adoptGuestCart() {
+    const owner = ownerId();
+    if (owner === "guest") return;
+    const guestKey = CART_KEY + ":guest";
+    const guest = readRaw(guestKey, []);
+    localStorage.removeItem(CHECKOUT_KEY + ":guest");
+    if (!guest.length) return;
+    const cart = readRaw(CART_KEY + ":" + owner, []);
+    for (const item of guest) {
+      const existing = cart.find(entry => sameOrder(entry, item));
+      if (existing) existing.quantity += item.quantity;
+      else cart.push(item);
+    }
+    localStorage.setItem(CART_KEY + ":" + owner, JSON.stringify(cart));
+    localStorage.removeItem(guestKey);
+  }
+
+  // Data saved before carts were kept per account is cleared once, because
+  // it cannot be told which account it belonged to.
+  for (const legacy of [CART_KEY, CHECKOUT_KEY, ADDRESS_KEY]) {
+    try { localStorage.removeItem(legacy); } catch { /* Storage may be unavailable. */ }
   }
 
   function getCart() {
+    adoptGuestCart();
     return read(CART_KEY, []);
   }
 
@@ -93,19 +138,20 @@ const KopiStore = (() => {
   }
 
   function getCheckout() {
-    const raw = localStorage.getItem(CHECKOUT_KEY);
+    const raw = localStorage.getItem(scoped(CHECKOUT_KEY));
     if (raw !== null) {
       return read(CHECKOUT_KEY, []);
     }
     return getCart();
   }
 
+  // A new account starts with an empty delivery address.
   function getAddress() {
-    return localStorage.getItem(ADDRESS_KEY) || "Lingga, Calamba City";
+    return localStorage.getItem(scoped(ADDRESS_KEY)) || "";
   }
 
   function setAddress(address) {
-    localStorage.setItem(ADDRESS_KEY, address);
+    localStorage.setItem(scoped(ADDRESS_KEY), address);
   }
 
   return {

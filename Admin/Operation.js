@@ -16,6 +16,8 @@ const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character =>
   "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
 }[character]));
 // Database times are UTC ("YYYY-MM-DD HH:MM:SS"); show them in Philippine time.
+// When the customer or rider collects an online order; empty means as soon as possible.
+const formatHandover = iso => iso ? new Date(iso).toLocaleString("en-PH",{timeZone:"Asia/Manila",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "As soon as possible";
 const formatOrderTime = value => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : String(value).replace(" ", "T") + "Z")
   .toLocaleTimeString("en-PH", {hour: "2-digit", minute: "2-digit", timeZone: "Asia/Manila"});
 
@@ -46,7 +48,7 @@ function renderRows() {
   rowsEl.innerHTML = orders.map((order, index) => `
     <tr class="${order.id === state.selectedId ? "selected" : ""}">
       <td>${index + 1}</td><td><strong>${escapeHtml(order.orderNumber)}</strong></td>
-      <td><span class="type-badge ${order.orderType === "In-store" ? "in-store" : "online"}"><i class="bi ${order.orderType === "In-store" ? "bi-shop" : "bi-globe2"}"></i>${escapeHtml(order.orderType)}</span></td>
+      <td><span class="type-badge ${order.orderType === "In-store" ? "in-store" : "online"}"><i class="bi ${order.orderType === "In-store" ? "bi-shop" : "bi-globe2"}"></i>${escapeHtml(order.orderType)}</span>${order.serviceType === "Pickup" ? `<small class="payment-review-status">Pickup</small>` : ""}</td>
       <td>${escapeHtml(order.customer)}</td><td>${order.itemCount} ${order.itemCount === 1 ? "item" : "items"}</td>
       <td><strong>${peso(order.total)}</strong></td>
       <td>${escapeHtml(order.payment)}${order.payment === "GCash" ? `<small class="payment-review-status">${escapeHtml(order.paymentStatus)}</small>` : ""}</td>
@@ -86,7 +88,7 @@ function selectOrder(id) {
   if (!order) return;
   selectedOrderEl.innerHTML = `<header class="order-detail-heading">
       <div><span class="order-detail-eyebrow">Order details</span><h2 id="orderDetailsTitle">Order ${escapeHtml(order.orderNumber)}</h2></div>
-      <span class="type-badge ${order.orderType === "In-store" ? "in-store" : "online"}">${escapeHtml(order.orderType)}</span>
+      <span class="type-badge ${order.orderType === "In-store" ? "in-store" : "online"}">${escapeHtml(order.orderType)}${order.serviceType === "Pickup" ? " · Pickup" : ""}</span>
     </header>
     <p><span>Customer</span><strong>${escapeHtml(order.customer)}</strong></p>
     <p><span>Items</span><strong>${escapeHtml(order.itemCount)}</strong></p>
@@ -96,8 +98,10 @@ function selectOrder(id) {
     <p><span>Payment method</span><strong>${escapeHtml(order.payment)}</strong></p>
     ${order.payment === "GCash" ? `<p><span>Reference number</span><strong class="key-value">${escapeHtml(order.paymentReference || "Not provided")}</strong></p><p><span>Payment status</span><strong>${escapeHtml(order.paymentStatus)}</strong></p>` : ""}
     <p><span>Order Time:</span><strong>${formatOrderTime(order.createdAt)}</strong></p>
+    ${order.orderType === "Online" ? `<p><span>${order.serviceType === "Pickup" ? "Pickup time" : "Rider pickup"}</span><strong>${escapeHtml(formatHandover(order.scheduledFor))}</strong></p>` : ""}
     ${orderReview ? orderReview.flagsHtml(order) + orderReview.waitHtml(order) : ""}`;
-  orderAddressEl.textContent = order.address?.trim() || "Not provided";
+  // Pickup orders have no address: the customer collects at the store.
+  orderAddressEl.textContent = order.serviceType === "Pickup" ? "Pickup at the store (no delivery)" : order.address?.trim() || "Not provided";
   orderPhoneEl.textContent = order.phone?.trim() || "Not provided";
   selectedPaymentActions.replaceChildren();
   if (order.hasPaymentProof && orderReview) {
@@ -150,7 +154,7 @@ function selectOrder(id) {
   } else if (order.payment === "Cash") {
     const cashNote = document.createElement("span");
     cashNote.className = `type-badge cash-payment-note ${order.orderType === "In-store" ? "in-store" : "online"}`;
-    cashNote.innerHTML = `<i class="bi bi-cash-coin" aria-hidden="true"></i>Cash payment is handled at the ${order.orderType === "In-store" ? "counter" : "rider"}.`;
+    cashNote.innerHTML = `<i class="bi bi-cash-coin" aria-hidden="true"></i>Cash payment is handled at the ${order.orderType === "In-store" || order.serviceType === "Pickup" ? "counter" : "rider"}.`;
     selectedPaymentActions.appendChild(cashNote);
   } else {
     selectedPaymentActions.textContent = order.cancellationReason || (order.status === "Canceled"
@@ -186,13 +190,15 @@ function selectOrder(id) {
       }
     });
     selectedPaymentActions.appendChild(rejectOrderButton);
-  } else if (["New", "Preparing"].includes(order.status) && !awaitingGcashReview) {
+  } else if (["New", "Preparing", "Ready for Pickup"].includes(order.status) && !awaitingGcashReview) {
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
     cancelButton.className = "reject-payment-btn admin-cancel-order-btn";
     cancelButton.textContent = "Cancel order";
     cancelButton.addEventListener("click", async () => {
-      const warning = order.status === "Preparing"
+      const warning = order.status === "Ready for Pickup"
+        ? "The customer has not picked it up yet; the prepared items stay deducted."
+        : order.status === "Preparing"
         ? "Preparation has started, so ingredients will stay deducted."
         : "Reserved ingredients will be returned to stock.";
       const refund = order.payment === "GCash" && order.paymentStatus === "Verified" ? " Any GCash refund must be sent separately." : "";
@@ -231,7 +237,7 @@ function renderDiscountBox(order) {
     <p class="discount-id-line"><strong>${escapeHtml(order.specialDiscountName)}</strong> · ${escapeHtml(order.specialDiscountType)} ID ${escapeHtml(order.specialDiscountId)}
     <small>${order.orderType === "In-store" ? "The cashier checked the physical ID at the counter."
       : pending ? "Compare the ID photo with the name and ID number before preparing this order."
-      : order.specialDiscountStatus === "Not approved" ? `Not approved: the ${peso(order.discountRemoved)} discount was removed and the order continues at the normal price of ${peso(order.total)}. The customer was notified.${order.balanceDue ? ` Collect ${peso(order.balanceDue)} in cash on delivery (GCash covered the discounted amount).` : ""}`
+      : order.specialDiscountStatus === "Not approved" ? `Not approved: the ${peso(order.discountRemoved)} discount was removed and the order continues at the normal price of ${peso(order.total)}. The customer was notified.${order.balanceDue ? ` Collect ${peso(order.balanceDue)} in cash ${order.serviceType === "Pickup" ? "at the counter" : "on delivery"} (GCash covered the discounted amount).` : ""}`
       : order.hasIdProof ? "ID photo verified." : "Checked before ID photos were required."}</small></p>`;
   selectedDiscountActions.appendChild(info);
   if (order.hasIdProof && orderReview) {

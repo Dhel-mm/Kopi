@@ -66,9 +66,14 @@ module.exports = function workforceRouter(db) {
     } catch (error) {sendError(res, error);}
   });
 
+  // New online orders, for the Staff pop-up and sound alert.
+  router.get("/alerts", staff, (req, res) => {
+    res.json(require("../services/alerts").createAlertService(db).staff());
+  });
+
   router.get("/preparation", staff, (req, res) => {
     const orders = db.prepare(`SELECT o.id,o.order_number AS orderNumber,o.order_type AS orderType,
-      o.service_type AS serviceType,o.status,o.payment,o.payment_status AS paymentStatus,
+      o.service_type AS serviceType,o.scheduled_for AS scheduledFor,o.status,o.payment,o.payment_status AS paymentStatus,
       o.payment_reference AS paymentReference,o.address,o.phone,o.total,
       o.special_discount_type AS specialDiscountType,o.special_discount_id AS specialDiscountId,o.special_discount_name AS specialDiscountName,o.special_discount AS specialDiscount,o.vat_exempt AS vatExempt,
       o.special_discount_status AS specialDiscountStatus,
@@ -77,7 +82,7 @@ module.exports = function workforceRouter(db) {
       COALESCE(NULLIF(o.customer_name,''),u.first_name || ' ' || u.last_name) AS customer
       FROM orders o JOIN users u ON u.id=o.user_id
       WHERE o.status IN ('New','Preparing')
-        OR (o.order_type='Online' AND o.status IN ('Out for Delivery','Arrived'))
+        OR (o.order_type='Online' AND o.status IN ('Out for Delivery','Arrived','Ready for Pickup'))
       ORDER BY o.id`).all();
     res.json({orders:orders.map(order => ({...order,items:items(order.id),...safety.describe(rowFor.get(order.id))}))});
   });
@@ -86,15 +91,21 @@ module.exports = function workforceRouter(db) {
       const result = db.transaction(() => {
         const order = db.prepare("SELECT * FROM orders WHERE id=?").get(req.params.id);
         if (!order) throw new OrderError("Order was not found.", 404);
-        const next = order.order_type === "In-store" ? "Completed" : "Out for Delivery";
+        // Online pickup: New -> Preparing -> Ready for Pickup -> Completed (picked up and paid).
+        const pickup = order.order_type === "Online" && order.service_type === "Pickup";
+        const next = order.order_type === "In-store" ? "Completed" : pickup ? "Ready for Pickup" : "Out for Delivery";
         const requested = req.body?.status;
-        const completingDelivery = order.order_type === "Online" && requested === "Completed";
+        const completingDelivery = order.order_type === "Online" && !pickup && requested === "Completed";
+        const completingPickup = pickup && requested === "Completed";
         const allowed = order.status === "New" ? requested === "Preparing"
           : (order.status === "Preparing" && requested === next)
-            || (completingDelivery && ["Out for Delivery", "Arrived"].includes(order.status));
+            || (completingDelivery && ["Out for Delivery", "Arrived"].includes(order.status))
+            || (completingPickup && order.status === "Ready for Pickup");
         // Permit a harmless repeat after a network retry, but no skipped stages.
         if (!allowed && !(requested === order.status && ["Preparing",next,"Completed"].includes(requested))) {
-          throw new OrderError("Start preparation, hand the order to the rider, then confirm delivery before completing it.", 403);
+          throw new OrderError(pickup
+            ? "Start preparation, mark the order ready for pickup, then confirm the customer picked it up before completing it."
+            : "Start preparation, hand the order to the rider, then confirm delivery before completing it.", 403);
         }
         // Flagged cash-on-delivery orders are confirmed with the customer first.
         if (order.status === "New" && requested === "Preparing" && safety.needsPhoneConfirmation(order)) {
@@ -102,6 +113,9 @@ module.exports = function workforceRouter(db) {
             throw new OrderError("This cash order is flagged. Call or text the customer to confirm the order and address before preparing it, or reject it.", 409);
           }
           safety.confirmCustomer(order, req.user);
+        }
+        if (completingPickup && order.status !== "Completed" && req.body?.pickupConfirmed !== true) {
+          throw new OrderError("Confirm that the customer picked up the complete order and paid.", 400);
         }
         if (completingDelivery && req.body?.deliveryConfirmed !== true) {
           throw new OrderError("Confirm that the rider delivered the complete order to the customer.", 400);

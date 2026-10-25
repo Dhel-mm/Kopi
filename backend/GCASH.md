@@ -50,7 +50,7 @@ and require exactly 13 digits. The same reference cannot be used on two orders.
   order can be prepared. If the ID is not approved, the order is not canceled:
   the discount is removed, the order continues at the normal price and the
   customer is notified. For a GCash order the rider collects the difference in cash.
-- Cash on delivery is limited to ₱1,500 and 10 items. Larger online orders must
+- Cash on delivery (and paying at the store for a pickup order) is limited to ₱1,500 and 10 items. Larger online orders must
   be paid by GCash before they are prepared.
 - Online orders show checks: first order, large order, earlier orders the shop
   rejected, and a phone number different from the account. A flagged cash order

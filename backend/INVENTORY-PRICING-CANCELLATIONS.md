@@ -67,6 +67,14 @@ of unopened packages. The table also shows package equivalents.
     simulated OSCA/NCDA registry (`services/idRegistry.js`, seven sample records
     such as `OSCA-CAL-2016-00123` Juan Dela Cruz). The registry no longer has an
     admin screen.
+- **Online pickup:** at checkout the customer chooses Delivery or Pickup. Pickup
+  needs no address. The customer pays at the store (cash) or prepays by GCash;
+  paying at the store has the same ₱1,500 / 10-item limit and phone-check flags
+  as cash on delivery. Steps: New → Preparing → **Ready for Pickup** (the
+  customer gets a "ready for pickup" notice with the amount to pay) →
+  Completed (Staff confirm the customer picked it up and paid). An
+  administrator can cancel a ready order that was never collected; the
+  prepared items stay deducted.
 - **Out for Delivery, Arrived or Completed:** cancellation is rejected.
 - A recipe or unit conversion edited later never changes a historical return.
 - Canceling GCash does not issue a refund. It flags the payment for staff review.

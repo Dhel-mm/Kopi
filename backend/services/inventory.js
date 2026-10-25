@@ -95,6 +95,8 @@ function createInventoryService(db) {
     return { ...row, terms: JSON.parse(row.terms_json) };
   }
   function recipeIssues(recipe) {
+    // Items added in Menu Management start without ingredients and cannot be sold until set up.
+    if (!recipe.terms.length) return ["No ingredients set up yet. Add them in Inventory > Recipe setup."];
     return recipe.terms.flatMap(term => {
       const stock = db.prepare("SELECT * FROM inventory_items WHERE sku=? AND is_archived=0").get(term.sku);
       if (!stock) return ["Missing ingredient: "+term.sku];
@@ -117,7 +119,8 @@ function createInventoryService(db) {
     }
     for (const item of items) {
       include(item.productId+"|"+item.variant,item.quantity,item.options["Ice Level"]==="Less Ice");
-      const addon = item.options["Add-ons (worth ₱30)"];
+      // The add-on label carries its price, which Menu Management can change.
+      const addon = Object.entries(item.options).find(([label]) => label.startsWith("Add-ons"))?.[1];
       if (addon) include(addon==="Syrup-Sauce"?"@syrup|"+item.productId:"@addon|"+addon,item.quantity);
       if (item.category==="chicken-meals") include("@flavor|"+item.options.Flavors,item.quantity*(item.variant==="12pcs"?2:1));
       if (takeout && ["rice-meals","chicken-meals","snacks"].includes(item.category)) {

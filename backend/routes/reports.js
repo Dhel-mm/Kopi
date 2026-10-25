@@ -1,7 +1,8 @@
 const express=require("express");
 const {authFor,requireRole}=require("../middleware/auth");
-const {createReports,csv,summaryCsv}=require("../services/reports");
+const {createReports,csv,reportCsv,summaryCsv}=require("../services/reports");
 const {sendError}=require("../services/orderWorkflow");
+const {OrderError}=require("../services/errors");
 module.exports=function reportsRouter(db,clock) {
   const router=express.Router(),reports=createReports(db,clock);
   router.use(authFor(db),requireRole("Admin"));
@@ -21,10 +22,27 @@ module.exports=function reportsRouter(db,clock) {
   router.get("/transactions",(req,res)=>{
     try {res.json(reports.transactions(req.query));}catch(error){sendError(res,error);}
   });
+  // Every matching transaction for the full report preview and printout.
+  router.get("/transactions/report",(req,res)=>{
+    try {
+      const {transactions,totals,timezone}=reports.transactions(req.query,true);
+      res.json({transactions,totals,timezone,generatedAt:new Date().toISOString()});
+    }catch(error){sendError(res,error);}
+  });
+  // format: csv (plain rows), report (summary + rows, the default) or json.
   router.get("/transactions/export",(req,res)=>{
     try {
+      const format=req.query.format||"csv";
+      if (!["csv","report","json"].includes(format)) throw new OrderError("Choose CSV, report or JSON.");
       const data=reports.transactions(req.query,true);
-      res.set("Content-Disposition",'attachment; filename="kopi-transactions.csv"').type("text/csv").send(csv(data.transactions));
+      if (format==="json") {
+        return res.set("Content-Disposition",'attachment; filename="kopi-transactions.json"').type("application/json")
+          .send(JSON.stringify({interval:req.query.label||"All time",generatedAt:new Date().toISOString(),timezone:data.timezone,
+            totals:data.totals,transactions:data.transactions},null,2));
+      }
+      const name=format==="report"?"kopi-transaction-report.csv":"kopi-transactions.csv";
+      res.set("Content-Disposition",`attachment; filename="${name}"`).type("text/csv")
+        .send(format==="report"?reportCsv(data,typeof req.query.label==="string"?req.query.label.slice(0,80):""):csv(data.transactions));
     }catch(error){sendError(res,error);}
   });
   router.get("/feedback",(req,res)=>res.json({feedback:db.prepare(`SELECT f.id,f.rating,f.improve_comment AS improveComment,

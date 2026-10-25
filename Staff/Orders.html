@@ -27,7 +27,7 @@
         </section>
         <div class="workspace-tools">
           <label class="workspace-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="queueSearch" placeholder="Search order, customer, or item…" aria-label="Search preparation queue"></label>
-          <select id="queueType" class="workspace-select" aria-label="Filter order type"><option value="">All orders</option><option value="In-store">In-store</option><option value="Online">Online</option></select>
+          <select id="queueType" class="workspace-select" aria-label="Filter order type"><option value="">All orders</option><option value="In-store">In-store</option><option value="Online">Online</option><option value="Pickup">Pickup</option></select>
           <button class="workspace-btn secondary" type="button" id="refreshQueue"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
         </div>
         <div class="workspace-filters" aria-label="Filter preparation status">
@@ -35,6 +35,7 @@
           <button class="workspace-filter" type="button" data-status="New" aria-pressed="false">New</button>
           <button class="workspace-filter" type="button" data-status="Preparing" aria-pressed="false">Preparing</button>
           <button class="workspace-filter" type="button" data-status="Out for Delivery" aria-pressed="false">Out for Delivery</button>
+          <button class="workspace-filter" type="button" data-status="Ready for Pickup" aria-pressed="false">Ready for Pickup</button>
         </div>
         <p class="workspace-status" id="queueMessage" role="status" aria-live="polite"></p>
         <section class="workspace-queue" id="preparationQueue" aria-label="Order tickets"></section>
@@ -71,6 +72,7 @@
   <script src="../Customer/DeliveryInfo.js"></script>
   <script src="../Cashier/Workspace.js"></script>
   <script src="../Admin/AdminNav.js"></script>
+  <script src="../Admin/OrderAlerts.js"></script>
   <script src="../Admin/OrderReview.js"></script>
   <script src="Staff.js"></script>
 </body>

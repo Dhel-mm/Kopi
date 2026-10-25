@@ -16,6 +16,11 @@ const paymentChoices = document.getElementById("paymentChoices");
 const gcashPanel = document.getElementById("gcashPanel");
 const gcashReference = document.getElementById("gcashReference");
 const houseAddress = document.getElementById("houseAddress");
+const timeAsap = document.getElementById("timeAsap");
+const timeScheduled = document.getElementById("timeScheduled");
+const timeDate = document.getElementById("timeDate");
+const timeClock = document.getElementById("timeClock");
+let scheduleOptions = null;
 const voucherCode = document.getElementById("voucherCode");
 const applyVoucherBtn = document.getElementById("applyVoucherBtn");
 const subtotalAmount = document.getElementById("subtotalAmount");
@@ -42,6 +47,8 @@ let activeCheckoutItems = [];
 let activeTotals = { subtotal: 0, delivery: 0, total: 0 };
 let placedOrder = null;
 let selectedPayment = "Cash";
+// Online orders are delivered, or picked up and paid at the store.
+let orderType = "Delivery";
 let quoteVersion = 0;
 let quoteReady = false;
 let checkoutCartSnapshot = [];
@@ -73,6 +80,114 @@ function closePaymentChoices() {
   paymentMethodBtn.setAttribute("aria-expanded", "false");
 }
 
+function paymentLabel() {
+  if (selectedPayment === "GCash") return "GCash";
+  return orderType === "Pickup" ? "Pay at store" : "COD (Cash on Delivery)";
+}
+
+function syncOrderType() {
+  const pickup = orderType === "Pickup";
+  const addressGroup = document.getElementById("addressGroup");
+  if (addressGroup) addressGroup.hidden = pickup;
+  if (houseAddress) houseAddress.required = !pickup;
+  // Pickup has no rider, so the Lalamove delivery fee line is hidden.
+  const feeLine = document.getElementById("deliveryFeeLine");
+  if (feeLine) feeLine.hidden = pickup;
+  const pickupNote = document.getElementById("pickupNote");
+  if (pickupNote) pickupNote.hidden = !pickup;
+  const cashName = document.getElementById("cashChoiceName");
+  if (cashName) cashName.textContent = pickup ? "Pay at store" : "COD (Cash on Delivery)";
+  const cashHint = document.getElementById("cashChoiceHint");
+  if (cashHint) cashHint.textContent = pickup ? "Pay at the counter when you pick up" : "Pay when your order arrives";
+  document.getElementById("paymentMethodName").textContent = paymentLabel();
+  renderTimeSlots();
+}
+
+// Pickup or rider handover time: as soon as possible, or a date and time the
+// customer types. Only opening hours are accepted, and the server checks again.
+function typedTime() {
+  return timeDate?.value && timeClock?.value ? `${timeDate.value}T${timeClock.value}:00+08:00` : "";
+}
+
+// Explain a date or time outside opening hours before the order is sent.
+function checkTypedTime() {
+  if (!timeDate || !timeClock || !scheduleOptions) return;
+  let dateMessage = "";
+  let timeMessage = "";
+  if (timeScheduled.checked && timeDate.value && new Date(`${timeDate.value}T12:00:00+08:00`).getUTCDay() === 1) {
+    dateMessage = "We are closed on Mondays. Choose Tuesday to Sunday.";
+  }
+  if (timeScheduled.checked && timeClock.value && !dateMessage) {
+    if (timeClock.value < scheduleOptions.openTime || timeClock.value > scheduleOptions.closeTime) {
+      timeMessage = "Choose a time between 4:00 PM and 11:00 PM.";
+    } else if (timeDate.value && new Date(typedTime()).getTime() < Date.now() + scheduleOptions.leadMinutes * 60000) {
+      timeMessage = `Choose a time at least ${scheduleOptions.leadMinutes} minutes from now so we can prepare your order.`;
+    }
+  }
+  timeDate.setCustomValidity?.(dateMessage);
+  timeClock.setCustomValidity?.(timeMessage);
+}
+
+function renderTimeSlots() {
+  const label = document.getElementById("timeSlotLabel");
+  if (label) label.textContent = orderType === "Pickup" ? "Pickup time" : "Rider pickup time";
+  if (!timeAsap || !scheduleOptions) return;
+  timeAsap.disabled = !scheduleOptions.asap;
+  if (!scheduleOptions.asap) timeScheduled.checked = true;
+  document.getElementById("timeInputs").hidden = !timeScheduled.checked;
+  timeDate.min = scheduleOptions.minDate;
+  timeDate.max = scheduleOptions.maxDate;
+  timeClock.min = scheduleOptions.openTime;
+  timeClock.max = scheduleOptions.closeTime;
+  if (!timeDate.value && scheduleOptions.earliest) {
+    timeDate.value = scheduleOptions.earliest.date;
+    timeClock.value = scheduleOptions.earliest.time;
+  }
+  timeDate.required = timeScheduled.checked;
+  timeClock.required = timeScheduled.checked;
+  checkTypedTime();
+  const who = orderType === "Pickup" ? "You can pick up orders" : "Riders collect orders";
+  const note = document.getElementById("timeSlotNote");
+  note.classList.toggle("is-closed", !scheduleOptions.asap);
+  note.querySelector("span").textContent = scheduleOptions.asap
+    ? `${who} only while we are open: ${scheduleOptions.hours}.`
+    : `We are closed right now, so choose a date and time when we are open. ${who} only during opening hours: ${scheduleOptions.hours}.`;
+}
+
+[timeAsap, timeScheduled].forEach(input => input?.addEventListener("change", renderTimeSlots));
+[timeDate, timeClock].forEach(input => input?.addEventListener("input", checkTypedTime));
+
+async function loadSchedule() {
+  if (!timeAsap) return;
+  try {
+    const options = await KopiApi.request("/orders/schedule");
+    if (!options?.minDate) throw new Error("Invalid opening times");
+    scheduleOptions = options;
+    renderTimeSlots();
+  } catch {
+    const note = document.getElementById("timeSlotNote");
+    if (note) note.querySelector("span").textContent = "Could not load opening hours. Refresh the page before ordering.";
+  }
+}
+
+["orderTypeDelivery", "orderTypePickup"].forEach(id => {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.addEventListener("change", () => {
+    if (!input.checked || placedOrder) return;
+    orderType = input.value === "Pickup" ? "Pickup" : "Delivery";
+    syncOrderType();
+    // The pay-at-store limit message differs from cash on delivery, so re-check.
+    if (typeof refreshCheckoutQuote === "function" && isCheckout) refreshCheckoutQuote();
+  });
+});
+
+// A browser may restore the Pickup choice when the customer comes back.
+if (document.getElementById("orderTypePickup")?.checked) {
+  orderType = "Pickup";
+  syncOrderType();
+}
+
 // Larger online orders must be prepaid by GCash (server rule in orderSafety.js).
 function syncCashOnDelivery() {
   const blocked = Boolean(cashOnDeliveryRule && cashOnDeliveryRule.allowed === false);
@@ -90,7 +205,7 @@ paymentChoices.querySelectorAll("[data-payment]").forEach(button => {
     if (button.dataset.payment === "Cash" && cashOnDeliveryRule?.allowed === false) return;
     selectedPayment = button.dataset.payment;
     const isGcash = selectedPayment === "GCash";
-    document.getElementById("paymentMethodName").textContent = selectedPayment;
+    document.getElementById("paymentMethodName").textContent = paymentLabel();
     const icon = document.getElementById("paymentMethodIcon");
     icon.src = isGcash ? "HomePic/gcash.png" : "HomePic/Cash.png";
     gcashPanel.hidden = !isGcash;
@@ -358,6 +473,10 @@ if (orderNowBtn) {
   orderNowBtn.addEventListener("click", async () => {
     if (!confirmationForm.reportValidity()) return;
     if (placedOrder || orderNowBtn.disabled || !quoteReady) return;
+    if (timeScheduled?.checked && !typedTime()) {
+      KopiNotice.toast("Enter a date and time during our opening hours before ordering.", "warning");
+      return;
+    }
 
     if (!KopiApi.getSession()) {
       KopiNotice.toast("Please log in before placing an order.");
@@ -370,13 +489,15 @@ if (orderNowBtn) {
       confirmationForm.inert = true;
       paymentMethodBtn.disabled = true;
       gcashReference.readOnly = true;
-      KopiStore.setAddress(houseAddress.value.trim());
+      if (orderType === "Delivery") KopiStore.setAddress(houseAddress.value.trim());
 
       const result = await KopiApi.placeOrder("/orders", {
           items: activeCheckoutItems,
           payment: selectedPayment,
           paymentReference: selectedPayment === "GCash" ? gcashReference.value.trim() : "",
-          address: houseAddress.value.trim(),
+          serviceType: orderType,
+          timeSlot: timeScheduled?.checked ? typedTime() : "ASAP",
+          address: orderType === "Pickup" ? "" : houseAddress.value.trim(),
           phone: referenceNumber.value.trim(),
           voucher: voucherCode.value.trim().toUpperCase(),
           specialDiscount: specialDiscountApplied,
@@ -393,6 +514,8 @@ if (orderNowBtn) {
       gcashReference.readOnly = false;
       syncCheckoutRecovery();
       refreshCheckoutQuote();
+      // A chosen time may have passed while the page was open.
+      loadSchedule();
       KopiNotice.toast(error.message, "error");
     }
   });
@@ -428,6 +551,7 @@ function renderCart() {
 }
 
 function showCheckout() {
+  loadSchedule();
   activeCheckoutItems = KopiStore.getCheckout();
   checkoutCartSnapshot = structuredClone(activeCheckoutItems);
   cartView.hidden = true;
@@ -453,7 +577,8 @@ function displaySavedOrder(result) {
   activeCheckoutItems = result.items;
   activeTotals = { subtotal: result.subtotal, delivery: result.deliveryFee, total: result.total };
   placedOrder = { id:result.orderNumber,payment:result.payment,paymentReference:result.paymentReference||"",paymentStatus:result.paymentStatus,status:result.status,
-    voucher:result.voucher||"",voucherDiscount:Number(result.voucherDiscount||0),specialDiscount:result.specialDiscount||null };
+    voucher:result.voucher||"",voucherDiscount:Number(result.voucherDiscount||0),specialDiscount:result.specialDiscount||null,
+    serviceType:result.serviceType||"Delivery",scheduledFor:result.scheduledFor||null };
   orderNowBtn.disabled = true;
   showReceipt();
 }
@@ -494,7 +619,7 @@ async function refreshCheckoutQuote() {
   try {
     const quote = await KopiApi.request("/orders/quote", {
       method: "POST",
-      body: JSON.stringify({ items: activeCheckoutItems, voucher: voucherCode.value.trim(), specialDiscount: specialDiscountApplied })
+      body: JSON.stringify({ items: activeCheckoutItems, voucher: voucherCode.value.trim(), specialDiscount: specialDiscountApplied, serviceType: orderType })
     });
     if (version !== quoteVersion || placedOrder) return;
     activeCheckoutItems = quote.items;
@@ -600,13 +725,18 @@ function showReceipt() {
   }).toUpperCase();
 
   receiptOrderNo.textContent = orderNo;
+  document.getElementById("receiptTimeLabel").textContent = placedOrder.serviceType === "Pickup" ? "PICKUP TIME:" : "RIDER PICKUP:";
+  document.getElementById("receiptTime").textContent = formatSchedule(placedOrder.scheduledFor);
   receiptDate.textContent = date;
-  document.getElementById("receiptPayment").textContent = placedOrder.payment;
+  document.getElementById("receiptPayment").textContent = placedOrder.payment === "Cash"
+    ? (placedOrder.serviceType === "Pickup" ? "Cash (pay at store)" : "Cash on delivery") : placedOrder.payment;
   document.getElementById("receiptReferenceRow").hidden = placedOrder.payment !== "GCash";
   document.getElementById("receiptReference").textContent = placedOrder.paymentReference;
   document.getElementById("receiptPaymentStatus").textContent = placedOrder.payment === "GCash"
     ? (["Verified", "Paid"].includes(placedOrder.paymentStatus) ? "Paid — GCash payment verified by staff." : "Payment awaiting staff verification. This receipt confirms your order, not your payment.")
-    : placedOrder.paymentStatus === "Paid" ? "Paid — Cash payment received." : "Cash payment due on delivery.";
+    : placedOrder.paymentStatus === "Paid" ? "Paid — Cash payment received."
+      : placedOrder.serviceType === "Pickup" ? "Pickup order — pay at the store when you pick it up. We will tell you when it is ready."
+      : "Cash payment due on delivery.";
   if (placedOrder.status === "Canceled") document.getElementById("receiptPaymentStatus").textContent = "This order was canceled. Contact the shop if you already sent GCash payment.";
   receiptItems.innerHTML = "";
   receiptItems.appendChild(receiptHeadTemplate.content.firstElementChild.cloneNode(true));
@@ -629,12 +759,18 @@ function showReceipt() {
     document.getElementById("receiptVatExempt").textContent = `− ₱ ${formatMoney(special.vatExempt)}`;
     document.getElementById("receiptSpecialLabel").textContent = `${special.type} discount (20%)`;
     document.getElementById("receiptSpecialDiscount").textContent = `− ₱ ${formatMoney(special.discount)}`;
-    document.getElementById("receiptSpecialHolder").textContent = `${special.type} ID ${special.idNumber} · ${special.name}. Our staff will verify your ID photo before preparing the order. Please show the same ID to the rider.`;
+    document.getElementById("receiptSpecialHolder").textContent = `${special.type} ID ${special.idNumber} · ${special.name}. Our staff will verify your ID photo before preparing the order. Please show the same ID ${placedOrder.serviceType === "Pickup" ? "at the counter" : "to the rider"}.`;
   }
   document.getElementById("receiptDeliveryRow").hidden = !activeTotals.delivery;
   document.getElementById("receiptDeliveryFee").textContent = `₱ ${formatMoney(activeTotals.delivery)}`;
   receiptTotal.textContent = `₱ ${formatMoney(activeTotals.total)}`;
   receiptModal.hidden = false;
+}
+
+// Receipt wording for the pickup or rider handover time.
+function formatSchedule(iso) {
+  if (!iso) return "As soon as possible";
+  return new Date(iso).toLocaleString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function bindItemActions(root) {

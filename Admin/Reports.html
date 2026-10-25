@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Admin - Sales Report &amp; Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Admin.css">
+  <link rel="stylesheet" href="Reports.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="../Customer/Notices.css">
+</head>
+<body>
+<script src="../Customer/Notices.js"></script>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
+      <nav class="admin-nav">
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
+        <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
+        <a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
+        <a class="admin-nav-link active" href="Reports.html" aria-current="page"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a>
+        <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
+        <a class="admin-nav-link" href="Menu.html"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a>
+        <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+      </nav>
+    </aside>
+
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-text"><h1>Sales Report &amp; Analytics</h1><p>How the café is selling, in plain numbers.</p></div>
+        <a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a>
+      </header>
+
+      <main class="admin-content report-content">
+        <section class="sales-summary" aria-labelledby="salesSummaryTitle">
+          <header class="sales-summary-head">
+            <div>
+              <h2 id="salesSummaryTitle">Sales summary</h2>
+              <p id="salesSummaryRange">Loading…</p>
+            </div>
+            <div class="sales-summary-controls">
+              <div class="summary-segmented" role="group" aria-label="Summary period">
+                <button type="button" data-summary-period="day" aria-pressed="true">Daily</button>
+                <button type="button" data-summary-period="week" aria-pressed="false">Weekly</button>
+                <button type="button" data-summary-period="month" aria-pressed="false">Monthly</button>
+                <button type="button" data-summary-period="year" aria-pressed="false">Yearly</button>
+              </div>
+              <label class="summary-picker"><span class="visually-hidden">Summary date</span><input type="date" id="summaryDate"></label>
+              <label class="summary-picker" hidden id="summaryMonthLabel"><span class="visually-hidden">Summary month</span><input type="month" id="summaryMonth"></label>
+              <label class="summary-picker summary-select" hidden id="summaryYearLabel"><span class="visually-hidden">Summary year</span><select id="summaryYear"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></label>
+              <button class="report-action ghost" id="downloadSummary" type="button"><i class="bi bi-download" aria-hidden="true"></i>Download CSV</button>
+              <button class="report-action" id="printSummary" type="button"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
+            </div>
+          </header>
+          <p class="sales-summary-status" id="salesSummaryStatus" role="status"></p>
+
+          <article class="sales-story" aria-live="polite"><i class="bi bi-lightbulb" aria-hidden="true"></i><div><h3>In short</h3><p id="salesStory">Loading…</p></div></article>
+
+          <div class="sales-kpis" id="salesKpis"></div>
+          <div class="sales-kpis minor" id="salesKpisMinor"></div>
+
+          <div class="sales-breakdown">
+            <article class="sales-panel sales-panel-wide">
+              <div class="sales-panel-head"><h3 id="salesSeriesTitle">Sales by hour</h3><small id="salesSeriesNote">Net sales of completed orders</small></div>
+              <div class="sales-chart">
+                <div class="sales-axis" aria-hidden="true"><span id="salesAxisTop">₱0</span><span>₱0</span></div>
+                <div class="sales-bars" id="salesBars" role="img" aria-label="Sales chart"></div>
+              </div>
+            </article>
+            <article class="sales-panel">
+              <div class="sales-panel-head"><h3>How customers paid</h3><small>Share of net sales</small></div>
+              <ul class="sales-share" id="salesPayments"></ul>
+              <div class="sales-panel-head second"><h3>How orders were served</h3><small>Share of net sales</small></div>
+              <ul class="sales-share" id="salesTypes"></ul>
+            </article>
+            <article class="sales-panel">
+              <div class="sales-panel-head"><h3>Best sellers</h3><small>Most cups and plates sold</small></div>
+              <ol class="sales-top" id="salesTopItems"></ol>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="../Customer/Api.js"></script>
+<script src="AdminGuard.js"></script>
+<script src="AdminNav.js"></script>
+<script src="OrderAlerts.js"></script>
+<script src="SalesSummary.js"></script>
+  <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+</body>
+</html>

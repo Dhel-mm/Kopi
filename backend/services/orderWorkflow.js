@@ -5,6 +5,7 @@ const { parseManualPayment } = require("./manualPayment");
 const { createVoucherService } = require("./vouchers");
 const { cashOnDelivery, paymentProof, idPhoto } = require("./orderSafety");
 const { createIdRegistry } = require("./idRegistry");
+const schedule = require("./schedule");
 
 function text(value, label, max, optional = false) {
   if (optional && (value == null || value === "")) return "";
@@ -30,15 +31,20 @@ function requestFingerprint(body, inStore) {
       productId:item?.productId,quantity:item?.quantity,options:item?.options ?? {}
     })) : body.items,
     payment:body.payment ?? "Cash",paymentReference:body.paymentReference ?? "",
-    serviceType:inStore?body.serviceType:"Delivery",
-    address:inStore?"":body.address,phone:inStore?"":body.phone,
+    serviceType:inStore?body.serviceType:onlineService(body),
+    address:inStore||onlineService(body)==="Pickup"?"":body.address,phone:inStore?"":body.phone,
     customerName:inStore?(body.customerName||"Walk-in Customer"):"",
     voucher:body.voucher||"",discount:inStore?(body.discount??0):0,
     specialDiscount:body.specialDiscount ?? null,
     expectedTotal:body.expectedTotal,confirmedReceived:inStore?body.confirmedReceived:null,
-    cashTendered:inStore?body.cashTendered:null
+    cashTendered:inStore?body.cashTendered:null,
+    ...(inStore?{}:{timeSlot:body.timeSlot ?? ""})
   };
   return "v2:"+createHash("sha256").update(JSON.stringify(stable(intent))).digest("hex");
+}
+// Online orders are delivered by a rider, or picked up and paid at the store.
+function onlineService(body) {
+  return body?.serviceType === "Pickup" ? "Pickup" : "Delivery";
 }
 function specialDiscountRecord(row) {
   if (!row.special_discount_type) return null;
@@ -47,7 +53,7 @@ function specialDiscountRecord(row) {
     discount:row.special_discount,vatExempt:row.vat_exempt,deduction:Math.round((row.special_discount+row.vat_exempt)*100)/100,
     coveredItems:JSON.parse(row.special_discount_items_json||"[]")};
 }
-function createOrderWorkflow(db) {
+function createOrderWorkflow(db, {now = () => new Date()} = {}) {
   const stock = createInventoryService(db);
   const vouchers = createVoucherService(db);
   const registry = createIdRegistry(db);
@@ -65,7 +71,7 @@ function createOrderWorkflow(db) {
     return candidate;
   }
   function service(body, inStore) {
-    if (!inStore) return "Delivery";
+    if (!inStore) return onlineService(body);
     const type = body.serviceType === "Take out" ? "Takeout" : body.serviceType;
     if (!["Dine-in","Takeout"].includes(type)) throw new OrderError("Choose Dine-in or Takeout.");
     return type;
@@ -77,7 +83,7 @@ function createOrderWorkflow(db) {
     const priced = priceOrder(body,inStore);
     const serviceType = service(body,inStore);
     stock.check(priced.items,serviceType!=="Dine-in");
-    return { ...priced,serviceType,...(inStore?{}:{cashOnDelivery:cashOnDelivery(priced)}) };
+    return { ...priced,serviceType,...(inStore?{}:{cashOnDelivery:cashOnDelivery(priced,serviceType)}) };
   }
   function result(id) {
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
@@ -87,7 +93,7 @@ function createOrderWorkflow(db) {
       inventoryState:row.inventory_state,refundStatus:row.refund_status,
       subtotal:row.subtotal,deliveryFee:row.delivery_fee,voucher:row.voucher,voucherDiscount:row.voucher_discount,total:row.total,
       specialDiscount:specialDiscountRecord(row),
-      cashTendered:row.cash_tendered,cashChange:row.cash_change,
+      cashTendered:row.cash_tendered,cashChange:row.cash_change,serviceType:row.service_type,scheduledFor:row.scheduled_for,
       items:db.prepare("SELECT product_id AS productId,product_name AS name,quantity,price,options_json FROM order_items WHERE order_id=?").all(id)
         .map(item=>({productId:item.productId,name:item.name,quantity:item.quantity,price:item.price,options:JSON.parse(item.options_json)}))
     };
@@ -128,13 +134,15 @@ function createOrderWorkflow(db) {
     const proof = inStore ? null : paymentProof(body.paymentProof, payment.payment);
     const idImage = inStore ? null : idPhoto(body.specialDiscountProof, priced.specialDiscount);
     if (!inStore && payment.payment==="Cash") {
-      const cod = cashOnDelivery(priced);
+      const cod = cashOnDelivery(priced,serviceType);
       if (!cod.allowed) throw new OrderError(cod.message,409);
     }
-    const address = inStore?"":text(body.address,"delivery address",500);
+    const address = inStore||serviceType==="Pickup"?"":text(body.address,"delivery address",500);
     const phone = inStore?"":text(body.phone,"phone number",11);
     if (!inStore && !/^09[0-9]{9}$/.test(phone)) throw new OrderError("Enter an 11-digit phone number beginning with 09.");
     const customerName = inStore?text(body.customerName||"Walk-in Customer","customer name",120):"";
+    // Pickup and rider handover only happen during opening hours; null means as soon as possible.
+    const scheduledFor = inStore?null:schedule.resolve(body.timeSlot,now());
     const payload = {items:priced.items.map(({cartId,image,...item})=>item),payment,serviceType,address,phone,customerName,voucher:priced.voucher,
       specialDiscount:priced.specialDiscount,total:priced.total,inStore};
     const fingerprint = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -160,15 +168,16 @@ function createOrderWorkflow(db) {
           subtotal,delivery_fee,voucher_discount,total,payment_reference,payment_status,
           payment_verified_at,payment_verified_by,inventory_state,request_key,request_hash,cash_tendered,cash_change,
           special_discount_type,special_discount_id,special_discount_name,special_discount_items_json,special_discount,vat_exempt,
-          special_discount_status,special_discount_verified_at,special_discount_verified_by
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          special_discount_status,special_discount_verified_at,special_discount_verified_by,scheduled_for
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(orderNumber,user.id,customerName,inStore?"In-store":"Online",serviceType,status,payment.payment,
         address,phone,priced.voucher,priced.subtotal,priced.deliveryFee,priced.voucherDiscount,priced.total,
         payment.reference,payment.status,payment.status==="Verified"?new Date().toISOString():null,
         payment.status==="Verified"?user.id:null,inStore?"consumed":"reserved",requestKey,intentHash,cashTendered,cashChange,
         special?.type??null,special?.idNumber??null,special?.name??null,special?JSON.stringify(special.coveredItems):null,
         special?.discount??0,special?.vatExempt??0,
-        special?(inStore?"Verified":"Pending verification"):null,special&&inStore?new Date().toISOString():null,special&&inStore?user.id:null);
+        special?(inStore?"Verified":"Pending verification"):null,special&&inStore?new Date().toISOString():null,special&&inStore?user.id:null,
+        scheduledFor);
       const id = inserted.lastInsertRowid;
       for (const item of priced.items) db.prepare("INSERT INTO order_items(order_id,product_id,product_name,quantity,price,options_json) VALUES(?,?,?,?,?,?)")
         .run(id,item.productId,item.name,item.quantity,item.price,JSON.stringify(item.options));
@@ -192,7 +201,9 @@ function createOrderWorkflow(db) {
       const shopRejection = asShop && ["Admin","Staff"].includes(user.role);
       if (!order || (user.role!=="Admin" && !shopRejection && order.user_id!==user.id)) throw new OrderError("Order was not found.",404);
       if (order.status==="Canceled") return result(id);
-      if (!["New","Preparing"].includes(order.status)) throw new OrderError("Only new or preparing orders can be canceled.",409);
+      // An administrator may also cancel a pickup order the customer never collected.
+      const cancelable = ["New","Preparing",...(user.role==="Admin"?["Ready for Pickup"]:[])];
+      if (!cancelable.includes(order.status)) throw new OrderError("Only new or preparing orders can be canceled.",409);
       // Once staff start preparing, ingredients are used. Only an administrator
       // may cancel then (for example, after the customer calls the shop).
       if (user.role!=="Admin" && order.status!=="New") {
@@ -214,7 +225,9 @@ function createOrderWorkflow(db) {
       const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
       if (!order) throw new OrderError("Order was not found.",404);
       if (order.status===next) return result(id);
-      const flow = order.order_type==="In-store"?["Preparing","Completed"]:["New","Preparing","Out for Delivery","Arrived","Completed"];
+      const flow = order.order_type==="In-store"?["Preparing","Completed"]
+        :order.service_type==="Pickup"?["New","Preparing","Ready for Pickup","Completed"]
+        :["New","Preparing","Out for Delivery","Arrived","Completed"];
       const delivered = deliveryConfirmed && ["Admin", "Staff"].includes(user.role)
         && order.order_type === "Online" && order.status === "Out for Delivery" && next === "Completed";
       if (!delivered && (flow.indexOf(order.status)<0 || flow[flow.indexOf(order.status)+1]!==next)) throw new OrderError("Invalid order status transition.",409);
@@ -224,7 +237,8 @@ function createOrderWorkflow(db) {
       }
       db.prepare(`UPDATE orders SET status=?,inventory_state='consumed',
         payment_status=CASE WHEN ?='Completed' AND payment='Cash' THEN 'Paid' ELSE payment_status END,
-        completed_at=CASE WHEN ?='Completed' THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id=?`).run(next,next,next,id);
+        completed_at=CASE WHEN ?='Completed' THEN CURRENT_TIMESTAMP ELSE completed_at END,
+        pickup_ready_at=CASE WHEN ?='Ready for Pickup' THEN CURRENT_TIMESTAMP ELSE pickup_ready_at END WHERE id=?`).run(next,next,next,next,id);
       return result(id);
     }).immediate();
   }
@@ -238,4 +252,4 @@ function sendError(response,error,customerFacing = false) {
   console.error("Order request failed:",error.code||error.name);
   return response.status(500).json({message:"Could not save the order. Please retry the same checkout request."});
 }
-module.exports = {createOrderWorkflow,sendError,specialDiscountRecord};
+module.exports = {createOrderWorkflow,sendError,specialDiscountRecord,onlineService};

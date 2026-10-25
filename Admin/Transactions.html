@@ -21,103 +21,104 @@
       <nav class="admin-nav">
         <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
         <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
-        <a class="admin-nav-link active" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
+        <a class="admin-nav-link active" href="Transactions.html" aria-current="page"><i class="bi bi-receipt"></i><span>Transactions</span></a>
+        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a>
         <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
+        <a class="admin-nav-link" href="Menu.html"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a>
         <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
       </nav>
     </aside>
 
     <div class="admin-main">
       <header class="admin-topbar">
-        <div class="topbar-text"><h1>Transaction</h1><p>Home • Transaction</p></div>
+        <div class="topbar-text"><h1>Transaction Management</h1><p>Every completed and canceled order, with totals for the interval you choose.</p></div>
         <a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a>
       </header>
 
       <main class="admin-content transaction-content">
-
-        <section class="sales-summary" aria-labelledby="salesSummaryTitle">
-          <header class="sales-summary-head">
-            <div>
-              <h2 id="salesSummaryTitle">Sales summary</h2>
-              <p id="salesSummaryRange">Loading…</p>
-            </div>
-            <div class="sales-summary-controls">
-              <div class="summary-segmented" role="group" aria-label="Summary period">
-                <button type="button" data-summary-period="day" aria-pressed="true">Daily</button>
-                <button type="button" data-summary-period="week" aria-pressed="false">Weekly</button>
-                <button type="button" data-summary-period="month" aria-pressed="false">Monthly</button>
-                <button type="button" data-summary-period="year" aria-pressed="false">Yearly</button>
-              </div>
-              <label class="summary-picker"><span class="visually-hidden">Summary date</span><input type="date" id="summaryDate"></label>
-              <label class="summary-picker" hidden id="summaryMonthLabel"><span class="visually-hidden">Summary month</span><input type="month" id="summaryMonth"></label>
-              <label class="summary-picker" hidden id="summaryYearLabel"><span class="visually-hidden">Summary year</span><select id="summaryYear"></select></label>
-              <button class="report-action" id="printSummary" type="button"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
-            </div>
-          </header>
-          <p class="sales-summary-status" id="salesSummaryStatus" role="status"></p>
-          <div class="sales-kpis" id="salesKpis"></div>
-          <div class="sales-breakdown">
-            <article class="sales-panel sales-panel-wide">
-              <h3 id="salesSeriesTitle">Sales by hour</h3>
-              <div class="sales-bars" id="salesBars" role="img" aria-label="Sales chart"></div>
-            </article>
-            <article class="sales-panel">
-              <h3>By payment</h3><ul class="sales-list" id="salesPayments"></ul>
-              <h3>By order type</h3><ul class="sales-list" id="salesTypes"></ul>
-            </article>
-            <article class="sales-panel">
-              <h3>Top items</h3><ol class="sales-list" id="salesTopItems"></ol>
-            </article>
+        <div class="tx-head">
+          <div class="tx-interval">
+            <label for="txInterval">Interval</label>
+            <span class="tx-select"><select id="txInterval">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This week</option>
+              <option value="month" selected>This month</option>
+              <option value="year">This year</option>
+              <option value="all">All time</option>
+              <option value="custom">Custom dates…</option>
+            </select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            <span class="tx-custom" id="txCustom" hidden>
+              <label><span class="visually-hidden">From</span><input type="date" id="reportFrom" aria-label="From date"></label>
+              <span aria-hidden="true">to</span>
+              <label><span class="visually-hidden">To</span><input type="date" id="reportTo" aria-label="To date"></label>
+            </span>
           </div>
+          <div class="tx-export">
+            <button class="tx-export-btn" type="button" id="exportBtn" aria-expanded="false" aria-controls="exportMenu"><i class="bi bi-download" aria-hidden="true"></i>Export Report<i class="bi bi-chevron-down tx-export-chevron" aria-hidden="true"></i></button>
+            <div class="tx-export-menu" id="exportMenu" role="menu" hidden>
+              <button type="button" role="menuitem" data-export="print"><i class="bi bi-printer" aria-hidden="true"></i>Print Report</button>
+              <button type="button" role="menuitem" data-export="preview"><i class="bi bi-eye" aria-hidden="true"></i>Preview Full Report</button>
+              <button type="button" role="menuitem" data-export="report"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>Export Default Format<small>Summary and all transactions, opens in Excel</small></button>
+              <button type="button" role="menuitem" data-export="csv"><i class="bi bi-filetype-csv" aria-hidden="true"></i>Download CSV</button>
+              <button type="button" role="menuitem" data-export="json"><i class="bi bi-filetype-json" aria-hidden="true"></i>Download JSON</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="tx-stats" aria-label="Totals for the chosen interval">
+          <article class="tx-stat"><div><span>Total Transactions</span><strong id="statCount">0</strong><small id="statCountNote">Completed and canceled</small></div><i class="bi bi-receipt" aria-hidden="true"></i></article>
+          <article class="tx-stat"><div><span>Total Amount</span><strong id="statAmount">₱0.00</strong><small>Completed orders only</small></div><i class="bi bi-graph-up-arrow up" aria-hidden="true"></i></article>
+          <article class="tx-stat"><div><span>Average Order</span><strong id="statAverage">₱0.00</strong><small>Per completed order</small></div><i class="bi bi-cart3" aria-hidden="true"></i></article>
         </section>
 
-        <section class="transaction-toolbar" aria-label="Search transactions">
-          <h2>Transactions</h2>
-          <div class="transaction-tools">
-            <label class="transaction-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search transactions</span><input id="transactionSearch" type="search" placeholder="Search order ID, transaction ID or customer…"></label>
-            <button class="transaction-filter" id="transactionFilter" type="button" aria-expanded="false" aria-controls="reportFilters"><i class="bi bi-funnel" aria-hidden="true"></i>Filter</button>
-            <button class="report-action" id="exportReport" type="button"><i class="bi bi-download" aria-hidden="true"></i>Download CSV</button>
-          </div>
-        </section>
-
-        <form id="reportFilters" class="report-filters" hidden>
-          <label>From (Philippine date)<input id="reportFrom" type="date"></label>
-          <label>To<input id="reportTo" type="date"></label>
-          <label>Status<select id="reportStatusFilter"><option>All</option><option>Completed</option><option>Canceled</option></select></label>
-          <label>Type<select id="reportType"><option>All</option><option>Online</option><option>Dine-in</option><option>Takeout</option></select></label>
-          <label>Payment<select id="reportPayment"><option>All</option><option>Cash</option><option>GCash</option><option>Other</option></select></label>
-          <button class="report-action" type="submit">Apply filters</button>
-          <button class="report-action" id="clearFilters" type="button">Clear</button>
+        <form class="tx-filters" id="reportFilters" role="search">
+          <label class="transaction-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search transactions</span><input id="transactionSearch" type="search" placeholder="Search by order ID, transaction ID or customer…"></label>
+          <span class="tx-select"><select id="reportStatusFilter" aria-label="Status"><option value="All">All Status</option><option>Completed</option><option value="Canceled">Canceled</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+          <span class="tx-select"><select id="reportPayment" aria-label="Payment method"><option value="All">All Payment Methods</option><option>Cash</option><option>GCash</option><option>Other</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+          <span class="tx-select"><select id="reportType" aria-label="Order type"><option value="All">All Order Types</option><option value="Delivery">Online delivery</option><option value="Pickup">Online pickup</option><option>Dine-in</option><option>Takeout</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
         </form>
         <p id="reportStatus" class="report-status" role="status"></p>
-        <p class="report-export" id="filteredSales"></p>
+
         <section class="transaction-table-card">
           <div class="table-scroll">
             <table class="transaction-table">
-              <thead><tr><th>Transaction ID</th><th>Date and Time</th><th>Type</th><th>Order ID</th><th>Customer</th><th>Payment Method</th><th>Amount</th><th>Status</th><th>Receipt</th></tr></thead>
+              <thead><tr><th>Order ID</th><th>Date &amp; Time</th><th>Cashier</th><th>Items</th><th class="num">Total</th><th class="num">Change</th><th>Status</th><th class="actions">Actions</th></tr></thead>
               <tbody id="transactionRows"></tbody>
             </table>
           </div>
           <p class="transaction-empty" id="transactionEmpty" hidden>No completed or canceled orders yet.</p>
-          <footer class="transaction-footer"><span id="transactionRange">Showing 0 transactions</span><div class="pagination"><button type="button" disabled><i class="bi bi-chevron-left"></i></button><button class="active" type="button">1</button><button type="button" disabled><i class="bi bi-chevron-right"></i></button></div></footer>
+          <footer class="transaction-footer"><span id="transactionRange">Showing 0 transactions</span><div class="pagination"><button type="button" disabled aria-label="Previous page"><i class="bi bi-chevron-left"></i></button><button class="active" type="button">1</button><button type="button" disabled aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></footer>
         </section>
       </main>
     </div>
   </div>
+
   <dialog class="tx-receipt-dialog" id="receiptDialog" aria-labelledby="receiptDialogTitle">
     <header><h2 id="receiptDialogTitle">Order receipt</h2>
       <div class="tx-receipt-actions">
         <button class="report-action" type="button" id="printReceipt"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
-        <button class="tx-receipt-close" type="button" id="closeReceipt" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        <button class="close-panel" type="button" id="closeReceipt" aria-label="Close receipt"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
       </div>
     </header>
     <div class="tx-receipt" id="receiptBody" role="status">Loading receipt…</div>
   </dialog>
+
+  <dialog class="tx-report-dialog" id="reportDialog" aria-labelledby="reportDialogTitle">
+    <header class="tx-report-bar"><h2 id="reportDialogTitle">Transaction report</h2>
+      <div class="tx-receipt-actions">
+        <button class="report-action" type="button" id="printFullReport"><i class="bi bi-printer" aria-hidden="true"></i>Print</button>
+        <button class="close-panel" type="button" id="closeReport" aria-label="Close report"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+    </header>
+    <div class="tx-report" id="reportBody">Loading report…</div>
+  </dialog>
+
   <script src="../Customer/Api.js"></script>
 <script src="AdminGuard.js"></script>
 <script src="AdminNav.js"></script>
+<script src="OrderAlerts.js"></script>
 <script src="Transactions.js"></script>
-<script src="SalesSummary.js"></script>
   <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
 </body>
 </html>

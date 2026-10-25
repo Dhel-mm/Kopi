@@ -69,7 +69,7 @@ function createReports(db,clock=()=>new Date()) {
     const from=dateInput(query.from),to=dateInput(query.to);
     if (from&&to&&from>to) throw new OrderError("Start date must be before end date.");
     const status=query.status||"All",type=query.type||"All",payment=query.payment||"All";
-    if (!["All","Completed","Canceled"].includes(status)||!["All","Online","Dine-in","Takeout"].includes(type)||!["All","Cash","GCash","Other"].includes(payment)) throw new OrderError("Invalid transaction filter.");
+    if (!["All","Completed","Canceled"].includes(status)||!["All","Online","Delivery","Pickup","Dine-in","Takeout"].includes(type)||!["All","Cash","GCash","Other"].includes(payment)) throw new OrderError("Invalid transaction filter.");
     const search=typeof query.search==="string"?query.search.trim().toLowerCase():"";
     if (search.length>150) throw new OrderError("Search is too long.");
     const where=["o.status IN ('Completed','Canceled')"],params=[];
@@ -77,6 +77,8 @@ function createReports(db,clock=()=>new Date()) {
     if (to) {where.push(settledDate+"<=?");params.push(to);}
     if (status!=="All") {where.push("o.status=?");params.push(status);}
     if (type==="Online") where.push("o.order_type='Online'");
+    if (type==="Delivery") where.push("o.order_type='Online' AND COALESCE(o.service_type,'Delivery')<>'Pickup'");
+    if (type==="Pickup") where.push("o.order_type='Online' AND o.service_type='Pickup'");
     if (type==="Takeout") where.push("o.order_type='In-store' AND o.service_type IN ('Takeout','Take out')");
     if (type==="Dine-in") where.push("o.order_type='In-store' AND COALESCE(o.service_type,'Dine-in')='Dine-in'");
     if (payment==="Other") where.push("o.payment NOT IN ('Cash','GCash')");
@@ -84,7 +86,7 @@ function createReports(db,clock=()=>new Date()) {
     const customer="COALESCE(NULLIF(o.customer_name,''),u.first_name||' '||u.last_name)";
     if (search) {where.push("instr(lower(o.order_number||' '||"+customer+"||' '||o.payment||' TRX-'||o.id),?)>0");params.push(search);}
     const join=" FROM orders o JOIN users u ON u.id=o.user_id WHERE "+where.join(" AND ");
-    const matched=db.prepare("SELECT COUNT(*) AS count,ROUND(COALESCE(SUM(CASE WHEN o.status='Completed' THEN o.total ELSE 0 END),0),2) AS sales"+join).get(...params);
+    const matched=db.prepare("SELECT COUNT(*) AS count,SUM(CASE WHEN o.status='Completed' THEN 1 ELSE 0 END) AS completed,ROUND(COALESCE(SUM(CASE WHEN o.status='Completed' THEN o.total ELSE 0 END),0),2) AS sales"+join).get(...params);
     const requested=Number(query.page||1),pageSize=20;
     if (!Number.isSafeInteger(requested)||requested<1) throw new OrderError("Invalid page.");
     const pages=Math.max(1,Math.ceil(matched.count/pageSize)),page=Math.min(requested,pages);
@@ -93,10 +95,16 @@ function createReports(db,clock=()=>new Date()) {
       o.status,o.payment,o.payment_status AS paymentStatus,o.refund_status AS refundStatus,o.subtotal,o.delivery_fee AS deliveryFee,
       o.voucher_discount AS voucherDiscount,o.special_discount AS specialDiscount,o.vat_exempt AS vatExempt,
       o.special_discount_type AS specialDiscountType,o.special_discount_id AS specialDiscountId,o.total,o.created_at AS createdAt,o.completed_at AS completedAt,o.canceled_at AS canceledAt,
+      o.cash_tendered AS cashTendered,o.cash_change AS cashChange,
+      (SELECT group_concat(i.product_name||' x'||i.quantity,', ') FROM order_items i WHERE i.order_id=o.id) AS items,
       ${customer} AS customer,CASE WHEN o.order_type='In-store' THEN u.first_name||' '||u.last_name ELSE 'Online checkout' END AS cashier`
       +join+" ORDER BY COALESCE(o.completed_at,o.canceled_at,o.created_at) DESC,o.id DESC LIMIT ? OFFSET ?")
       .all(...params,exporting?10000:pageSize,exporting?0:(page-1)*pageSize);
-    return {transactions,page,pages,pageSize,matched:matched.count,filteredSales:matched.sales,summary:summary(),timezone:"Asia/Manila"};
+    // Totals for the cards above the table: every matching transaction, but only completed orders count as money.
+    const completed=matched.completed||0;
+    const totals={transactions:matched.count,completed,canceled:matched.count-completed,amount:matched.sales,
+      averageOrder:completed?Math.round(matched.sales/completed*100)/100:0};
+    return {transactions,page,pages,pageSize,matched:matched.count,filteredSales:matched.sales,totals,summary:summary(),timezone:"Asia/Manila"};
   }
   // Sales summary for one Philippine day or one calendar month, including
   // earlier months (panel feedback). Sales count when an order is completed.
@@ -144,7 +152,8 @@ function createReports(db,clock=()=>new Date()) {
     const canceled=db.prepare("SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(total),0),2) AS value FROM orders WHERE status='Canceled' AND DATE(canceled_at,'+8 hours') BETWEEN ? AND ?").get(start,through);
     const byPayment=db.prepare(`SELECT o.payment,COUNT(*) AS orders,ROUND(SUM(o.total),2) AS total FROM orders o WHERE ${completed}
       GROUP BY o.payment ORDER BY total DESC`).all(start,through);
-    const byType=db.prepare(`SELECT CASE WHEN o.order_type='Online' THEN 'Online delivery'
+    const byType=db.prepare(`SELECT CASE WHEN o.order_type='Online' AND o.service_type='Pickup' THEN 'Online pickup'
+      WHEN o.order_type='Online' THEN 'Online delivery'
       WHEN o.service_type IN ('Takeout','Take out') THEN 'Takeout' ELSE 'Dine-in' END AS type,
       COUNT(*) AS orders,ROUND(SUM(o.total),2) AS total FROM orders o WHERE ${completed} GROUP BY type ORDER BY total DESC`).all(start,through);
     const topItems=db.prepare(`SELECT i.product_name AS name,SUM(i.quantity) AS quantity,ROUND(SUM(i.quantity*i.price),2) AS sales
@@ -189,6 +198,28 @@ function csv(rows) {
     row.specialDiscountType||"",row.specialDiscountId||"",Number(row.total).toFixed(2),row.status,row.refundStatus,row.cashier])]
     .map(row=>row.map(cell).join(",")).join("\r\n");
 }
+// Spreadsheet-ready transaction report: a summary block, then every transaction with its items and change.
+function reportCsv(data, label) {
+  const cell=value=>{
+    let text=String(value??"");
+    if (/^[\s]*[=+@-]/.test(text)) text="'"+text;
+    return '"'+text.replaceAll('"','""')+'"';
+  };
+  const peso=value=>Number(value||0).toFixed(2);
+  const settled=row=>{
+    const value=row.completedAt||row.canceledAt;
+    return value?new Date(value.replace(" ","T")+"Z").toLocaleString("en-PH",{timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short"}):"";
+  };
+  const rows=[
+    ["Kopi; Calamba transaction report"],["Interval",label||"All time"],["Timezone","Asia/Manila"],[],
+    ["Total transactions",data.totals.transactions],["Completed orders",data.totals.completed],["Canceled orders",data.totals.canceled],
+    ["Total amount (PHP, completed orders)",peso(data.totals.amount)],["Average order (PHP)",peso(data.totals.averageOrder)],[],
+    ["Order ID","Transaction ID","Date & time","Cashier","Customer","Type","Items","Payment","Total (PHP)","Cash received (PHP)","Change (PHP)","Status"],
+    ...data.transactions.map(row=>[row.orderNumber,"TRX-"+row.id,settled(row),row.cashier,row.customer,row.serviceType||row.orderType,row.items||"",
+      row.payment,peso(row.total),row.cashTendered==null?"":peso(row.cashTendered),row.cashChange==null?"":peso(row.cashChange),row.status])
+  ];
+  return "﻿"+rows.map(row=>row.map(cell).join(",")).join("\r\n");
+}
 function summaryCsv(data) {
   const cell=value=>{
     let text=String(value??"");
@@ -210,4 +241,4 @@ function summaryCsv(data) {
   ];
   return "\uFEFF"+rows.map(row=>row.map(cell).join(",")).join("\r\n");
 }
-module.exports={createReports,manilaDay,period,dateInput,csv,summaryCsv};
+module.exports={createReports,manilaDay,period,dateInput,csv,reportCsv,summaryCsv};

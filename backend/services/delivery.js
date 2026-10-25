@@ -19,6 +19,7 @@ function createDeliveryService(db) {
     }
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!row) throw new OrderError("Order was not found.", 404);
+    if (row.service_type === "Pickup") throw new OrderError("Pickup orders are collected at the store and have no rider.", 409);
     if (row.order_type !== "Online" || !["Preparing", "Out for Delivery", "Arrived"].includes(row.status)) {
       throw new OrderError("Delivery details can only be sent for an online order being prepared or delivered.", 409);
     }

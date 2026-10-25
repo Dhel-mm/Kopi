@@ -27,6 +27,8 @@ function createApp(db,settings={}) {
     next();
   });
   // Room for two compressed photos (GCash screenshot and Senior Citizen / PWD ID).
+  // Menu photos (up to 1 MB) are sent as text, so Menu Management allows larger requests.
+  app.use("/api/admin/menu",express.json({limit:"1600kb",strict:true}));
   app.use(express.json({limit:"800kb",strict:true}));
   app.get("/api/health",(req,res)=>{
     try {db.prepare("SELECT 1").get();res.json({status:"ok"});}
@@ -41,12 +43,30 @@ function createApp(db,settings={}) {
   app.use("/api/admin/inventory",require("./routes/inventory")(db));
   app.use("/api/admin/users",require("./routes/users")(db));
   app.use("/api/admin/vouchers",require("./routes/vouchers")(db));
+  app.use("/api/admin/menu",require("./routes/menu")(db));
   app.use("/api/id-registry",require("./routes/idRegistry")(db));
   app.use("/api",(req,res)=>res.status(404).json({message:"API endpoint not found."}));
   app.get("/",(req,res)=>res.redirect("/splash.html"));
   // POS order entry belongs to the Cashier workspace. Preserve old bookmarks
   // by sending Admin's retired Orders page to Operations.
   app.get("/Admin/Orders.html",(req,res)=>res.redirect(302,"/Admin/Operation.html"));
+  // The menu every page uses comes from Menu Management, not the written file.
+  const menu=require("./services/menu");
+  app.get("/Customer/Catalog.js",(req,res)=>{
+    const {categories}=menu.current();
+    // "<" is escaped so a product name can never end the script early.
+    const data=JSON.stringify(categories).replace(/</g,"\\u003c");
+    res.type("application/javascript").set("Cache-Control","no-store").send(
+      "/* Live menu from Menu Management. */\n"+
+      `(function(root){"use strict";const categories=${data};`+
+      "const products=categories.flatMap(group=>group.products.map(product=>({...product,category:group.id})));"+
+      "root.KopiCatalog={categories,products,findProduct:id=>products.find(product=>product.id===id)};})(globalThis);\n");
+  });
+  app.get("/Customer/MenuImages/:id",(req,res)=>{
+    const file=/^\d+$/.test(req.params.id)?menu.createMenuService(db).imageFile(req.params.id):null;
+    if (!file) return res.sendStatus(404);
+    res.type(file.mime).set("Cache-Control","public, max-age=31536000, immutable").send(file.data);
+  });
   // Only web assets are public. No project-root static directory, databases,
   // backups, configuration, tests, or prototype credential storage are served.
   const webAsset=/\.(?:html|css|js|png|jpe?g|jfif|webp|gif|svg|ico|woff2?)$/i;
@@ -60,7 +80,7 @@ function createApp(db,settings={}) {
   app.use((req,res)=>res.status(404).send("Page not found."));
   app.use((error,req,res,next)=>{
     if (res.headersSent) return next(error);
-    if (error.type==="entity.too.large") return res.status(413).json({message:"Request is too large. Profile photos must be under 250 KB."});
+    if (error.type==="entity.too.large") return res.status(413).json({message:"Request is too large. Profile photos must be under 250 KB and menu photos under 1 MB."});
     if (error instanceof SyntaxError&&error.status===400) return res.status(400).json({message:"Request contains invalid JSON."});
     console.error("Request failed:",error.code||error.name);
     res.status(500).json({message:"The request could not be completed. Please try again."});

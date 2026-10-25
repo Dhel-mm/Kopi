@@ -103,6 +103,34 @@
       </div>
 
       <form class="confirmation-form" id="confirmationForm">
+        <fieldset class="order-type-group" id="orderTypeGroup">
+          <legend>How will you get your order?</legend>
+          <div class="order-type-choices">
+            <label class="order-type-option" for="orderTypeDelivery">
+              <input type="radio" id="orderTypeDelivery" name="orderType" value="Delivery" checked>
+              <i class="bi bi-truck" aria-hidden="true"></i>
+              <span><strong>Delivery</strong><small>A rider brings it to your address</small></span>
+            </label>
+            <label class="order-type-option" for="orderTypePickup">
+              <input type="radio" id="orderTypePickup" name="orderType" value="Pickup">
+              <i class="bi bi-shop" aria-hidden="true"></i>
+              <span><strong>Pickup</strong><small>Get it at our store and pay there</small></span>
+            </label>
+          </div>
+          <p class="pickup-note" id="pickupNote" hidden><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>Pick up at <strong>Kopi; Calamba</strong>, 72 Villanueva Subdivision, Camia Street, Brgy. Lingga, Calamba · Open <strong>Tuesday to Sunday, 4:00 PM to 11:00 PM</strong>. We will tell you here on the website when your order is ready. Pay at the counter, or prepay by GCash.</span></p>
+        </fieldset>
+        <fieldset class="field-group time-slot-group" id="timeSlotGroup">
+          <legend id="timeSlotLabel">Rider pickup time</legend>
+          <div class="time-choice">
+            <label class="time-choice-option" for="timeAsap"><input type="radio" id="timeAsap" name="timeChoice" value="ASAP" checked><span>As soon as possible</span></label>
+            <label class="time-choice-option" for="timeScheduled"><input type="radio" id="timeScheduled" name="timeChoice" value="Scheduled"><span>Choose date and time</span></label>
+          </div>
+          <div class="time-inputs" id="timeInputs" hidden>
+            <label for="timeDate">Date<input type="date" id="timeDate"></label>
+            <label for="timeClock">Time<input type="time" id="timeClock" min="16:00" max="23:00" step="60"></label>
+          </div>
+          <p class="time-slot-note" id="timeSlotNote" aria-live="polite"><i class="bi bi-clock" aria-hidden="true"></i><span>Riders collect orders only while we are open: Tuesday to Sunday, 4:00 PM to 11:00 PM.</span></p>
+        </fieldset>
         <div class="field-group">
           <label id="paymentMethodLabel">Payment Method</label>
           <div class="payment-picker">
@@ -114,7 +142,7 @@
             <div class="payment-choices" id="paymentChoices" role="group" aria-label="Choose payment method" hidden>
               <button type="button" data-payment="Cash" aria-pressed="true">
                 <img class="payment-option-logo" src="HomePic/Cash.png" alt="" width="32" height="32">
-                <span><strong>COD (Cash on Delivery)</strong><small>Pay when your order arrives</small></span>
+                <span><strong id="cashChoiceName">COD (Cash on Delivery)</strong><small id="cashChoiceHint">Pay when your order arrives</small></span>
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
               </button>
               <button type="button" data-payment="GCash" aria-pressed="false">
@@ -131,7 +159,7 @@
           <input id="referenceNumber" type="tel" inputmode="numeric" placeholder="09XX-XXX-XXXX" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter an 11-digit mobile number beginning with 09" required>
         </div>
 
-        <div class="field-group">
+        <div class="field-group" id="addressGroup">
           <label for="houseAddress">Full Address</label>
           <input id="houseAddress" type="text" placeholder="House No., Street, Subdivision, Barangay, City/Municipality, Province" required>
         </div>
@@ -246,7 +274,7 @@
           </template>
           <div class="summary-lines">
             <div><span>Subtotal</span><strong id="subtotalAmount">PHP 0.00</strong></div>
-            <div><span>Delivery Fee <span class="rider-fee-note">(Pay Delivery Fee directly to the Lalamove Rider)</span></span><strong id="deliveryAmount">PHP 0.00</strong></div>
+            <div id="deliveryFeeLine"><span>Delivery Fee <span class="rider-fee-note">(Pay Delivery Fee directly to the Lalamove Rider)</span></span><strong id="deliveryAmount">PHP 0.00</strong></div>
             <div><span>Voucher</span><strong id="voucherAmount">- PHP 0.00</strong></div>
             <div id="vatExemptLine" hidden><span>VAT exemption (12%)</span><strong id="vatExemptAmount">- PHP 0.00</strong></div>
             <div id="specialDiscountLine" hidden><span id="specialDiscountLabel">Senior Citizen discount (20%)</span><strong id="specialDiscountAmount">- PHP 0.00</strong></div>
@@ -285,6 +313,7 @@
           <div class="receipt-meta">
             <p><strong>ORDER NO.</strong> <span id="receiptOrderNo">#0000</span></p>
             <p id="receiptDate">TODAY</p>
+            <p><strong id="receiptTimeLabel">RIDER PICKUP:</strong> <span id="receiptTime">As soon as possible</span></p>
             <p><strong>PAYMENT:</strong> <span id="receiptPayment">Cash</span></p>
             <p id="receiptReferenceRow" hidden><strong>REFERENCE:</strong> <span id="receiptReference"></span></p>
             <p class="receipt-payment-status" id="receiptPaymentStatus"></p>

@@ -347,3 +347,4 @@ body:has(.order-status-panel[open]) { overflow: hidden; }
 .selected-side .cash-payment-note { align-self: flex-start; max-width: 100%; }
 .selected-discount-actions .discount-id-line { margin: 0; }
 .selected-discount-actions .review-link-btn { margin-bottom: 0; }
+.status-badge.ready-for-pickup { background: #e3f3e5; color: #2f6b34; }

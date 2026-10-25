@@ -26,7 +26,9 @@ function migrateOrderWorkflow(db) {
       special_discount_name: "TEXT",
       special_discount_items_json: "TEXT",
       special_discount: "REAL NOT NULL DEFAULT 0 CHECK(special_discount >= 0)",
-      vat_exempt: "REAL NOT NULL DEFAULT 0 CHECK(vat_exempt >= 0)"
+      vat_exempt: "REAL NOT NULL DEFAULT 0 CHECK(vat_exempt >= 0)",
+      // When the customer or rider collects an online order; NULL means as soon as possible.
+      scheduled_for: "TEXT"
     })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
     // Correct older cash receipts only where collection is evidenced by tender or completion.
     db.exec(`UPDATE orders SET payment_status='Paid' WHERE payment='Cash' AND payment_status='Unpaid'

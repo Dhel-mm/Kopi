@@ -1070,7 +1070,7 @@ button, input {
 
   .nav-link .cart-count {
     top: 2px;
-    right: 5px;
+    right: 41px;
   }
 
   .account-shell { 
@@ -2152,3 +2152,163 @@ button, input {
   .order-receipt-heading { display: none !important; }
   .order-receipt-paper { overflow: visible; }
 }
+
+/* ==========================================================================
+   Profile and About panels: one clean layout for tablet, laptop and desktop.
+   (Phones up to 500px keep their own compact layout above.)
+   ========================================================================== */
+.account-layout > * { min-width: 0; }
+
+@media (min-width: 501px) {
+  /* ----- Profile: two equal columns; every field and button lines up ----- */
+  #profile.profile-panel { padding: clamp(24px, 4vw, 44px) clamp(24px, 5vw, 72px) 40px; }
+  #profile .profile-form { max-width: 720px; margin: 0; }
+  #profile .photo-row { margin: 4px 0 32px; gap: 22px; }
+  #profile .profile-avatar { flex: 0 0 auto; }
+  #profile .photo-actions { gap: 12px; flex-wrap: wrap; }
+
+  #profile .form-grid,
+  #profile .profile-phone-row,
+  #profile .password-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(16px, 3vw, 28px);
+    row-gap: 18px;
+    align-items: end;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+  #profile .form-grid label,
+  #profile .profile-phone,
+  #profile .password-fields label {
+    grid-column: auto;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    color: #4a3f30;
+    font: 700 13px/1.4 "Poppins", Arial, sans-serif;
+  }
+  #profile .profile-form input:not([type="file"]) {
+    height: 44px;
+    margin-top: 6px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  /* Email / phone: the field on the left, its Edit button beside it. */
+  #profile .email-action { grid-column: 2; display: flex; align-items: center; height: 44px; padding: 0; }
+  #profile .profile-phone-row { margin-top: 18px; }
+  #profile .profile-phone-row .profile-phone { grid-column: 1; }
+
+  #profile .email-action .outline-btn,
+  #profile .profile-phone-row .edit-phone,
+  #profile .change-password {
+    position: static;
+    grid-column: 2;
+    justify-self: start;
+    align-self: end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: auto;
+    width: auto;
+    min-width: 150px;
+    max-width: 100%;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 22px;
+    border-radius: 22px;
+    font: 700 13px/1 "Poppins", Arial, sans-serif;
+    white-space: nowrap;
+  }
+
+  /* Password: current on its own row, new + confirm side by side, then Save. */
+  #profile .password-fields { position: static; margin-top: 40px; padding: 0; border: 0; }
+  #profile .password-fields legend {
+    margin-bottom: 14px;
+    padding: 0;
+    color: #4a3f30;
+    font: 800 20px/1.3 "Poppins", Arial, sans-serif;
+  }
+  #profile .password-fields label:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  #profile .password-fields label:nth-of-type(2) { grid-column: 1; grid-row: 2; }
+  #profile .password-fields label:nth-of-type(3) { grid-column: 2; grid-row: 2; }
+  #profile .password-fields .change-password { grid-column: 1; grid-row: 3; margin-top: 4px; }
+  #profile .profile-help { max-width: 560px; margin: 16px 0 0; font-size: 12px; line-height: 1.6; }
+
+  /* ----- About: logo + story on top, photo below; photo moves beside on wide screens ----- */
+  #about.about-info { padding: clamp(24px, 4vw, 44px) clamp(24px, 5vw, 60px) 44px; }
+  #about .about-top {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    grid-template-areas: "logo text" "photo photo";
+    align-items: center;
+    gap: 22px 26px;
+  }
+  #about .about-logo { grid-area: logo; width: 110px; height: 110px; }
+  #about .about-text { grid-area: text; min-width: 0; text-align: left; }
+  #about .about-text h2 { margin: 0 0 10px; }
+  #about .about-text p { font-size: 14px; line-height: 1.65; }
+  #about .cafe-photo { grid-area: photo; width: 100%; height: clamp(200px, 30vw, 300px); object-fit: cover; border-radius: 12px; }
+  #about .online { flex-wrap: wrap; justify-content: flex-start; gap: 12px 15px; margin-top: 24px; }
+  #about .description { margin: 18px 0 22px; font-size: 13.5px; line-height: 1.7; }
+  #about .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
+  #about .img-card { width: auto; aspect-ratio: 1 / 1; border-radius: 12px; }
+}
+
+/* Wide screens: the café photo sits to the right of the story. */
+@media (min-width: 1280px) {
+  #about .about-top {
+    grid-template-columns: 110px minmax(0, 1fr) minmax(280px, 400px);
+    grid-template-areas: "logo text photo";
+  }
+  #about .cafe-photo { height: 245px; }
+  #about .gallery { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Phones: the "Password" heading matches the other headings. */
+@media (max-width: 500px) {
+  #profile .password-fields legend { font: 800 16px/1.4 "Poppins", Arial, sans-serif; color: #4a3f30; }
+}
+
+/* When the profile area itself is narrow (e.g. small tablets with the side
+   menu showing), stack every field and put each button under its field. */
+@media (min-width: 501px) {
+  #profile.profile-panel { container-type: inline-size; container-name: profile; }
+}
+@container profile (max-width: 380px) {
+  #profile .form-grid label:nth-child(3),
+  #profile .email-action,
+  #profile .profile-phone-row .profile-phone,
+  #profile .profile-phone-row .edit-phone,
+  #profile .password-fields label:nth-of-type(1),
+  #profile .password-fields label:nth-of-type(2),
+  #profile .password-fields label:nth-of-type(3),
+  #profile .password-fields .change-password { grid-column: 1 / -1; grid-row: auto; }
+  #profile .email-action { height: auto; }
+  #profile .email-action .outline-btn { grid-column: auto; }
+  #profile .form-grid, #profile .profile-phone-row, #profile .password-fields { row-gap: 12px; }
+  #profile .photo-row { flex-direction: column; text-align: center; }
+  #profile .photo-actions { justify-content: center; }
+}
+@media (min-width: 501px) {
+  #about.about-info { container-type: inline-size; container-name: about; }
+}
+@container about (max-width: 380px) {
+  #about .about-top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "logo" "text" "photo"; justify-items: center; }
+  #about .about-text { text-align: center; }
+  #about .about-logo { width: 96px; height: 96px; }
+  #about .online { justify-content: center; text-align: center; }
+}
+
+/* ---------- My Orders: pickup orders ---------- */
+.order-status[data-status="Ready for Pickup"] { background: #e3f3e5; color: #2f6b34; }
+.order-pickup { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 0; padding: 12px 14px; border: 1px solid #e3cfa9; border-radius: 12px; background: #fffaf0; color: #5c4210; }
+.order-pickup i { margin-top: 1px; font-size: 18px; color: #8a4b0c; }
+.order-pickup p { margin: 0; font-size: 12.5px; line-height: 1.6; }
+.order-pickup strong { color: #4a3214; }
+.order-pickup.is-ready { border-color: #a9d3ad; background: #eef8ef; color: #2f5a33; }
+.order-pickup.is-ready i { color: #2f6b34; }

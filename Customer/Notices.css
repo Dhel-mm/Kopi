@@ -16,6 +16,9 @@
 }
 .cancellation-notice h2 { color: #9c3030; }
 .cancellation-notice { border-top: 4px solid #b44b43; }
+/* Ready for pickup: good news, so green instead of red. */
+.pickup-notice h2 { color: #2f6b34; }
+.pickup-notice { border-top: 4px solid #4f7a3a; }
 .delivery-notice::backdrop {
   background: rgb(0 0 0 / 35%);
 }

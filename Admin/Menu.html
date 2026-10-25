@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kopi; Admin - Menu Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="Admin.css">
+  <link rel="stylesheet" href="Menu.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="../Customer/Notices.css">
+</head>
+<body>
+<script src="../Customer/Notices.js"></script>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
+      <nav class="admin-nav">
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
+        <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
+        <a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
+        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a>
+        <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
+        <a class="admin-nav-link active" href="Menu.html" aria-current="page"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a>
+        <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+      </nav>
+    </aside>
+
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-text"><h1>Menu Management</h1><p>Keep your products, prices, and availability up to date.</p></div>
+        <a class="admin-profile" href="#" aria-label="Open administrator menu"><i class="bi bi-person-circle"></i><div class="profile-text"><strong>Admin</strong><span>Administrator</span></div><i class="bi bi-chevron-down"></i></a>
+      </header>
+
+      <main class="admin-content menu-content">
+        <div class="menu-toolbar">
+          <label class="menu-search"><i class="bi bi-search" aria-hidden="true"></i><input id="menuSearch" type="search" placeholder="Search menu items…" aria-label="Search menu items"></label>
+          <div class="menu-toolbar-actions">
+            <button class="menu-archived-btn" type="button" id="openArchived"><i class="bi bi-archive" aria-hidden="true"></i>Archived <span class="menu-count" id="archivedCount">0</span></button>
+            <button class="menu-add-btn" type="button" id="addItem"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add New Item</button>
+          </div>
+        </div>
+        <div class="menu-filters-row">
+          <div class="menu-filters" id="menuFilters" role="group" aria-label="Filter by category"></div>
+          <span class="menu-total" id="menuTotal" aria-live="polite">Loading menu…</span>
+        </div>
+        <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+      </main>
+    </div>
+  </div>
+
+  <dialog class="menu-dialog" id="itemDialog" aria-labelledby="itemDialogTitle">
+    <form id="itemForm" novalidate>
+      <header class="menu-dialog-head">
+        <h2 id="itemDialogTitle">Add New Item</h2>
+        <button class="close-panel" type="button" data-close aria-label="Close item editor"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </header>
+      <div class="menu-dialog-body">
+        <div class="menu-photo-field">
+          <img id="photoPreview" alt="" hidden>
+          <span class="menu-photo-empty" id="photoEmpty"><i class="bi bi-image" aria-hidden="true"></i>No photo yet</span>
+          <label class="menu-photo-btn" for="photoInput"><i class="bi bi-upload" aria-hidden="true"></i><span id="photoLabel">Upload photo</span></label>
+          <input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <small>PNG, JPEG or WebP. Large photos are resized automatically.</small>
+        </div>
+        <div class="menu-fields">
+          <label class="menu-field menu-field-wide">Product name<input id="itemName" maxlength="80" required></label>
+          <label class="menu-field">Category
+            <span class="menu-select"><select id="itemCategory" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+          </label>
+          <label class="menu-field" id="newCategoryField" hidden>New category name<input id="newCategory" maxlength="40"></label>
+          <label class="menu-field">Type
+            <span class="menu-select"><select id="itemType"><option value="drink">Drink</option><option value="food">Food</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+          </label>
+          <label class="menu-field menu-field-wide">Description<textarea id="itemDescription" maxlength="300" rows="2"></textarea></label>
+          <label class="menu-switch menu-field-wide"><input type="checkbox" id="itemAvailable" checked><span class="menu-switch-track" aria-hidden="true"></span><span>Available to order</span></label>
+        </div>
+
+        <section class="menu-section" aria-labelledby="sizesTitle">
+          <div class="menu-section-head"><h3 id="sizesTitle">Sizes &amp; prices</h3><button class="menu-link-btn" type="button" id="addSize"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add size</button></div>
+          <p class="menu-hint">One size named “Regular” means a single price with no size choice.</p>
+          <div class="menu-rows" id="sizeRows"></div>
+          <div class="menu-fields">
+            <label class="menu-field">Name of this choice<input id="sizeLabel" maxlength="30" placeholder="Size"></label>
+            <label class="menu-field">Selected at first
+              <span class="menu-select"><select id="defaultSize"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="menu-section" aria-labelledby="choicesTitle">
+          <div class="menu-section-head"><h3 id="choicesTitle">Other choices</h3><button class="menu-link-btn" type="button" id="addChoice"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add choice</button></div>
+          <p class="menu-hint">For example Ice Level (Normal Ice, Less Ice) or Flavors. Separate choices with commas.</p>
+          <div class="menu-rows" id="choiceRows"></div>
+        </section>
+
+        <section class="menu-section" aria-labelledby="addOnsTitle">
+          <div class="menu-section-head"><h3 id="addOnsTitle">Add-ons</h3>
+            <label class="menu-switch"><input type="checkbox" id="addOnsOn"><span class="menu-switch-track" aria-hidden="true"></span><span>Offer add-ons</span></label>
+          </div>
+          <div class="menu-fields" id="addOnFields" hidden>
+            <label class="menu-field">Add-on price (₱)<input id="addOnPrice" type="number" min="1" step="0.01" inputmode="decimal"></label>
+            <label class="menu-field menu-field-wide">Add-ons<input id="addOnValues" placeholder="Oat milk, Espresso shot"></label>
+          </div>
+        </section>
+
+        <p class="menu-recipe-note"><i class="bi bi-info-circle" aria-hidden="true"></i>New items and new sizes can be ordered only after their ingredients are set in <a href="Inventory.html">Inventory → Recipe setup</a>, so stock stays correct.</p>
+        <p class="menu-form-status" id="itemStatus" role="status"></p>
+      </div>
+      <footer class="menu-dialog-foot">
+        <button class="menu-ghost-btn" type="button" data-close>Cancel</button>
+        <button class="menu-add-btn" type="submit" id="saveItem">Save item</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="menu-dialog menu-archived-dialog" id="archivedDialog" aria-labelledby="archivedTitle">
+    <header class="menu-dialog-head">
+      <h2 id="archivedTitle">Archived items</h2>
+      <button class="close-panel" type="button" data-close aria-label="Close archived items"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </header>
+    <div class="menu-dialog-body">
+      <p class="menu-hint">Archived items are hidden from the menu. Past orders and reports keep them. Restore an item to sell it again.</p>
+      <ul class="menu-archived-list" id="archivedList"></ul>
+    </div>
+  </dialog>
+
+  <template id="sizeRowTemplate">
+    <div class="menu-row">
+      <label class="menu-field">Size<input data-size-name maxlength="40" placeholder="e.g. ICED - 16oz"></label>
+      <label class="menu-field">Price (₱)<input data-size-price type="number" min="1" step="0.01" inputmode="decimal"></label>
+      <button class="menu-remove-btn" type="button" data-remove aria-label="Remove size"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+    </div>
+  </template>
+  <template id="choiceRowTemplate">
+    <div class="menu-row menu-choice-row">
+      <label class="menu-field">Name<input data-choice-label maxlength="30" placeholder="e.g. Ice Level"></label>
+      <label class="menu-field">Choices<input data-choice-values placeholder="Normal Ice, Less Ice"></label>
+      <label class="menu-field">Selected at first<input data-choice-default placeholder="Normal Ice"></label>
+      <button class="menu-remove-btn" type="button" data-remove aria-label="Remove choice"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+    </div>
+  </template>
+
+  <script src="../Customer/Api.js"></script>
+<script src="AdminGuard.js"></script>
+<script src="AdminNav.js"></script>
+<script src="OrderAlerts.js"></script>
+<script src="Menu.js"></script>
+  <script src="../Customer/ProfileTools.js"></script><script src="AdminProfile.js"></script>
+</body>
+</html>

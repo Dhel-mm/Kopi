@@ -1,9 +1,9 @@
 const {OrderError} = require("./pricing");
 
 // ---- Fake-order and payment safeguards (panel feedback) -------------------
-// 1. Cash on delivery is limited to small orders. Larger online orders must be
-//    prepaid by GCash, and GCash orders are never prepared before staff see the
-//    money in the shop's GCash account.
+// 1. Cash on delivery and "pay at the store" pickup are limited to small
+//    orders. Larger online orders must be prepaid by GCash, and GCash orders are
+//    never prepared before staff see the money in the shop's GCash account.
 // 2. Online orders get risk flags (first order, large order, earlier orders
 //    the shop rejected, phone different from the account). A flagged cash
 //    order can only be started after staff call or text the customer.
@@ -46,7 +46,10 @@ function migrateOrderSafety(db) {
     // Amount taken off the order when the ID was not approved, and the notice.
     special_discount_removed: "REAL NOT NULL DEFAULT 0",
     special_discount_note: "TEXT",
-    discount_notice_acknowledged_at: "TEXT"
+    discount_notice_acknowledged_at: "TEXT",
+    // Pickup orders: when the order became ready, and when the customer read the notice.
+    pickup_ready_at: "TEXT",
+    pickup_notice_acknowledged_at: "TEXT"
   })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
   db.exec(`CREATE TABLE IF NOT EXISTS order_payment_proofs (
     order_id INTEGER PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
@@ -67,11 +70,13 @@ function itemCount(items) {
   return items.reduce((sum, item) => sum + item.quantity, 0);
 }
 
-function cashOnDelivery(priced) {
+// Unpaid online orders (cash on delivery, or pay at the store for pickup).
+function cashOnDelivery(priced, serviceType = "Delivery") {
   const count = itemCount(priced.items);
   const allowed = priced.total <= COD_LIMIT.maxTotal && count <= COD_LIMIT.maxItems;
+  const method = serviceType === "Pickup" ? "Paying at the store" : "Cash on delivery";
   return {allowed, maxTotal: COD_LIMIT.maxTotal, maxItems: COD_LIMIT.maxItems,
-    message: allowed ? "" : `Cash on delivery is available for orders up to ₱${COD_LIMIT.maxTotal.toLocaleString("en-PH")} and ${COD_LIMIT.maxItems} items. Please pay this order by GCash.`};
+    message: allowed ? "" : `${method} is available for orders up to ₱${COD_LIMIT.maxTotal.toLocaleString("en-PH")} and ${COD_LIMIT.maxItems} items. Please pay this order by GCash.`};
 }
 
 function paymentProof(value, payment) {
@@ -181,9 +186,10 @@ function createOrderSafety(db) {
       const removedCents = Math.round((order.special_discount + order.vat_exempt) * 100);
       const totalCents = Math.round(order.total * 100) + removedCents;
       const peso = cents => "₱" + (cents / 100).toLocaleString("en-PH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      const pickup = order.service_type === "Pickup";
       const payNote = order.payment === "GCash"
-        ? ` You already sent ${peso(totalCents - removedCents)} by GCash, so please pay the remaining ${peso(removedCents)} in cash to the rider.`
-        : ` Please pay ${peso(totalCents)} to the rider.`;
+        ? ` You already sent ${peso(totalCents - removedCents)} by GCash, so please pay the remaining ${peso(removedCents)} in cash ${pickup ? "at the store" : "to the rider"}.`
+        : ` Please pay ${peso(totalCents)} ${pickup ? "at the store when you pick up your order" : "to the rider"}.`;
       const message = `Your ${order.special_discount_type} discount for order ${order.order_number} was not approved because we could not verify the ID photo you uploaded.${note ? " " + note : ""} Your order will continue at the normal price of ${peso(totalCents)} (the ${peso(removedCents)} discount was removed).${payNote} If you think this is a mistake, please contact Kopi; Calamba at ${SHOP_PHONE}.`;
       db.prepare(`UPDATE orders SET special_discount_status='Not approved',special_discount_verified_at=CURRENT_TIMESTAMP,
         special_discount_verified_by=?,special_discount_removed=?,special_discount=0,vat_exempt=0,total=?,

@@ -1,8 +1,12 @@
-const catalog = require("../../Customer/Catalog");
+const menu = require("./menu");
+const { OrderError } = require("./errors");
 
-class OrderError extends Error {
-  constructor(message, status = 400) { super(message); this.status = status; }
-}
+// Always the live menu (Menu Management can change it while the server runs).
+const catalog = {
+  get categories() { return menu.current().categories; },
+  get products() { return menu.current().products; },
+  findProduct: id => menu.current().findProduct(id)
+};
 
 function money(value, label = "Amount") {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
@@ -20,6 +24,11 @@ function priceItems(items) {
     if (!item || typeof item !== "object") throw new OrderError("Invalid order item.");
     const product = catalog.findProduct(item.productId);
     if (!product) throw new OrderError("A product is no longer on the menu. Please refresh your cart.");
+    if (product.available === false) {
+      const error = new OrderError(`${product.name} is not available right now. Please remove it from your order.`, 409);
+      error.customerMessage = `Not available: ${product.name}.`;
+      throw error;
+    }
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100) {
       throw new OrderError(`Choose a whole quantity from 1 to 100 for ${product.name}.`);
     }
