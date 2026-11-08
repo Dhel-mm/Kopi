@@ -153,6 +153,23 @@ function createInventoryService(db) {
     }
     return needed;
   }
+  // The ingredients that run short when this order is made.
+  function shortages(items, takeout) {
+    return requirements(items,takeout).filter(item => round(item.quantity) < item.amount);
+  }
+  // The most of one order line that current stock can make, on top of the other
+  // lines in the same order. Ingredients shared between lines are counted together.
+  function maxQuantity(others, line, takeout, ceiling = 100) {
+    const fits = count => !shortages(count ? [...others,{...line,quantity:count}] : others,takeout).length;
+    if (!fits(1)) return 0;
+    let low = 1, high = ceiling;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (fits(middle)) low = middle;
+      else high = middle - 1;
+    }
+    return low;
+  }
   function deduct(items, orderId, takeout) {
     const needed = check(items,takeout);
     for (const item of needed) {
@@ -180,7 +197,33 @@ function createInventoryService(db) {
       return { ...recipe, issues:recipeIssues(recipe) };
     });
   }
-  return { requirements,check,deduct,restore,recipes,readRecipe };
+  return { requirements,check,shortages,maxQuantity,deduct,restore,recipes,readRecipe };
 }
-module.exports = { createInventoryService,validateTerms,lowStockLevel,round,inStockUnits,
+
+// Adds an ingredient to Inventory, from the Inventory page or while adding a menu item.
+function addInventoryItem(db, input) {
+  const { packageLabel } = require("./inventoryPackages");
+  const amount = (value, allowZero) => {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || (!allowZero && value === 0) ||
+        value > 100000000 || round(value) !== value) throw new OrderError("Enter a valid quantity with up to 3 decimal places.");
+    return value;
+  };
+  for (const key of ["sku","productName","category"]) {
+    if (typeof input[key] !== "string" || !input[key].trim() || input[key].length > 150) throw new OrderError("Complete the product name, SKU and category.");
+  }
+  if (!/^[a-z0-9-]+$/.test(input.sku) || !["g","ml","pcs"].includes(input.measurement)) throw new OrderError("Use a lowercase SKU and a stock unit of g, ml, or pcs.");
+  const quantity = amount(input.quantity,true);
+  const pack = amount(input.initialQuantity,false);
+  const packageUnit = packageLabel(input.packageUnit ?? "package");
+  const low = lowStockLevel({sku:input.sku,initial_quantity:pack});
+  return db.transaction(() => {
+    if (db.prepare("SELECT id FROM inventory_items WHERE sku=?").get(input.sku)) throw new OrderError("That inventory SKU already exists.",409);
+    const row = db.prepare(`INSERT INTO inventory_items(sku,product_name,category,quantity,measurement,initial_quantity,low_stock_level,package_unit) VALUES(?,?,?,?,?,?,?,?)`)
+      .run(input.sku,input.productName.trim(),input.category.trim(),quantity,input.measurement,pack,low,packageUnit);
+    if (quantity) db.prepare("INSERT INTO inventory_transactions(inventory_item_id,change_amount,reason) VALUES(?,?,'Opening stock')")
+      .run(row.lastInsertRowid,quantity);
+    return row.lastInsertRowid;
+  })();
+}
+module.exports = { createInventoryService,addInventoryItem,validateTerms,lowStockLevel,round,inStockUnits,
   migrateReorderSettings,describeStock,stockLevels,usageByItem,USAGE_WINDOW_DAYS,DEFAULT_LEAD_TIME_DAYS,DEFAULT_SAFETY_DAYS };

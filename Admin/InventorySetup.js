@@ -115,22 +115,4 @@ document.getElementById("physicalConversionForm").addEventListener("submit",asyn
   finally {button.disabled=false;}
 });
 
-const movementDialog=document.getElementById("movementDialog");
-rowsEl.addEventListener("click",async event=>{
-  const button=event.target.closest("[data-movements]");
-  if (!button) return;
-  const item=inventory.find(row=>row.id===Number(button.dataset.movements));
-  if (!item) return;
-  document.getElementById("movementTitle").textContent=item.productName+" — movements";
-  const list=document.getElementById("movementList");
-  list.textContent="Loading…";
-  movementDialog.showModal();
-  try {
-    const data=await KopiApi.request("/admin/inventory/"+item.id+"/movements");
-    list.innerHTML=data.movements.length
-      ? '<ul class="stock-movements">'+data.movements.map(row=>`<li><strong>${row.changeAmount>0?"+":""}${row.changeAmount} ${escapeHtml(item.measurement)}</strong><span>${escapeHtml(row.reason)}</span><small>${escapeHtml(row.orderNumber||"Stock adjustment")} · ${escapeHtml(row.createdAt)} UTC</small></li>`).join("")+"</ul>"
-      : "No stock movements recorded yet.";
-  } catch(error) { KopiNotice.set(list,error.message,"error"); }
-});
-document.getElementById("closeMovements").addEventListener("click",()=>movementDialog.close());
 if (inventory.length) refreshConversions();

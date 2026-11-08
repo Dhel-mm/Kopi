@@ -31,6 +31,7 @@ const customer={id:1,role:"Customer"};
 const admin={id:2,role:"Admin"};
 function body(overrides={}) {
   return {
+    ...(overrides.payment==="GCash"?{paymentProof:"data:image/jpeg;base64,/9j/4AAQ"}:{}),
     items:[{productId:"caramel-frappe",quantity:1,options:{"Size":"16oz"},price:1,name:"Forged name"}],
     address:"Test address",phone:"09123456789",payment:"Cash",
     expectedTotal:160,cashTendered:160,requestKey:require("node:crypto").randomUUID(),

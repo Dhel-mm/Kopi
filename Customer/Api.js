@@ -50,7 +50,10 @@ const KopiApi = (() => {
     if (!response.ok) {
       const error = new Error(data.message || "Something went wrong.");
       error.status = response.status;
+      error.data = data;
       if (response.status === 401 && !path.startsWith("/auth/")) clearSession();
+      // The server refuses everything else until a temporary password is replaced.
+      if (response.status === 403 && data.mustChangePassword) window.location.replace("/change-password.html");
       throw error;
     }
 

@@ -1,6 +1,7 @@
 const KopiStore = (() => {
   const CART_KEY = "kopiCart";
   const CHECKOUT_KEY = "kopiCheckout";
+  const SELECTED_KEY = "kopiCartSelected";
   const ADDRESS_KEY = "kopiAddress";
   const SESSION_KEY = "kopi_api_session";
 
@@ -27,6 +28,20 @@ const KopiStore = (() => {
 
   function findProduct(id) {
     return allProducts().find(product => product.id === id);
+  }
+
+  // Online order limits (the server checks them too): up to 50 drinks (cups)
+  // and up to 25 meals and snacks in one order.
+  const ORDER_LIMITS = { drink: 50, food: 25 };
+  const kindOf = productId => (findProduct(productId)?.type === "drink" ? "drink" : "food");
+  function room(productId, excludeCartId = null, cart = getCart()) {
+    const kind = kindOf(productId);
+    const used = cart.filter(item => item.cartId !== excludeCartId && kindOf(item.productId) === kind)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    return { kind, limit: ORDER_LIMITS[kind], used, left: Math.max(0, ORDER_LIMITS[kind] - used) };
+  }
+  function limitMessage(kind) {
+    return kind === "drink" ? "You can order up to 50 drinks (cups) per order." : "You can order up to 25 meals and snacks per order.";
   }
 
   function readRaw(fullKey, fallback) {
@@ -127,14 +142,27 @@ const KopiStore = (() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   }
 
+  // The header badge counts different items in the cart; changing an item's quantity does not change it.
   function updateCartCount() {
+    const lines = getCart().length;
     document.querySelectorAll("[data-cart-count]").forEach(count => {
-      count.textContent = cartCount();
+      count.textContent = lines;
     });
   }
 
   function setCheckout(items) {
     write(CHECKOUT_KEY, items);
+  }
+
+  // Which cart lines have their box ticked. They stay ticked until changed, and
+  // items that are not ticked simply stay saved in the cart for later.
+  function getSelected() {
+    const ids = new Set(getCart().map(item => item.cartId));
+    return read(SELECTED_KEY, []).filter(id => ids.has(id));
+  }
+
+  function setSelected(cartIds) {
+    write(SELECTED_KEY, cartIds);
   }
 
   function getCheckout() {
@@ -158,6 +186,9 @@ const KopiStore = (() => {
     products,
     allProducts,
     findProduct,
+    ORDER_LIMITS,
+    room,
+    limitMessage,
     getCart,
     saveCart,
     addToCart,
@@ -170,6 +201,8 @@ const KopiStore = (() => {
     updateCartCount,
     setCheckout,
     getCheckout,
+    getSelected,
+    setSelected,
     getAddress,
     setAddress
   };

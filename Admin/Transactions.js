@@ -59,7 +59,7 @@ async function refreshTransactions() {
     if(requestVersion!==version)return;
     page=data.page;
     document.getElementById("statCount").textContent=data.totals.transactions.toLocaleString("en-PH");
-    document.getElementById("statCountNote").textContent=`${data.totals.completed} completed · ${data.totals.canceled} void`;
+    document.getElementById("statVoid").textContent=data.totals.canceled.toLocaleString("en-PH");
     document.getElementById("statAmount").textContent=peso(data.totals.amount);
     document.getElementById("statAverage").textContent=peso(data.totals.averageOrder);
     rowsEl.innerHTML=data.transactions.map(row=>`<tr>

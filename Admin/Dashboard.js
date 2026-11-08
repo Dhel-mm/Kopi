@@ -2,25 +2,17 @@ const peso=value=>"₱"+Number(value||0).toFixed(2);
 const escapeHtml=value=>String(value??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 const ranges=document.querySelectorAll(".range-select");
 let reportVersion=0;
-// Zero-total doughnuts have no arcs. Render a neutral ring, never fake orders.
+// An empty period shows a message, never fake orders.
 const emptyState = {
   id: "emptyState",
   afterDraw(chart, args, options) {
     if (chart.data.datasets[0].data.some(value => Number(value) > 0)) return;
-    const { ctx, chartArea, config } = chart;
+    const { ctx, chartArea } = chart;
     if (!chartArea) return;
     const { left, right, top, bottom } = chartArea;
     const x = (left + right) / 2;
     const y = (top + bottom) / 2;
     ctx.save();
-    if (config.type === "doughnut") {
-      const radius = Math.max(0, Math.min(right - left, bottom - top) * 0.4);
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.lineWidth = radius * 0.4;
-      ctx.strokeStyle = "#eee5d8";
-      ctx.stroke();
-    }
     ctx.fillStyle = "#796c5b";
     ctx.font = '12px "Poppins", Arial, sans-serif';
     ctx.textAlign = "center";
@@ -39,17 +31,16 @@ function makeChart(id,type) {
       data: {
         labels: [],
         datasets: [{
-          data: [], borderColor: "#3d2b16", borderWidth: 2,
+          data: [], borderColor: "#3d2b16", borderWidth: type === "bar" ? 0 : 2,
           backgroundColor: type === "line" ? "#d49b43" : ["#3d2b16", "#d49b43", "#f3ddab"],
-          pointRadius: 3, tension: 0.25
+          pointRadius: 3, tension: 0.25, borderRadius: type === "bar" ? 6 : 0, maxBarThickness: 56
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
         plugins: { legend: { display: false }, emptyState: { message: "Loading…" } },
-        ...(type === "doughnut" ? { cutout: "62%" } : {
-          scales: { y: { beginAtZero: true, ticks: { callback: value => peso(value) } } }
-        })
+        // Room above the highest value, so it never looks like a full (100%) graph.
+        scales: { y: { beginAtZero: true, grace: "20%", ticks: type === "bar" ? { precision: 0 } : { callback: value => peso(value) } } }
       }
     });
   } catch (error) {
@@ -57,7 +48,7 @@ function makeChart(id,type) {
     return null;
   }
 }
-const salesChart=makeChart("salesChart","line"),orderChart=makeChart("orderSummaryChart","doughnut");
+const salesChart=makeChart("salesChart","line"),orderChart=makeChart("orderSummaryChart","bar");
 async function refreshDashboard() {
   const version=++reportVersion,status=document.getElementById("dashboardStatus");
   const params=new URLSearchParams();
@@ -70,17 +61,24 @@ async function refreshDashboard() {
     const delta=document.getElementById("todaySalesDelta");
     const change=Number(data.todaySales)-Number(data.yesterdaySales);
     delta.className="stat-delta "+(data.yesterdaySales>0&&change<0?"danger":"positive");
-    delta.textContent=data.yesterdaySales>0?(change/data.yesterdaySales*100).toFixed(1)+"% vs yesterday":"Yesterday: "+peso(data.yesterdaySales);
+    // The difference in pesos, not a percent.
+    delta.textContent=data.yesterdaySales>0?(change<0?"− ":"+ ")+peso(Math.abs(change))+" vs yesterday":"Yesterday: "+peso(data.yesterdaySales);
     document.getElementById("topProducts").innerHTML=data.topProducts.map((row,index)=>`<tr><td>${index+1}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.category)}</td><td>${row.sold}</td><td>${peso(row.grossSales)}</td></tr>`).join("")||'<tr><td colspan="5">No completed sales in this period.</td></tr>';
     document.querySelector(".recent-orders-list").innerHTML=data.recentOrders.map(row=>`<li><span class="order-id">${escapeHtml(row.orderNumber)}</span><span class="order-type">${escapeHtml(row.orderType)}</span><span class="order-amount">${peso(row.total)}</span></li>`).join("")||"<li>No orders yet.</li>";
     document.querySelector(".low-stock-list").innerHTML=data.lowStock.map(row=>`<li><span>${escapeHtml(row.productName)}</span><strong class="${row.status==="Out of Stock"?"critical":""}">${row.quantity} ${escapeHtml(row.measurement)} left</strong></li>`).join("")||"<li>All stock levels are healthy.</li>";
     if(salesChart){salesChart.data.labels=data.salesSeries.map(row=>row.day.slice(5));salesChart.data.datasets[0].data=data.salesSeries.map(row=>row.total);salesChart.options.plugins.emptyState.message="No completed sales";salesChart.update();}
     const counts=["Dine-in","Online","Takeout"].map(type=>data.orderSummary.find(row=>row.type===type)?.count||0);
-    if(orderChart){orderChart.data.labels=["Dine-in","Online","Takeout"];orderChart.data.datasets[0].data=counts;orderChart.options.plugins.emptyState.message="No orders";orderChart.update();}
+    if(orderChart){
+      orderChart.data.labels=["Dine-in","Online","Takeout"];orderChart.data.datasets[0].data=counts;orderChart.options.plugins.emptyState.message="No orders";
+      // A few orders should not look like a full bar: the scale goes past the biggest count.
+      orderChart.options.scales.y.suggestedMax=Math.max(5,Math.ceil(Math.max(...counts)*1.25));
+      orderChart.update();
+    }
     const total=counts.reduce((sum,n)=>sum+n,0);
     document.getElementById("salesChart").setAttribute("aria-label", "Sales overview: " + data.salesSeries.map(row=>row.day+": "+peso(row.total)).join(", "));
     document.getElementById("orderSummaryChart").setAttribute("aria-label", total ? ["Dine-in","Online","Takeout"].map((type,index)=>type+": "+counts[index]).join(", ") : "No orders in this period");
-    document.querySelectorAll(".donut-legend strong").forEach((node,index)=>node.textContent=total?((counts[index]/total)*100).toFixed(1)+"%":"0%");
+    // Number of orders of each type, not a share of 100%.
+    document.querySelectorAll(".donut-legend strong").forEach((node,index)=>node.textContent=counts[index]+(counts[index]===1?" order":" orders"));
     let fallback=document.getElementById("salesFallback");
     if(!fallback){fallback=document.createElement("details");fallback.id="salesFallback";document.querySelector(".sales-chart-wrap").after(fallback);}
     fallback.innerHTML="<summary>Daily sales figures</summary><ul>"+data.salesSeries.map(row=>"<li>"+row.day+": "+peso(row.total)+"</li>").join("")+"</ul>";

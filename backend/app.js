@@ -30,18 +30,28 @@ function createApp(db,settings={}) {
   // Menu photos (up to 1 MB) are sent as text, so Menu Management allows larger requests.
   app.use("/api/admin/menu",express.json({limit:"1600kb",strict:true}));
   app.use(express.json({limit:"800kb",strict:true}));
+  const activity=require("./services/activityLog");
+  activity.migrateActivityLog(db);
+  app.use("/api",activity.activityMiddleware(db));
   app.get("/api/health",(req,res)=>{
     try {db.prepare("SELECT 1").get();res.json({status:"ok"});}
     catch {res.status(503).json({status:"unavailable"});}
   });
-  app.use("/api/auth",require("./routes/auth")(db));
+  // Which menu items can be made from current stock, for the customer menu (no quantities shared).
+  const availability=require("./services/productAvailability").createProductAvailability(db);
+  app.get("/api/menu/availability",(req,res)=>{
+    try {res.set("Cache-Control","no-store").json({products:availability.list("Takeout")});}
+    catch(error){require("./services/orderWorkflow").sendError(res,error);}
+  });
+  app.use("/api/auth",require("./routes/auth")(db,settings));
   app.use("/api",require("./routes/customer")(db));
   app.use("/api/orders",require("./routes/orders")(db));
   app.use("/api/workforce",require("./routes/workforce")(db));
   app.use("/api/admin",require("./routes/adminOrders")(db));
   app.use("/api/admin",require("./routes/reports")(db));
   app.use("/api/admin/inventory",require("./routes/inventory")(db));
-  app.use("/api/admin/users",require("./routes/users")(db));
+  app.use("/api/admin/users",require("./routes/users")(db,settings));
+  app.use("/api/admin/activity",require("./routes/activity")(db));
   app.use("/api/admin/vouchers",require("./routes/vouchers")(db));
   app.use("/api/admin/menu",require("./routes/menu")(db));
   app.use("/api/id-registry",require("./routes/idRegistry")(db));
@@ -69,12 +79,13 @@ function createApp(db,settings={}) {
   });
   // Only web assets are public. No project-root static directory, databases,
   // backups, configuration, tests, or prototype credential storage are served.
-  const webAsset=/\.(?:html|css|js|png|jpe?g|jfif|webp|gif|svg|ico|woff2?)$/i;
+  // Audio files are allowed for custom order alert sounds (Admin/sounds/).
+  const webAsset=/\.(?:html|css|js|png|jpe?g|jfif|webp|gif|svg|ico|woff2?|mp3|wav|ogg|m4a)$/i;
   for (const directory of ["Customer","Admin","Cashier","Staff"]) app.use("/"+directory,(req,res,next)=>{
     if (!webAsset.test(req.path)||req.path.split("/").some(part=>part.startsWith("."))) return res.sendStatus(404);
     next();
   },express.static(path.join(root,directory),{index:false,dotfiles:"deny",maxAge:0}));
-  for (const file of ["login.html","login.css","signup.html","signup.css","splash.html","Splash.css","Auth.js","reset.html"]) {
+  for (const file of ["login.html","login.css","signup.html","signup.css","splash.html","Splash.css","Auth.js","reset.html","verify.html","change-password.html"]) {
     app.get("/"+file,(req,res)=>res.sendFile(path.join(root,file)));
   }
   app.use((req,res)=>res.status(404).send("Page not found."));

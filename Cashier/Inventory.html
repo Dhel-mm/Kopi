@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../Admin/Admin.css">
+  <link rel="stylesheet" href="Workspace.css">
+  <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <title>Kopi; Cashier - Inventory</title>
+  <link rel="stylesheet" href="/Customer/Loader.css">
+</head>
+<body class="workspace-loading" data-workspace="Cashier" data-page="stock" data-title="Inventory" data-subtitle="See what is running low before you take the next order.">
+<script src="/Customer/Loader.js"></script>
+  <div class="workspace-gate" id="workspaceGate" role="status">Opening your workspace…</div>
+  <div class="admin-shell">
+    <aside class="admin-sidebar" id="workspaceSidebar"></aside>
+    <div class="admin-main">
+      <header class="admin-topbar" id="workspaceHeader"></header>
+      <main class="workspace-content">
+        <p class="workspace-intro">For viewing only. Contact the administrator for restocking or corrections.</p>
+        <section class="workspace-stats" aria-label="Stock summary">
+          <div class="workspace-stat"><span>Low stock</span><strong id="stockLowCount">0</strong></div>
+          <div class="workspace-stat stock-out-stat"><span>Out of stock</span><strong id="stockOutCount">0</strong></div>
+          <div class="workspace-stat"><span>All ingredients</span><strong id="stockTotalCount">0</strong></div>
+        </section>
+        <div class="workspace-tools">
+          <label class="workspace-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="stockSearch" placeholder="Search ingredient…" aria-label="Search ingredients"></label>
+          <select class="workspace-select" id="stockStatus" aria-label="Filter stock status"><option value="">All stock</option><option>In Stock</option><option>Low Stock</option><option>Out of Stock</option></select>
+          <button class="workspace-btn secondary" type="button" id="refreshStock"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
+        </div>
+        <p id="stockMessage" class="workspace-status" role="status" aria-live="polite"></p>
+        <section class="workspace-table-card" aria-label="Ingredient stock"><div class="workspace-table-scroll">
+          <table class="workspace-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Available quantity</th><th>Low-stock level</th><th>Status</th></tr></thead><tbody id="stockRows"></tbody></table>
+        </div><p class="workspace-empty" id="stockEmpty" hidden>No ingredients match this view.</p></section>
+      </main>
+    </div>
+  </div>
+  <script src="../Customer/Notices.js"></script>
+  <script src="../Customer/Api.js"></script>
+  <script src="Workspace.js"></script>
+  <script src="../Admin/AdminNav.js"></script>
+  <script src="../Admin/OrderAlerts.js"></script>
+  <script src="../Staff/Staff.js"></script>
+</body>
+</html>

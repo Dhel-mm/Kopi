@@ -160,8 +160,22 @@ function specialDiscountAmounts(items, policy = SPECIAL_DISCOUNT) {
 }
 
 // verifyId (optional) checks the ID against the registry; see idRegistry.js.
+// Online orders are limited to 50 drinks (cups) and 25 meals and snacks.
+const ORDER_LIMITS = { drink: 50, food: 25 };
+function checkOrderLimits(items) {
+  const totals = { drink: 0, food: 0 };
+  for (const item of items) totals[catalog.findProduct(item.productId)?.type === "drink" ? "drink" : "food"] += item.quantity;
+  if (totals.drink > ORDER_LIMITS.drink) {
+    throw new OrderError(`You can order up to ${ORDER_LIMITS.drink} drinks (cups) per order. This order has ${totals.drink}.`);
+  }
+  if (totals.food > ORDER_LIMITS.food) {
+    throw new OrderError(`You can order up to ${ORDER_LIMITS.food} meals and snacks per order. This order has ${totals.food}.`);
+  }
+}
+
 function quote(body, inStore = false, resolveVoucher, verifyId) {
   const items = priceItems(body.items);
+  if (!inStore) checkOrderLimits(items);
   const subtotalCents = items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
   if (subtotalCents > 100000000) throw new OrderError("Order total is too large.");
   if (body.voucher != null && typeof body.voucher !== "string") throw new OrderError("Invalid voucher.");
@@ -209,4 +223,4 @@ function quote(body, inStore = false, resolveVoucher, verifyId) {
   };
 }
 
-module.exports = { catalog, OrderError, money, priceItems, quote, SPECIAL_DISCOUNT, specialDiscountAmounts, formatIdNumber, PSGC_REGIONS };
+module.exports = { catalog, OrderError, money, priceItems, quote, ORDER_LIMITS, checkOrderLimits, SPECIAL_DISCOUNT, specialDiscountAmounts, formatIdNumber, PSGC_REGIONS };

@@ -12,8 +12,10 @@
   <link rel="icon" href="HomePic/Logo.png">
   <link rel="stylesheet" href="Notices.css">
   <link rel="stylesheet" href="Theme.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="Notices.js"></script>
   <header class="site-header">
     <nav class="navbar" aria-label="Main navigation">
@@ -29,6 +31,7 @@
         <a class="nav-link" href="Homepage.html"><i class="bi bi-house-door-fill" aria-hidden="true"></i><span>Home</span></a>
         <a class="nav-link active" href="Menu.html"><i class="bi bi-cup-hot" aria-hidden="true"></i><span>Menu</span></a>
         <a class="nav-link" href="Cart.html"><i class="bi bi-cart-fill" aria-hidden="true"></i><span class="cart-count" data-cart-count>0</span><span>Cart</span></a>
+        
         <a class="nav-link" href="Account.html"><i class="bi bi-person-fill" aria-hidden="true"></i><span>Account</span></a>
       </div>
     </nav>
@@ -52,10 +55,11 @@
           <div class="order-row">
             <div class="quantity-control" aria-label="Quantity">
               <button type="button" data-qty="minus" aria-label="Decrease quantity"><i class="bi bi-dash"></i></button>
-              <strong id="quantityValue">1</strong>
+              <input id="quantityValue" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="1" autocomplete="off" aria-label="Quantity">
               <button type="button" data-qty="plus" aria-label="Increase quantity"><i class="bi bi-plus"></i></button>
             </div>
           </div>
+          <p class="stock-limit-note" id="stockLimitNote" role="alert" hidden></p>
         </form>
       </div>
       <div class="customizer-footer">

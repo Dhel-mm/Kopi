@@ -9,6 +9,10 @@ module.exports = function menuRouter(db) {
   const menu = createMenuService(db);
   router.use(authFor(db), requireRole("Admin"));
   router.get("/", (req, res) => res.json(menu.list()));
+  router.post("/categories", (req, res) => {
+    try { res.status(201).json({ category: menu.addCategory(req.body || {}) }); }
+    catch (error) { sendError(res, error); }
+  });
   router.post("/products", (req, res) => {
     try { res.status(201).json({ product: menu.create(req.body || {}, req.user) }); }
     catch (error) { sendError(res, error); }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kopi; Verify your email</title>
+  <link rel="stylesheet" href="login.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="icon" href="Customer/HomePic/Logo.png">
+  <link rel="stylesheet" href="Customer/Notices.css">
+</head>
+<body class="recovery-page verify-page">
+<script src="Customer/Notices.js"></script>
+  <div class="container">
+    <img src="Customer/HomePic/Intro.JPG" class="bg-image" alt="">
+    <div class="overlay"></div>
+    <main class="login-card recovery-card verify-card">
+      <a class="recovery-back" href="login.html" aria-label="Back to login"><span aria-hidden="true">❮</span><span>Back to login</span></a>
+      <span class="verify-icon" aria-hidden="true"><i class="bi bi-envelope-check"></i></span>
+      <h1 class="card-title">Verify your email</h1>
+      <p class="recovery-description" id="verifyIntro">We sent a 6-digit code to <strong id="verifyEmailLabel">your email</strong>. Enter it below to finish creating your account. The code expires in 10 minutes.</p>
+      <form id="verifyForm" novalidate>
+        <div class="input-group" id="verifyEmailGroup" hidden>
+          <label for="verifyEmail">Email</label>
+          <input id="verifyEmail" name="email" type="email" autocomplete="email" placeholder="kopi@example.com">
+        </div>
+        <div class="input-group">
+          <label for="verifyCode">Verification code</label>
+          <input id="verifyCode" class="verify-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required>
+        </div>
+        <button class="login-btn recovery-submit" type="submit">Verify email</button>
+        <p id="authStatus" role="status" aria-live="polite"></p>
+      </form>
+      <div class="verify-help">
+        <p>Didn't get the code? Check your Spam or Promotions folder.</p>
+        <button type="button" class="verify-resend" id="resendCode">Resend code</button>
+        <p class="verify-wrong">Wrong email? <a href="signup.html">Sign up again</a></p>
+      </div>
+    </main>
+  </div>
+  <script src="Customer/Api.js"></script>
+  <script src="Auth.js"></script>
+</body>
+</html>

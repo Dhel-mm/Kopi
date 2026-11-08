@@ -13,6 +13,9 @@ let users = [],
   mode = "create",
   selectedId;
 const size = 20;
+// Archived accounts cannot sign in; their orders and history are kept.
+const presence = user => user.status !== "Active" ? "Archived" : user.online ? "Online" : "Offline";
+const isEmployeeLogin = user => ["Cashier", "Staff"].includes(user.role);
 function renderUsers() {
   const role = document.getElementById("roleFilter").value,
     status = document.getElementById("statusFilter").value;
@@ -24,7 +27,7 @@ function renderUsers() {
     (user) =>
       (user.name + " " + user.email).toLowerCase().includes(search) &&
       (role === "All" || user.role === role) &&
-      (status === "All" || (user.online ? "Online" : "Offline") === status),
+      (status === "All" || presence(user) === status),
   );
   const pages = Math.max(1, Math.ceil(visible.length / size));
   page = Math.max(1, Math.min(page, pages));
@@ -33,7 +36,7 @@ function renderUsers() {
     (user) => user.online,
   ).length;
   document.getElementById("inactiveUsers").textContent = users.filter(
-    (user) => !user.online,
+    (user) => presence(user) === "Offline",
   ).length;
   document.getElementById("adminUsers").textContent = users.filter(
     (user) => user.role === "Admin",
@@ -47,11 +50,10 @@ function renderUsers() {
       return `<tr><td>${(page - 1) * size + index + 1}</td><td>${escapeHtml(user.name)}</td>
     <td>${escapeHtml(user.email)}</td><td>${escapeHtml(user.phone || "—")}</td><td>${totalOrders}</td><td>${totalSpent}</td>
     <td>${escapeHtml(user.role)}</td><td>${String(user.createdAt).slice(0, 10)}</td>
-    <td><span class="user-presence ${user.online ? "is-online" : "is-offline"}" title="${user.online ? "Active on a signed-in page within the last two minutes" : "No recent signed-in activity"}">${user.online ? "Online" : "Offline"}</span></td>
+    <td><span class="user-presence is-${presence(user).toLowerCase()}" title="${presence(user) === "Archived" ? "This account is archived and cannot sign in" : user.online ? "Active on a signed-in page within the last two minutes" : "No recent signed-in activity"}">${presence(user)}</span></td>
     <td><div class="user-actions">
     <button class="manage-user-btn" type="button" data-user="${user.id}" data-action="access" title="Manage user" aria-label="Manage ${escapeHtml(user.name)}"><i class="bi bi-person-gear" aria-hidden="true"></i></button>
-    <button class="manage-user-btn" type="button" data-user="${user.id}" data-action="recover" title="Generate recovery code" aria-label="Recovery code for ${escapeHtml(user.name)}" ${user.status !== "Active" ? "disabled" : ""}><i class="bi bi-key" aria-hidden="true"></i></button>
-    <button class="manage-user-btn delete-user-btn" type="button" data-user="${user.id}" data-action="delete" title="Delete user" aria-label="Delete ${escapeHtml(user.name)}" ${user.id === KopiApi.getSession()?.user?.id ? "disabled" : ""}><i class="bi bi-trash3" aria-hidden="true"></i></button></div></td></tr>`;
+    <button class="manage-user-btn" type="button" data-user="${user.id}" data-action="${isEmployeeLogin(user) ? "temporary" : "recover"}" title="${isEmployeeLogin(user) ? "Send a temporary password" : "Generate recovery code"}" aria-label="${isEmployeeLogin(user) ? "Temporary password" : "Recovery code"} for ${escapeHtml(user.name)}" ${user.status !== "Active" ? "disabled" : ""}><i class="bi bi-key" aria-hidden="true"></i></button></div></td></tr>`;
     })
     .join("");
   emptyEl.hidden = visible.length > 0;
@@ -99,6 +101,7 @@ document.getElementById("usersNext").addEventListener("click", () => {
   page++;
   renderUsers();
 });
+document.querySelectorAll("#userDialog [data-close-dialog]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
 const dialog = document.getElementById("userDialog"),
   form = document.getElementById("userForm");
 function openUser(action, user) {
@@ -107,17 +110,18 @@ function openUser(action, user) {
   form.reset();
   document.getElementById("saveUser").disabled = false;
   document.getElementById("userResult").textContent = "";
-  document.getElementById("userDialogTitle").textContent =
-    action === "create"
-      ? "Add user"
-      : (action === "recover" ? "Recovery code for " : action === "delete" ? "Delete " : "Manage ") + user.name;
+  const titles = {create: "Add user", recover: "Recovery code for ", temporary: "Temporary password for ", access: "Manage "};
+  document.getElementById("userDialogTitle").textContent = titles[action] + (user?.name || "");
   document.getElementById("saveUser").textContent =
-    action === "recover" ? "Generate recovery code" : action === "delete" ? "Delete user" : "Save";
+    {recover: "Generate recovery code", temporary: "Send temporary password", create: "Add user"}[action] || "Save";
+  document.getElementById("archiveUserNote").textContent = action === "access" && user?.status !== "Active"
+    ? "This account is archived and cannot sign in. Restore it to let this person sign in again."
+    : action === "temporary" ? "A new temporary password is emailed to this person, and their current password stops working." : "";
   for (const [id, show] of [
     ["createUserFields", action === "create"],
-    ["accessUserFields", action !== "recover" && action !== "delete"],
+    ["accessUserFields", action === "create" || action === "access"],
     ["recoveryIdentity", action === "recover"],
-    ["deleteUserConfirm", action === "delete"],
+    ["archiveUserNote", action === "temporary" || (action === "access" && user?.status !== "Active")],
   ]) {
     const section = document.getElementById(id);
     section.hidden = !show;
@@ -125,7 +129,18 @@ function openUser(action, user) {
       .querySelectorAll("input,select")
       .forEach((input) => (input.disabled = !show));
   }
-  document.getElementById("userStatusLabel").hidden = action === "create" || action === "delete";
+  // Manage shows the Active / Inactive choice, and also the Archive / Restore button.
+  document.getElementById("userStatusLabel").hidden = action === "create";
+  const archiveButton = document.getElementById("archiveUserBtn");
+  archiveButton.hidden = action !== "access" || !user || user.id === KopiApi.getSession()?.user?.id;
+  archiveButton.disabled = false;
+  archiveButton.innerHTML = user?.status === "Active"
+    ? `<i class="bi bi-archive" aria-hidden="true"></i> Archive user`
+    : `<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restore user`;
+  archiveButton.classList.toggle("is-restore", user?.status !== "Active");
+  // Customers sign up on the website, so "Customer" is offered only when managing a customer account.
+  form.elements.role.querySelector("option[value='Customer']")?.remove();
+  if (user?.role === "Customer") form.elements.role.prepend(new Option("Customer", "Customer"));
   if (user) {
     form.elements.role.value = user.role;
     form.elements.status.value = user.status;
@@ -138,6 +153,22 @@ document
 document
   .getElementById("closeUserDialog")
   .addEventListener("click", () => dialog.close());
+// Archive (or restore) from inside Manage. It uses the same administrator password box.
+document.getElementById("archiveUserBtn").addEventListener("click", async () => {
+  const user = users.find((entry) => entry.id === selectedId);
+  if (!user) return;
+  const result = document.getElementById("userResult");
+  if (!form.elements.currentPassword.value) {
+    KopiNotice.set(result, "Enter your administrator password to confirm.", "error");
+    form.elements.currentPassword.focus();
+    return;
+  }
+  const archiving = user.status === "Active";
+  if (archiving && !await KopiNotice.confirm(`${user.name} will no longer be able to sign in. Their account, orders and records are kept, and you can restore it from Manage at any time.`, {title: "Archive this user?", confirmText: "Archive", danger: true})) return;
+  mode = archiving ? "archive" : "restore";
+  document.getElementById("archiveUserBtn").disabled = true;
+  form.requestSubmit();
+});
 rowsEl.addEventListener("click", (event) => {
   const button = event.target.closest("[data-user]");
   if (!button) return;
@@ -151,32 +182,36 @@ form.addEventListener("submit", async (event) => {
   const body = Object.fromEntries(new FormData(form));
   const editingOwnAccess =
     mode === "access" && selectedId === KopiApi.getSession()?.user?.id;
-  if (mode === "delete" && !window.confirm("Permanently delete this user? This cannot be undone.")) return;
   button.disabled = true;
   try {
     if (mode === "recover")
       body.identityConfirmed = form.elements.identityConfirmed.checked;
-    if (mode === "delete") body.confirmDelete = form.elements.confirmDelete.checked;
+    // Archiving keeps the role and only changes whether the account can sign in.
+    if (mode === "archive" || mode === "restore") {
+      body.role = users.find((user) => user.id === selectedId)?.role;
+      body.status = mode === "archive" ? "Inactive" : "Active";
+    }
     const endpoint =
       mode === "create"
         ? "/admin/users"
         : "/admin/users/" +
           selectedId +
-          (mode === "recover" ? "/recovery-code" : "");
+          (mode === "recover" ? "/recovery-code" : mode === "temporary" ? "/temporary-password" : "");
     const data = await KopiApi.request(endpoint, {
-      method: mode === "access" ? "PATCH" : mode === "delete" ? "DELETE" : "POST",
+      method: ["access", "archive", "restore"].includes(mode) ? "PATCH" : "POST",
       body: JSON.stringify(body),
     });
     form.elements.currentPassword.value = "";
-    form.elements.password.value = "";
     result.textContent = data.message;
-    if (mode === "recover") {
+    if (mode === "recover" || data.temporaryPassword) {
       const code = document.createElement("strong");
       code.className = "recovery-code";
-      code.textContent = data.code;
+      code.textContent = data.code || data.temporaryPassword;
       result.prepend(code);
+      refreshUsers();
       return;
     }
+    if (mode === "temporary" || mode === "create") KopiNotice.toast(data.message, "success");
     if (editingOwnAccess) {
       KopiApi.clearSession();
       window.location.href = "../login.html";
@@ -187,6 +222,11 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     KopiNotice.set(result, error.message, "error");
     button.disabled = false;
+    // An archive started from Manage goes back to Manage, so Save keeps its own meaning.
+    if (mode === "archive" || mode === "restore") {
+      mode = "access";
+      document.getElementById("archiveUserBtn").disabled = false;
+    }
   }
 });
 async function refreshFeedback() {

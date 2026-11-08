@@ -37,9 +37,9 @@ function showPanel(panelId) {
   }
 }
 
-// When the customer or rider collects an online order; empty means as soon as possible.
-function formatHandover(iso) {
-  return iso ? new Date(iso).toLocaleString("en-PH",{timeZone:"Asia/Manila",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "As soon as possible";
+// When the customer or rider collects an online order; empty means priority.
+function formatHandover(iso, pickup) {
+  return iso ? new Date(iso).toLocaleString("en-PH",{timeZone:"Asia/Manila",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : pickup ? "Priority Pickup" : "Priority Delivery";
 }
 
 function escapeHtml(value) {
@@ -105,7 +105,7 @@ async function loadMyOrders() {
           <div class="order-date">
             <span>${new Date(order.createdAt.includes("T") ? order.createdAt : order.createdAt.replace(" ","T")+"Z").toLocaleString("en-PH",{timeZone:"Asia/Manila"})}</span>
             <span>${escapeHtml(order.orderType)}${order.orderType === "Online" ? ` · ${escapeHtml(order.serviceType === "Pickup" ? "Pickup" : "Delivery")}` : ""}</span>
-            ${order.orderType === "Online" ? `<span>${order.serviceType === "Pickup" ? "Pickup time" : "Rider pickup"}: ${escapeHtml(formatHandover(order.scheduledFor))}</span>` : ""}
+            ${order.orderType === "Online" ? `<span>${order.serviceType === "Pickup" ? "Pickup time" : "Rider pickup"}: ${escapeHtml(formatHandover(order.scheduledFor, order.serviceType === "Pickup"))}</span>` : ""}
           </div>
         </div>
 
@@ -113,7 +113,7 @@ async function loadMyOrders() {
           <span class="order-status" data-status="${escapeHtml(order.status)}">${escapeHtml(order.status)}</span>
           <div class="order-amounts">
             <div class="order-total"><span>Order total</span><strong>₱${Number(order.total || 0).toFixed(2)}</strong></div>
-            ${order.specialDiscountType ? `<div class="order-total order-special"><span>${escapeHtml(order.specialDiscountType)} discount</span><strong>${order.specialDiscountStatus === "Not approved" ? "Not approved" : `− ₱${(Number(order.specialDiscount || 0) + Number(order.vatExempt || 0)).toFixed(2)}`}</strong><small>${order.specialDiscountStatus === "Not approved" ? `We could not verify your ID photo, so the ₱${Number(order.discountRemoved || 0).toFixed(2)} discount was removed and the normal price applies.${order.payment === "GCash" ? ` Please pay the remaining ₱${Number(order.discountRemoved || 0).toFixed(2)} in cash ${order.serviceType === "Pickup" ? "at the store" : "to the rider"}.` : ""}` : `${order.specialDiscountStatus === "Pending verification" && order.status !== "Canceled" ? "ID photo: waiting for staff to verify" : "ID verified"} · Show ID ${escapeHtml(order.specialDiscountId)} ${order.serviceType === "Pickup" ? "at the counter" : "on delivery"}`}</small></div>` : ""}
+            ${order.specialDiscountType ? `<div class="order-total order-special"><span>${escapeHtml(order.specialDiscountType)} discount</span><strong>${order.specialDiscountStatus === "Not approved" ? "Not approved" : `− ₱${(Number(order.specialDiscount || 0) + Number(order.vatExempt || 0)).toFixed(2)}`}</strong><small>${order.specialDiscountStatus === "Not approved" ? `We could not verify your ID photo, so the ₱${Number(order.discountRemoved || 0).toFixed(2)} discount was removed and the normal price applies.${order.payment === "GCash" ? (order.balancePaidAt ? " The remaining balance was paid by GCash." : ` Please pay the remaining ₱${Number(order.discountRemoved || 0).toFixed(2)} by GCash using the same QR code, or in cash ${order.serviceType === "Pickup" ? "at the store" : "to the rider"}.`) : ""}` : `${order.specialDiscountStatus === "Pending verification" && order.status !== "Canceled" ? "ID photo: waiting for staff to verify" : "ID verified"} · Show ID ${escapeHtml(order.specialDiscountId)} ${order.serviceType === "Pickup" ? "at the counter" : "on delivery"}`}</small></div>` : ""}
             ${hasRiderFee ? `<div class="order-total order-rider-fee"><span>Lalamove Delivery Fee</span><strong>₱${order.riderFee.toFixed(2)}</strong><small>Pay directly to the rider · not included in order total</small></div>` : ""}
           </div>
         </div>
@@ -122,7 +122,7 @@ async function loadMyOrders() {
             ? `<strong>Your order is ready for pickup!</strong> Get it at Kopi; Calamba, 72 Villanueva Subdivision, Camia Street, Brgy. Lingga, Calamba.`
             : `<strong>Pickup at the store.</strong> We will tell you here when your order is ready. Kopi; Calamba, 72 Villanueva Subdivision, Camia Street, Brgy. Lingga, Calamba · Open Tuesday to Sunday, 4:00 PM to 11:00 PM.`}
             ${order.payment === "GCash" && order.paymentStatus === "Verified"
-              ? (Number(order.discountRemoved || 0) > 0 ? ` Please pay the remaining <strong>₱${Number(order.discountRemoved).toFixed(2)}</strong> at the counter.` : " Your GCash payment was received.")
+              ? (Number(order.discountRemoved || 0) > 0 && !order.balancePaidAt ? ` Please pay the remaining <strong>₱${Number(order.discountRemoved).toFixed(2)}</strong> at the counter.` : " Your GCash payment was received.")
               : order.payment === "GCash" ? "" : ` Pay <strong>₱${Number(order.total || 0).toFixed(2)}</strong> at the counter.`}</p></div>` : ""}
         ${order.payment === "GCash" ? `
           <div class="order-payment"><p><img class="gcash-logo" src="HomePic/gcash.png" alt="" width="26" height="26">Payment: GCash — ${escapeHtml(order.paymentStatus || "Pending verification")}</p>
@@ -379,7 +379,7 @@ async function showOrderReceipt(id, opener) {
       <div class="order-receipt-meta">
         <p><strong>ORDER NO.</strong> ${escapeHtml(order.orderNumber)}</p>
         <p>${escapeHtml(time)} · ${escapeHtml(order.orderType === "Online" ? (order.serviceType === "Pickup" ? "Pickup" : "Delivery") : order.serviceType || order.orderType)}</p>
-        ${order.orderType === "Online" ? `<p><strong>${order.serviceType === "Pickup" ? "PICKUP TIME" : "RIDER PICKUP"}:</strong> ${escapeHtml(formatHandover(order.scheduledFor))}</p>` : ""}
+        ${order.orderType === "Online" ? `<p><strong>${order.serviceType === "Pickup" ? "PICKUP TIME" : "RIDER PICKUP"}:</strong> ${escapeHtml(formatHandover(order.scheduledFor, order.serviceType === "Pickup"))}</p>` : ""}
         <p><strong>PAYMENT:</strong> ${escapeHtml(order.payment)}${order.payment === "GCash" ? ` — ${escapeHtml(order.paymentStatus || "Pending verification")}` : ""}</p>
         ${order.paymentReference ? `<p><strong>REFERENCE:</strong> ${escapeHtml(order.paymentReference)}</p>` : ""}
         <p><strong>STATUS:</strong> ${escapeHtml(order.status)}</p>

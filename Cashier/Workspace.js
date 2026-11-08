@@ -8,8 +8,8 @@ window.KopiWorkplace = (() => {
   const date = value => new Intl.DateTimeFormat("en-PH", {dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Manila"})
     .format(new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : value.replace(" ","T") + "Z"));
   const links = role === "Cashier"
-    ? [["Orders.html","Orders","bi-cup-hot-fill","orders"],["History.html","Order history","bi-receipt","history"]]
-    : [["Orders.html","Preparation","bi-cup-hot-fill","queue"],["Inventory.html","Stock availability","bi-box-seam","stock"]];
+    ? [["Orders.html","Orders","bi-cup-hot-fill","orders"],["Verify.html","Verify payments","bi-patch-check-fill","verify"],["History.html","Order history","bi-receipt","history"],["Inventory.html","Inventory","bi-box-seam","stock"],["Settings.html","Settings","bi-gear-fill","settings"]]
+    : [["Orders.html","Preparation","bi-cup-hot-fill","queue"],["Inventory.html","Stock availability","bi-box-seam","stock"],["Settings.html","Settings","bi-gear-fill","settings"]];
   const sidebar = document.getElementById("workspaceSidebar");
   sidebar.innerHTML = `<div class="admin-brand workspace-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
     <p class="workspace-label">${role.toUpperCase()} WORKSPACE</p>
@@ -39,6 +39,7 @@ window.KopiWorkplace = (() => {
     try {
       const {user} = await KopiApi.request("/me");
       if (![role,"Admin"].includes(user.role)) {window.location.replace(KopiApi.homeForRole(user.role));return null;}
+      if (user.mustChangePassword) {window.location.replace("/change-password.html");return null;}
       header.querySelectorAll("[data-worker-name]").forEach(node => {node.textContent=[user.firstName,user.lastName].filter(Boolean).join(" ");});
       header.querySelector("[data-worker-email]").textContent=user.email;
       if (user.avatar) {

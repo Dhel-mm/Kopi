@@ -9,7 +9,7 @@ const {createAlertService}=require("../services/alerts");
 const {createApp}=require("../app");
 process.env.JWT_SECRET="isolated-alerts-test-secret";
 
-test("staff are alerted to new online orders only; admin to pending GCash payments and IDs",()=>{
+test("staff are alerted to new online and walk-in orders; admin to pending GCash payments and IDs",()=>{
   const db=fixture();
   try {
     const flow=createOrderWorkflow(db);
@@ -17,8 +17,11 @@ test("staff are alerted to new online orders only; admin to pending GCash paymen
     const cash=flow.create(body(),customer);
     const pickup=flow.create(body({serviceType:"Pickup",address:""}),customer);
     const gcash=flow.create(body({payment:"GCash",paymentReference:"7654321098765"}),customer);
-    flow.create({...body({serviceType:"Takeout"}),address:"",phone:""},admin,true);
-    assert.deepEqual(alerts.staff().orders.map(order=>order.id),[cash.orderId,pickup.orderId,gcash.orderId]);
+    const walkIn=flow.create({...body({serviceType:"Takeout"}),address:"",phone:""},admin,true);
+    // Walk-in orders from the cashier start as Preparing and also alert Staff.
+    assert.deepEqual(alerts.staff().orders.map(order=>order.id),[cash.orderId,pickup.orderId,gcash.orderId,walkIn.orderId]);
+    assert.deepEqual(alerts.staff().orders.at(-1).orderType,"In-store");
+    flow.advance(walkIn.orderId,"Completed",admin);
     assert.equal(alerts.staff().orders[1].serviceType,"Pickup");
     // Once staff start preparing, the order is no longer new.
     flow.advance(cash.orderId,"Preparing",admin);

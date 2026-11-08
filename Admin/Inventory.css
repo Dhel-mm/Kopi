@@ -159,3 +159,60 @@
 .reorder-preview { margin:12px 0; padding:10px 12px; border-radius:10px; background:#f4efe5; font-size:12.5px; }
 #reorderDialog .conversion-fields label small { color:var(--muted); font-weight:500; }
 @media (max-width:600px) { .reorder-facts { grid-template-columns:minmax(0,1fr); } }
+
+/* Summary cards: same as Transactions (full width, four across). */
+.inventory-content .inventory-summary { grid-template-columns:repeat(4,minmax(140px,1fr)); gap:15px; margin:8px 0 18px; }
+.inventory-content .inventory-stat { min-height:82px; border-radius:16px; }
+
+@media (max-width: 800px) { .inventory-content .inventory-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width: 560px) { .inv-fields, .inv-choice, .inv-choice.inv-units { grid-template-columns:1fr; } .inv-dialog-body, .inv-dialog-head, .inv-dialog-foot { padding-inline:16px; } }
+@media (prefers-reduced-motion: reduce) { .inv-dialog[open] { animation:none; } .inv-choice-card, .inv-stepper button, .inv-quick button, .inv-primary, .inv-ghost, .inv-select > .bi-chevron-down { transition:none; } }
+
+/* One Manage dialog with tabs: add stock, correct count, low-stock alert, history. */
+.inv-tabs { display:flex; gap:6px; padding:10px 22px 0; overflow-x:auto; border-bottom:1px solid var(--border); background:var(--paper); scrollbar-width:none; }
+.inv-tabs::-webkit-scrollbar { display:none; }
+.inv-tabs button { display:inline-flex; flex:none; align-items:center; gap:7px; padding:9px 14px 11px; border:0; border-bottom:3px solid transparent; background:transparent; color:#6b5c48; font:700 12.5px "Poppins",Arial,sans-serif; white-space:nowrap; cursor:pointer; transition:color .2s ease, border-color .2s ease, background-color .2s ease; }
+.inv-tabs button:hover { color:var(--dark); background:rgba(212,155,67,.12); }
+.inv-tabs button[aria-selected="true"] { border-bottom-color:var(--tan); color:var(--dark); }
+.inv-tabs button:focus-visible { outline:3px solid var(--tan); outline-offset:-3px; }
+.inv-manage .stock-movements { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+.inv-manage .stock-movements li { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+.inv-manage .stock-movements strong { grid-row:span 2; align-self:center; min-width:84px; font-size:13px; }
+.inv-manage .stock-movements li.in strong { color:#16813b; }
+.inv-manage .stock-movements li.out strong { color:#b84c45; }
+.inv-manage .stock-movements span { color:var(--dark); font-size:12.5px; }
+.inv-manage .stock-movements small { color:var(--muted); font-size:11px; }
+#movementList { max-height:340px; overflow-y:auto; }
+
+/* The single Manage button in each inventory row. */
+.inv-manage-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border:1px solid rgba(192,142,66,.45); border-radius:999px; background:#fff; color:var(--dark); font:700 12px "Poppins",Arial,sans-serif; white-space:nowrap; cursor:pointer; transition:background-color .2s ease, border-color .2s ease, transform .2s ease; }
+.inv-manage-btn i { color:#8a4b0c; font-size:13px; }
+.inv-manage-btn:hover { border-color:var(--tan); background:#fff8ec; transform:translateY(-1px); }
+.inv-manage-btn:focus-visible { outline:3px solid var(--tan); outline-offset:2px; }
+@media (min-width: 961px) and (max-width: 1366px) { .inv-manage-btn { padding:6px 10px; font-size:11px; } }
+@media (max-width: 560px) { .inv-tabs { padding-inline:12px; } .inv-tabs button { padding-inline:10px; } }
+@media (prefers-reduced-motion: reduce) { .inv-tabs button, .inv-manage-btn { transition:none; } .inv-manage-btn:hover { transform:none; } }
+
+/* Recipe and conversion dialogs in the shared dialog frame. */
+.recipe-dialog.inv-dialog { width:min(780px,calc(100vw - 32px)); max-height:90dvh; padding:0; overflow:hidden; border:1px solid #d8c4a5; border-radius:18px; background:var(--paper); }
+.recipe-dialog.inv-dialog form { gap:0; }
+.recipe-dialog.inv-dialog .inv-dialog-head h2 { font-size:18px; }
+.recipe-dialog.inv-dialog p { margin:0; }
+.recipe-dialog.inv-dialog .inv-field input, .recipe-dialog.inv-dialog .recipe-select select, .recipe-dialog.inv-dialog .recipe-line input { height:42px; padding:0 12px; font-size:13px; }
+.recipe-dialog.inv-dialog .recipe-select select { padding-right:34px; }
+.recipe-dialog.inv-dialog .recipe-line { margin:0 0 10px; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+.recipe-dialog.inv-dialog .recipe-line label { display:grid; gap:5px; font-weight:700; color:var(--dark); }
+.recipe-dialog.inv-dialog .recipe-line button { display:grid; width:36px; height:42px; place-items:center; border:1px solid var(--border); border-radius:10px; background:#fff; font-size:20px; color:#9c3d37; }
+.recipe-dialog.inv-dialog .recipe-line button:hover { border-color:#b84c45; background:#fbecea; }
+.inv-add-line { justify-self:start; }
+#recipeIssues:not(:empty) { padding:10px 12px; border:1px solid #e3cfa9; border-radius:12px; background:#fffaf0; }
+.inv-subhead { margin:6px 0 0; color:var(--dark); font-size:14px; }
+.recipe-dialog.inv-dialog .physical-conversions { display:grid; gap:12px; margin:0; padding-top:16px; }
+.recipe-dialog.inv-dialog .physical-conversions summary { color:var(--dark); font-weight:700; }
+.recipe-dialog.inv-dialog .conversion-confirm { margin:0; font-size:12.5px; }
+/* Quick picks sit under the number box (past the minus button), not against the left edge. */
+#addStockFields { display:grid; gap:10px; }
+#addStockFields .inv-quick { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:0 0 0 50px; }
+.inv-quick-label { color:var(--muted); font-size:11.5px; font-weight:600; }
+#addStockFields .inv-quick button { min-width:46px; }
+@media (max-width: 560px) { #addStockFields .inv-quick { margin-left:0; } }

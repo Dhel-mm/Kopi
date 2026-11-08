@@ -44,6 +44,11 @@ module.exports = function orderRouter(db) {
     try { response.json(workflow.prepareQuote(request.body||{})); }
     catch(error) { sendError(response,error,true); }
   });
+  // Checked when adding to the cart: does the shop have enough ingredients for this much?
+  router.post("/stock-check",(request,response)=>{
+    try { response.json(workflow.stockCheck(request.body||{})); }
+    catch(error) { sendError(response,error,true); }
+  });
   router.post("/",(request,response)=>{
     try { response.status(201).json(workflow.create(request.body||{},request.user)); }
     catch(error) { sendError(response,error,true); }
@@ -54,7 +59,7 @@ module.exports = function orderRouter(db) {
         payment_reference AS paymentReference,payment_status AS paymentStatus,
         refund_status AS refundStatus,inventory_state AS inventoryState,subtotal,voucher_discount AS voucherDiscount,total,
         special_discount_type AS specialDiscountType,special_discount_id AS specialDiscountId,special_discount_name AS specialDiscountName,special_discount AS specialDiscount,vat_exempt AS vatExempt,
-        special_discount_status AS specialDiscountStatus,special_discount_removed AS discountRemoved,service_type AS serviceType,scheduled_for AS scheduledFor,
+        special_discount_status AS specialDiscountStatus,special_discount_removed AS discountRemoved,balance_paid_at AS balancePaidAt,service_type AS serviceType,scheduled_for AS scheduledFor,
         cancellation_reason AS cancellationReason,
         rider_fee_cents / 100.0 AS riderFee,delivery_tracking_url AS trackingUrl,
         delivery_message AS deliveryMessage,delivery_revision AS deliveryRevision,

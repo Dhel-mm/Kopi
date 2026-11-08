@@ -117,7 +117,7 @@ recoverPosBtn.textContent="Recover previous order";
 recoverPosBtn.hidden=!KopiApi.hasPendingOrder(POS_ORDER_API);
 placeOrderBtn.after(recoverPosBtn);
 recoverPosBtn.addEventListener("click",async()=>{
-  if (!window.confirm("Check the previous checkout. If it was not saved, retry its original items and payment details without creating a second order. Continue?")) return;
+  if (!await KopiNotice.confirm("Check the previous checkout. If it was not saved, this retries its original items and payment details without creating a second order.", {title: "Recover previous order?", confirmText: "Recover"})) return;
   recoverPosBtn.disabled=true;
   try {
     const result=await KopiApi.recoverOrder(POS_ORDER_API);
@@ -185,9 +185,9 @@ function init() {
     renderOrder();
   });
 
-  cancelOrderBtn.addEventListener("click", () => {
+  cancelOrderBtn.addEventListener("click", async () => {
     if (!state.cart.length && !customerNameEl.value.trim()) return;
-    const confirmed = window.confirm("Cancel this order? All items will be cleared.");
+    const confirmed = await KopiNotice.confirm("All items will be cleared.", {title: "Cancel this order?", confirmText: "Cancel order", cancelText: "Go back", danger: true});
     if (!confirmed) return;
     resetOrder();
   });
@@ -502,19 +502,16 @@ async function addToCart(product, priceLabel, price, options = {}) {
   const before = JSON.stringify({cart: state.cart, serviceType: state.orderType});
   addingProduct = true;
   try {
-    // Validate the chosen size/add-ons and quantity against current stock.
-    await KopiApi.request(POS_ORDER_API + "/quote", {
-      method: "POST", body: JSON.stringify({
-        items: [{productId: product.id, quantity: (existing?.quantity || 0) + 1, options}],
-        serviceType: state.orderType
-      })
-    });
+    // Validate the chosen size/add-ons and quantity against current stock. The rest
+    // of the order counts too, because different items can share an ingredient.
+    await checkOrderStock({productId: product.id, quantity: (existing?.quantity || 0) + 1, options}, existing?.cartId);
     if (before !== JSON.stringify({cart: state.cart, serviceType: state.orderType})) {
       KopiNotice.toast("Your order changed. Please select the product again.", "warning");
       return;
     }
   } catch (error) {
-    KopiNotice.toast(error.status === 409 ? "The Product is not available" : error.message, "error");
+    // The server names the ingredient that ran short, and nothing is added.
+    KopiNotice.toast(error.message, "error");
     refreshProductAvailability().catch(() => {});
     return;
   } finally {addingProduct = false;}
@@ -535,6 +532,15 @@ async function addToCart(product, priceLabel, price, options = {}) {
   }
   renderOrder();
   return true;
+}
+
+// Fails with a notice when the whole order, with this line changed, needs more than is in stock.
+function checkOrderStock(line, excludeCartId) {
+  const others = state.cart.filter(entry => entry.cartId !== excludeCartId)
+    .map(entry => ({productId: entry.productId, quantity: entry.quantity, options: entry.options || {}}));
+  return KopiApi.request(POS_ORDER_API + "/quote", {
+    method: "POST", body: JSON.stringify({items: [line, ...others], serviceType: state.orderType})
+  });
 }
 
 function cartItemSignature(item) {
@@ -614,9 +620,19 @@ function renderOrderItem(item) {
   return node;
 }
 
-function changeQuantity(cartId, delta) {
+async function changeQuantity(cartId, delta) {
   const item = state.cart.find(entry => entry.cartId === cartId);
   if (!item) return;
+  // Adding one more stops with a notice when an ingredient runs short.
+  if (delta > 0) {
+    try {
+      await checkOrderStock({productId: item.productId, quantity: item.quantity + delta, options: item.options || {}}, cartId);
+    } catch (error) {
+      KopiNotice.toast(error.message, "error");
+      refreshProductAvailability().catch(() => {});
+      return;
+    }
+  }
   item.quantity += delta;
   if (item.quantity <= 0) {
     removeFromCart(cartId);
@@ -722,7 +738,7 @@ async function placeOrder() {
     const cashInput = document.getElementById("cashTendered");
     const cashTendered = Number(cashInput?.value);
     if (gcash && !/^[0-9]{13}$/.test(reference)) throw new Error("Enter the 13-digit GCash reference number (numbers only).");
-    if (gcash && !window.confirm(`Have you received ${formatMoney(quote.total)} with reference ${reference} in the shop GCash account?`)) return;
+    if (gcash && !await KopiNotice.confirm(`Have you received ${formatMoney(quote.total)} with reference ${reference} in the shop GCash account?`, {title: "Confirm GCash received?", confirmText: "Confirm"})) return;
     if (!gcash && (!cashInput?.value.trim() || !cashInput.validity.valid || !Number.isFinite(cashTendered) || cashTendered < quote.total)) {
       updateCashCalculator(true);
       throw new Error("Enter cash received that covers the order total.");

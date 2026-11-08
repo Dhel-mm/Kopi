@@ -68,7 +68,7 @@ test("selected options and quantity are checked before changing the cart; failur
   const payload=JSON.parse(h.calls.find(call=>call.options).options.body);
   assert.equal(payload.items[0].options["Add-ons (worth ₱30)"],"Espresso shot");
   assert.equal(h.context.state.cart.length,0);
-  assert.equal(h.notices.at(-1).message,"The Product is not available");
+  assert.equal(h.notices.at(-1).message,"Not enough ingredient");
   h.reject(null);
   await h.context.addToCart(h.product,"Regular",120);
   await h.context.addToCart(h.product,"Regular",120);

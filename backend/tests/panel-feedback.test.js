@@ -9,6 +9,7 @@ const {createOrderSafety,paymentProof,idPhoto}=require("../services/orderSafety"
 const {describeStock,stockLevels}=require("../services/inventory");
 const {createReports,summaryCsv}=require("../services/reports");
 const staff={id:2,role:"Staff"};
+const cashier={id:2,role:"Cashier"};
 // Sample records from the simulated registry (services/idRegistry.js).
 const senior={type:"Senior Citizen",idNumber:"osca-cal-2019-00888",name:"Remedios Santos"};
 const pwd={type:"PWD",idNumber:"04-3405-012-0001234",name:"Maria Santos"};
@@ -60,8 +61,9 @@ test("cash on delivery is limited; larger online orders must be prepaid by GCash
   } finally {db.close();}
 });
 
-test("GCash screenshot is optional, validated and stored separately",()=>{
-  assert.equal(paymentProof("", "GCash"),null);
+test("GCash screenshot is required, validated and stored separately",()=>{
+  assert.throws(()=>paymentProof("", "GCash"),/Attach the screenshot/);
+  assert.equal(paymentProof("", "Cash"),null);
   assert.throws(()=>paymentProof("data:image/png;base64,AAAA","Cash"),/only be attached to a GCash/);
   assert.throws(()=>paymentProof("data:text/html;base64,AAAA","GCash"),/JPG, PNG or WebP/);
   assert.throws(()=>paymentProof("data:image/jpeg;base64,"+"A".repeat(400000),"GCash"),/too large/);
@@ -239,21 +241,23 @@ test("online Senior Citizen/PWD discount needs an ID photo that staff verify lik
     assert.equal(safety.describe(row()).specialDiscountStatus,"Pending verification");
     assert.deepEqual({...safety.idProof(order.orderId),createdAt:undefined},{image:idImage,createdAt:undefined,type:"Senior Citizen",idNumber:"2282130",name:"Remedios Santos",status:"Pending verification"});
     assert.throws(()=>workflow.advance(order.orderId,"Preparing",admin),/Verify the customer's Senior Citizen \/ PWD ID/);
-    assert.throws(()=>safety.verifyId(order.orderId,{},staff),/Compare the ID photo/);
-    assert.throws(()=>safety.verifyId(order.orderId,{confirmedValid:true},{id:1,role:"Customer"}),/staff access/);
-    assert.match(safety.verifyId(order.orderId,{confirmedValid:true},staff).message,/verified/);
-    assert.equal(row().special_discount_verified_by,staff.id);
-    assert.throws(()=>safety.disapproveId(order.orderId,{},staff,workflow),/already verified/);
+    assert.throws(()=>safety.verifyId(order.orderId,{confirmedValid:true},staff),/cashier access/);
+    assert.throws(()=>safety.verifyId(order.orderId,{},cashier),/Compare the ID photo/);
+    assert.throws(()=>safety.verifyId(order.orderId,{confirmedValid:true},{id:1,role:"Customer"}),/cashier access/);
+    assert.match(safety.verifyId(order.orderId,{confirmedValid:true},cashier).message,/verified/);
+    assert.equal(row().special_discount_verified_by,cashier.id);
+    assert.throws(()=>safety.disapproveId(order.orderId,{},cashier,workflow),/already verified/);
     assert.equal(workflow.advance(order.orderId,"Preparing",admin).status,"Preparing");
     // An ID that is not approved keeps the order: the discount is removed, the
     // order returns to its normal price and the customer gets a notice.
     const second=place({specialDiscountProof:idImage});
-    assert.throws(()=>safety.disapproveId(second.orderId,{},{id:1,role:"Customer"},workflow),/staff access/);
-    const kept=safety.disapproveId(second.orderId,{note:"The name on the ID does not match."},staff,workflow);
+    assert.throws(()=>safety.disapproveId(second.orderId,{},{id:1,role:"Customer"},workflow),/cashier access/);
+    assert.throws(()=>safety.disapproveId(second.orderId,{},staff,workflow),/cashier access/);
+    const kept=safety.disapproveId(second.orderId,{note:"The name on the ID does not match."},cashier,workflow);
     assert.equal(kept.status,"New");
     assert.equal(kept.total,399);
     assert.deepEqual([kept.specialDiscount.status,kept.specialDiscount.deduction,kept.specialDiscount.removed],["Not approved",0,82.57]);
-    assert.equal(safety.disapproveId(second.orderId,{},staff,workflow).total,399,"a retry changes nothing");
+    assert.equal(safety.disapproveId(second.orderId,{},cashier,workflow).total,399,"a retry changes nothing");
     const notice=notices.pending(customer).find(entry=>entry.orderId===second.orderId);
     assert.equal(notice.type,"discount");
     assert.match(notice.message,/discount for order .* was not approved.*name on the ID does not match.*normal price of ₱399\.00.*₱82\.57 discount was removed.*Please pay ₱399\.00 to the rider/);
@@ -261,11 +265,21 @@ test("online Senior Citizen/PWD discount needs an ID photo that staff verify lik
     assert.equal(notices.pending(customer).some(entry=>entry.orderId===second.orderId),false);
     assert.equal(workflow.advance(second.orderId,"Preparing",admin).status,"Preparing","order continues at the normal price");
     // GCash customers sent the discounted amount; the rider collects the rest.
-    const paid=place({payment:"GCash",paymentReference:"1000000000077",specialDiscountProof:idImage});
-    safety.disapproveId(paid.orderId,{},staff,workflow);
-    const paidRow=db.prepare("SELECT * FROM orders WHERE id=?").get(paid.orderId);
-    assert.deepEqual([safety.describe(paidRow).gcashAmount,safety.describe(paidRow).balanceDue],[316.43,82.57]);
-    assert.match(notices.pending(customer).find(entry=>entry.orderId===paid.orderId).message,/sent ₱316\.43 by GCash.*remaining ₱82\.57 in cash/);
+    const paid=place({payment:"GCash",paymentReference:"1000000000077",paymentProof:idImage,specialDiscountProof:idImage});
+    safety.disapproveId(paid.orderId,{},cashier,workflow);
+    const paidRow=()=>db.prepare("SELECT * FROM orders WHERE id=?").get(paid.orderId);
+    assert.deepEqual([safety.describe(paidRow()).gcashAmount,safety.describe(paidRow()).balanceDue],[316.43,82.57]);
+    assert.match(notices.pending(customer).find(entry=>entry.orderId===paid.orderId).message,/sent ₱316\.43 by GCash.*remaining ₱82\.57 in cash.*by GCash using the same QR/);
+    // The remaining balance can be paid by GCash, recorded by the Cashier or Admin.
+    const pay={reference:"1000000000078",confirmedReceived:true};
+    assert.throws(()=>safety.payBalanceByGcash(paid.orderId,pay,staff),/cashier access/);
+    assert.throws(()=>safety.payBalanceByGcash(paid.orderId,{...pay,reference:"12"},cashier),/13-digit/);
+    assert.throws(()=>safety.payBalanceByGcash(paid.orderId,{...pay,confirmedReceived:false},cashier),/Check the reference/);
+    assert.throws(()=>safety.payBalanceByGcash(paid.orderId,{...pay,reference:"1000000000077"},cashier),/already attached/);
+    assert.match(safety.payBalanceByGcash(paid.orderId,pay,cashier).message,/paid by GCash/);
+    assert.deepEqual([safety.describe(paidRow()).balanceDue,safety.describe(paidRow()).balanceReference],[0,"1000000000078"]);
+    assert.match(safety.payBalanceByGcash(paid.orderId,pay,cashier).message,/already paid/);
+    assert.throws(()=>safety.payBalanceByGcash(second.orderId,{...pay,reference:"1000000000079"},cashier),/no remaining GCash balance/);
     // In-store, the cashier checks the physical ID, so it is verified at once.
     const counter=workflow.create(body({items:drinkAndMeal,specialDiscount:{...senior,idChecked:true},serviceType:"Dine-in",cashTendered:400,expectedTotal:316.43}),{id:2,role:"Cashier"},true);
     assert.equal(counter.specialDiscount.status,"Verified");
@@ -276,11 +290,12 @@ test("online Senior Citizen/PWD discount needs an ID photo that staff verify lik
   } finally {db.close();}
 });
 
-test("Senior Citizen/PWD ID routes: admin and staff can view, verify and reject; the registry admin API is gone",()=>{
+test("Senior Citizen/PWD ID routes: admin and cashier can view, verify and reject; staff cannot; the registry admin API is gone",()=>{
   const fs=require("node:fs"),path=require("node:path");
   const read=file=>fs.readFileSync(path.join(__dirname,"..",file),"utf8");
   assert.match(read("routes/adminOrders.js"),/\/orders\/:id\/id-proof[\s\S]*verify-id[\s\S]*not-approve-id/);
-  assert.match(read("routes/workforce.js"),/\/preparation\/:id\/id-proof", staff[\s\S]*verify-id", staff[\s\S]*not-approve-id", staff/);
+  assert.match(read("routes/workforce.js"),/\/verifications\/:id\/id-proof", verifier[\s\S]*verify-id", verifier[\s\S]*not-approve-id", verifier/);
+  assert.doesNotMatch(read("routes/workforce.js"),/\/preparation\/:id\/(verify-payment|verify-id|not-approve-id|payment-proof|id-proof)/);
   assert.match(read("routes/orders.js"),/\/:id\/discount\/acknowledge/);
   const registry=read("routes/idRegistry.js");
   assert.match(registry,/requireRole\("Admin", "Cashier"\)/);

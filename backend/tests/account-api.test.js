@@ -12,14 +12,16 @@ async function harness(run) {
   const db=fixture();
   db.prepare("UPDATE users SET password_hash=? WHERE id=1").run(bcrypt.hashSync(customerPassword,4));
   db.prepare("UPDATE users SET password_hash=? WHERE id=2").run(bcrypt.hashSync(adminPassword,4));
-  const app=createApp(db,{origin:"http://localhost:3000"});
+  const sent=[];
+  const mailer={configured:true,send:async message=>{sent.push(message);return {delivered:true};}};
+  const app=createApp(db,{origin:"http://localhost:3000",mailer});
   const server=await new Promise(resolve=>{const s=app.listen(0,"127.0.0.1",()=>resolve(s));});
   const request=async(path,method="GET",body,token)=>{
     const result=await fetch("http://127.0.0.1:"+server.address().port+path,{method,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
     return {status:result.status,data:await result.json()};
   };
   const login=async(email,password)=>request("/api/auth/login","POST",{email,password});
-  try {await run({db,request,login});}finally{await new Promise(resolve=>server.close(resolve));db.close();}
+  try {await run({db,request,login,sent});}finally{await new Promise(resolve=>server.close(resolve));db.close();}
 }
 
 test("presence uses authenticated server activity, expires, and clears when sessions end",()=>harness(async({db,request,login})=>{
@@ -49,11 +51,16 @@ test("presence uses authenticated server activity, expires, and clears when sess
   assert.equal(db.prepare("SELECT last_seen_at FROM users WHERE id=1").get().last_seen_at,null);
   assert.equal((await request("/api/me/presence","POST",{},customer)).status,401);
 }));
-test("signup validation, ignored privilege claims and inactive-account enforcement",()=>harness(async({db,request,login})=>{
+test("signup validation, ignored privilege claims and inactive-account enforcement",()=>harness(async({db,request,login,sent})=>{
   const invalid=await request("/api/auth/signup","POST",{firstName:{},lastName:"Test",email:"test@invalid",password:"short"});
   assert.equal(invalid.status,400);
-  const signup=await request("/api/auth/signup","POST",{firstName:"New",lastName:"Customer",email:"NEW@test.invalid",password:"ValidTestPassword!",role:"Admin",status:"Active"});
-  assert.equal(signup.status,201);
+  const created=await request("/api/auth/signup","POST",{firstName:"New",lastName:"Customer",email:"NEW@test.invalid",password:"ValidTestPassword!",role:"Admin",status:"Active"});
+  assert.equal(created.status,201);
+  assert.equal(created.data.verificationRequired,true);
+  assert.equal(created.data.token,undefined);
+  const code=sent.at(-1).text.match(/\b\d{6}\b/)[0];
+  const signup=await request("/api/auth/verify-email","POST",{email:"new@test.invalid",code});
+  assert.equal(signup.status,200);
   assert.equal(signup.data.user.role,"Customer");
   assert.equal(signup.data.user.firstName,"New");
   assert.equal(signup.data.user.password_hash,undefined);
@@ -117,14 +124,50 @@ test("admin access changes, single-use recovery and role claims are enforced by 
   assert.equal((await login("customer@test.invalid","RecoveredCustomerPassword!")).status,401);
 }));
 
-test("administrators can permanently delete an unused account but cannot delete themselves or accounts with orders",()=>harness(async({db,request,login})=>{
+test("accounts cannot be deleted: they are archived, keep their records and can be restored",()=>harness(async({db,request,login})=>{
   const adminToken=(await login("admin@test.invalid",adminPassword)).data.token;
-  assert.equal((await request("/api/admin/users/1","DELETE",{currentPassword:adminPassword,confirmDelete:false},adminToken)).status,400);
-  assert.equal((await request("/api/admin/users/2","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken)).status,400);
-  assert.equal((await request("/api/admin/users/1","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken)).status,200);
-  assert.equal(db.prepare("SELECT id FROM users WHERE id=1").get(),undefined);
-  db.prepare("INSERT INTO orders(order_number,user_id,total) VALUES('TEST-DELETE-ORDER',3,10)").run();
-  const blocked=await request("/api/admin/users/3","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken);
-  assert.equal(blocked.status,409);
-  assert.ok(db.prepare("SELECT id FROM users WHERE id=3").get());
+  const deleted=await request("/api/admin/users/1","DELETE",{currentPassword:adminPassword,confirmDelete:true},adminToken);
+  assert.equal(deleted.status,404);
+  assert.ok(db.prepare("SELECT id FROM users WHERE id=1").get());
+  // An administrator cannot archive their own account.
+  assert.equal((await request("/api/admin/users/2","PATCH",{role:"Admin",status:"Inactive",currentPassword:adminPassword},adminToken)).status,400);
+  const archived=await request("/api/admin/users/1","PATCH",{role:"Customer",status:"Inactive",currentPassword:adminPassword},adminToken);
+  assert.equal(archived.status,200);
+  assert.match(archived.data.message,/archived/);
+  assert.equal((await login("customer@test.invalid",customerPassword)).status,401);
+  assert.equal((await request("/api/admin/users/1","PATCH",{role:"Customer",status:"Active",currentPassword:adminPassword},adminToken)).status,200);
+  assert.equal((await login("customer@test.invalid",customerPassword)).status,200);
+}));
+
+test("names cannot contain numbers and passwords need at least 8 characters",()=>harness(async({db,request})=>{
+  const account={firstName:"Juan",lastName:"Dela Cruz",email:"juan@test.invalid",password:"eight-ch"};
+  assert.match((await request("/api/auth/signup","POST",{...account,firstName:"Juan2"})).data.message,/first name cannot contain numbers/);
+  assert.match((await request("/api/auth/signup","POST",{...account,lastName:"Cruz 3rd"})).data.message,/last name cannot contain numbers/);
+  assert.match((await request("/api/auth/signup","POST",{...account,middleName:"S4ntos"})).data.message,/middle name cannot contain numbers/);
+  assert.match((await request("/api/auth/signup","POST",{...account,password:"seven-c"})).data.message,/at least 8 characters/);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM users WHERE email=?").get(account.email).n,0);
+  assert.equal((await request("/api/auth/signup","POST",{...account,firstName:"Ma. José",lastName:"O'Brien-Cruz"})).status,201);
+}));
+
+test("delivery address is saved on the account and comes back after logging in again",()=>harness(async({request,login})=>{
+  let token=(await login("customer@test.invalid",customerPassword)).data.token;
+  assert.equal((await request("/api/me/address","GET",undefined,token)).data.address,null);
+  assert.equal((await request("/api/me/address","PUT",{street:"72 Camia St.",barangay:"",city:"Calamba City",province:"Laguna"},token)).status,400);
+  const saved={street:"72 Camia St., Villanueva Subd.",barangay:"Lingga",city:"Calamba City",province:"Laguna",landmark:"Blue gate"};
+  assert.equal((await request("/api/me/address","PUT",saved,token)).status,200);
+  await request("/api/auth/logout","POST",{},token);
+  assert.equal((await request("/api/me/address","GET",undefined,token)).status,401);
+  token=(await login("customer@test.invalid",customerPassword)).data.token;
+  assert.deepEqual((await request("/api/me/address","GET",undefined,token)).data.address,saved);
+  const admin=(await login("admin@test.invalid",adminPassword)).data.token;
+  assert.equal((await request("/api/me/address","GET",undefined,admin)).data.address,null);
+}));
+
+test("admins add employees only; customers sign up on the website",()=>harness(async({request,login})=>{
+  const admin=(await login("admin@test.invalid",adminPassword)).data.token;
+  const user={firstName:"New",lastName:"Person",email:"new.person@test.invalid",currentPassword:adminPassword};
+  const customer=await request("/api/admin/users","POST",{...user,role:"Customer"},admin);
+  assert.equal(customer.status,400);
+  assert.match(customer.data.message,/Customers sign up/);
+  assert.equal((await request("/api/admin/users","POST",{...user,role:"Staff"},admin)).status,201);
 }));

@@ -21,7 +21,7 @@ function harness() {
   const context = vm.createContext({
     document:{getElementById:get,createElement:node,querySelectorAll(){return [];}},
     window:{confirm:()=>confirmation,addEventListener(name,fn){events[name]=fn;}},
-    KopiNotice:{toast(){},set(){}},KopiApi:{async request(url,options){
+    KopiNotice:{toast(){},set(){},async confirm(){return confirmation;}},KopiApi:{async request(url,options){
       calls.push({url,options});
       if (!options) return {orders:[order]};
       await tick();
@@ -44,7 +44,8 @@ test("rejection button is below Verify; confirmation and double-click protection
   h.confirm(false);await reject.listeners.click();
   assert.equal(h.calls.filter(call=>call.options).length,0);
   h.confirm(true);
-  const pending=reject.listeners.click();
+  // The site confirm box answers asynchronously, so let it resolve first.
+  const pending=reject.listeners.click();await tick();
   assert.equal(verify.disabled,true);assert.equal(reject.disabled,true);
   await reject.listeners.click();await h.events.focus();
   assert.equal(h.calls.filter(call=>call.options).length,1);

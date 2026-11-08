@@ -11,8 +11,8 @@ const {OrderError} = require("./pricing");
 //    ingredients return to stock and the customer is notified.
 // 4. Unverified GCash payments show how long they have waited; after
 //    PAYMENT_FOLLOW_UP_MINUTES staff follow up instead of preparing.
-// 5. Online Senior Citizen / PWD discounts need a photo of the ID card. Staff
-//    or Admin look at the photo and verify it (like a GCash payment) before
+// 5. Online Senior Citizen / PWD discounts need a photo of the ID card. The
+//    Cashier or Admin look at the photo and verify it (like a GCash payment) before
 //    the order can be prepared. If the ID is not approved, the order is NOT
 //    canceled: the discount is removed, the order goes back to its normal
 //    price and the customer receives a notice.
@@ -49,7 +49,11 @@ function migrateOrderSafety(db) {
     discount_notice_acknowledged_at: "TEXT",
     // Pickup orders: when the order became ready, and when the customer read the notice.
     pickup_ready_at: "TEXT",
-    pickup_notice_acknowledged_at: "TEXT"
+    pickup_notice_acknowledged_at: "TEXT",
+    // The removed discount, when the customer pays it by GCash instead of cash.
+    balance_payment_reference: "TEXT",
+    balance_paid_at: "TEXT",
+    balance_paid_by: "INTEGER REFERENCES users(id)"
   })) if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${sql}`);
   db.exec(`CREATE TABLE IF NOT EXISTS order_payment_proofs (
     order_id INTEGER PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
@@ -79,8 +83,12 @@ function cashOnDelivery(priced, serviceType = "Delivery") {
     message: allowed ? "" : `${method} is available for orders up to ₱${COD_LIMIT.maxTotal.toLocaleString("en-PH")} and ${COD_LIMIT.maxItems} items. Please pay this order by GCash.`};
 }
 
+// Online GCash orders must include a screenshot of the GCash receipt.
 function paymentProof(value, payment) {
-  if (value == null || value === "") return null;
+  if (value == null || value === "") {
+    if (payment === "GCash") throw new OrderError("Attach the screenshot of your GCash receipt before placing the order.");
+    return null;
+  }
   if (payment !== "GCash") throw new OrderError("A payment screenshot can only be attached to a GCash order.");
   if (typeof value !== "string" || !IMAGE_DATA_URL.test(value)) {
     throw new OrderError("Attach the GCash receipt as a JPG, PNG or WebP image.");
@@ -139,8 +147,10 @@ function createOrderSafety(db) {
       hasIdProof: Boolean(db.prepare("SELECT 1 FROM order_id_proofs WHERE order_id=?").get(order.id)),
       specialDiscountStatus: order.special_discount_type ? order.special_discount_status || "Verified" : null,
       discountRemoved: order.special_discount_removed || 0,
-      // A GCash customer sent the discounted amount; the rest is collected on delivery.
-      balanceDue: order.payment === "GCash" ? order.special_discount_removed || 0 : 0,
+      // A GCash customer sent the discounted amount; the rest is collected on delivery,
+      // unless it was already paid by GCash.
+      balanceDue: order.payment === "GCash" && !order.balance_paid_at ? order.special_discount_removed || 0 : 0,
+      balancePaidAt: order.balance_paid_at || null, balanceReference: order.balance_payment_reference || null,
       gcashAmount: order.payment === "GCash" ? Math.round((order.total - (order.special_discount_removed || 0)) * 100) / 100 : null,
       customerConfirmedAt: order.customer_confirmed_at || null, rejectionReason: order.rejection_reason || null};
   }
@@ -156,9 +166,9 @@ function createOrderSafety(db) {
     if (!row) throw new OrderError("No Senior Citizen / PWD ID photo was uploaded for this order.", 404);
     return row;
   }
-  // Staff or Admin compared the photo with the name and ID number typed in.
+  // Cashier or Admin compared the photo with the name and ID number typed in.
   function verifyId(id, input, user) {
-    if (!["Admin", "Staff"].includes(user.role)) throw new OrderError("Administrator or staff access is required.", 403);
+    if (!["Admin", "Cashier"].includes(user.role)) throw new OrderError("Administrator or cashier access is required.", 403);
     return db.transaction(() => {
       const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
       if (!order) throw new OrderError("Order was not found.", 404);
@@ -173,7 +183,7 @@ function createOrderSafety(db) {
   // The ID could not be approved: keep the order, remove the discount, return
   // the order to its normal price and tell the customer why.
   function disapproveId(id, input, user, workflow) {
-    if (!["Admin", "Staff"].includes(user.role)) throw new OrderError("Administrator or staff access is required.", 403);
+    if (!["Admin", "Cashier"].includes(user.role)) throw new OrderError("Administrator or cashier access is required.", 403);
     const note = typeof input?.note === "string" ? input.note.trim().replace(/\s+/g, " ") : "";
     if (note.length > 200) throw new OrderError("Keep the note to 200 characters or fewer.");
     return db.transaction(() => {
@@ -188,7 +198,7 @@ function createOrderSafety(db) {
       const peso = cents => "₱" + (cents / 100).toLocaleString("en-PH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
       const pickup = order.service_type === "Pickup";
       const payNote = order.payment === "GCash"
-        ? ` You already sent ${peso(totalCents - removedCents)} by GCash, so please pay the remaining ${peso(removedCents)} in cash ${pickup ? "at the store" : "to the rider"}.`
+        ? ` You already sent ${peso(totalCents - removedCents)} by GCash, so please pay the remaining ${peso(removedCents)} in cash ${pickup ? "at the store" : "to the rider"}, or send it by GCash using the same QR code and give the shop your reference number.`
         : ` Please pay ${peso(totalCents)} ${pickup ? "at the store when you pick up your order" : "to the rider"}.`;
       const message = `Your ${order.special_discount_type} discount for order ${order.order_number} was not approved because we could not verify the ID photo you uploaded.${note ? " " + note : ""} Your order will continue at the normal price of ${peso(totalCents)} (the ${peso(removedCents)} discount was removed).${payNote} If you think this is a mistake, please contact Kopi; Calamba at ${SHOP_PHONE}.`;
       db.prepare(`UPDATE orders SET special_discount_status='Not approved',special_discount_verified_at=CURRENT_TIMESTAMP,
@@ -198,12 +208,32 @@ function createOrderSafety(db) {
       return workflow.result(id);
     }).immediate();
   }
+  // The ID was not approved, so the discount came off and a balance remains. This
+  // records that the customer sent that balance by GCash instead of paying cash.
+  function payBalanceByGcash(id, input, user) {
+    if (!["Admin", "Cashier"].includes(user.role)) throw new OrderError("Administrator or cashier access is required.", 403);
+    const reference = typeof input?.reference === "string" ? input.reference.trim() : "";
+    if (!/^[0-9]{13}$/.test(reference)) throw new OrderError("Enter the 13-digit GCash reference number (numbers only).");
+    if (input?.confirmedReceived !== true) throw new OrderError("Check the reference and amount in the shop's GCash account first.");
+    return db.transaction(() => {
+      const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
+      if (!order) throw new OrderError("Order was not found.", 404);
+      if (order.balance_paid_at) return {message: "The remaining balance was already paid by GCash."};
+      if (order.payment !== "GCash" || !(order.special_discount_removed > 0) || order.status === "Canceled") {
+        throw new OrderError("This order has no remaining GCash balance to pay.", 409);
+      }
+      const used = db.prepare(`SELECT 1 FROM orders WHERE (payment='GCash' AND payment_reference=?) OR balance_payment_reference=?`).get(reference, reference);
+      if (used) throw new OrderError("That GCash reference is already attached to an order.", 409);
+      db.prepare("UPDATE orders SET balance_payment_reference=?,balance_paid_at=CURRENT_TIMESTAMP,balance_paid_by=? WHERE id=?").run(reference, user.id, id);
+      return {message: "Remaining balance marked as paid by GCash."};
+    }).immediate();
+  }
   function confirmCustomer(order, user) {
     db.prepare("UPDATE orders SET customer_confirmed_at=COALESCE(customer_confirmed_at,CURRENT_TIMESTAMP),customer_confirmed_by=COALESCE(customer_confirmed_by,?) WHERE id=?")
       .run(user.id, order.id);
   }
   function reject(id, input, user, workflow) {
-    if (!["Admin", "Staff"].includes(user.role)) throw new OrderError("Administrator or staff access is required.", 403);
+    if (!["Admin", "Cashier", "Staff"].includes(user.role)) throw new OrderError("Administrator or staff access is required.", 403);
     const code = input?.reason;
     if (!Object.hasOwn(REJECTION_REASONS, code)) throw new OrderError("Choose a reason for rejecting this order.");
     const note = typeof input?.note === "string" ? input.note.trim().replace(/\s+/g, " ") : "";
@@ -224,7 +254,7 @@ function createOrderSafety(db) {
       return workflow.result(id);
     }).immediate();
   }
-  return {riskFlags, needsPhoneConfirmation, paymentWait, describe, proof, idProof, verifyId, disapproveId, confirmCustomer, reject};
+  return {riskFlags, needsPhoneConfirmation, paymentWait, describe, proof, idProof, verifyId, disapproveId, payBalanceByGcash, confirmCustomer, reject};
 }
 
 module.exports = {createOrderSafety, migrateOrderSafety, cashOnDelivery, paymentProof, idPhoto, ID_STATUSES, COD_LIMIT, PAYMENT_FOLLOW_UP_MINUTES, REJECTION_REASONS};

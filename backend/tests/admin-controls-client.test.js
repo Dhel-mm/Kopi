@@ -79,7 +79,7 @@ test("voucher entry moved exclusively to Operations beside filters without its c
   const dashboard = fs.readFileSync(path.join(root, "Admin/Dashboard.html"), "utf8");
   const operation = fs.readFileSync(path.join(root, "Admin/Operation.html"), "utf8");
   assert.doesNotMatch(dashboard, /toggleVouchers|voucherCard|Vouchers\.js/);
-  assert.match(operation, /<dialog class="voucher-card voucher-dialog"/);
+  assert.match(operation, /<dialog class="voucher-card voucher-dialog[^"]*"/);
   const toolbar = operation.slice(operation.indexOf('class="operation-status-tools"'), operation.indexOf('class="order-status-panel"'));
   assert.match(toolbar, /status-filter[\s\S]*id="toggleVouchers"/);
   assert.doesNotMatch(toolbar, /bi-chevron-down/);
@@ -95,7 +95,7 @@ test("used voucher is red and offers a confirmed Remove action instead of Edit",
   let vouchers=[{code:"USED50",amount:50,active:true,used:true}],confirm=false;
   vm.runInNewContext(fs.readFileSync(path.join(root,"Admin/Vouchers.js"),"utf8"),{
     document:{getElementById:get,createElement:node},window:{confirm:()=>confirm},
-    KopiNotice:{set(target,message){target.textContent=message;}},
+    KopiNotice:{set(target,message){target.textContent=message;},async confirm(){return confirm;}},
     KopiApi:{async request(url,options){if(!options)return {vouchers};writes.push({url,...options});vouchers=[];return {};}}
   });
   await tick();

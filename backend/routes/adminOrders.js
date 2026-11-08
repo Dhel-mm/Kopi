@@ -82,6 +82,11 @@ module.exports = function adminOrderRouter(db) {
     try { response.json(paymentReview.verify(request.params.id, request.body, request.user)); }
     catch (error) { sendError(response, error); }
   });
+  // The ID was not approved: the customer sends the removed discount by GCash.
+  router.patch("/orders/:id/balance-gcash",(request,response)=>{
+    try { response.json(safety.payBalanceByGcash(request.params.id, request.body || {}, request.user)); }
+    catch (error) { sendError(response, error); }
+  });
   router.patch("/orders/:id/reject-payment", (request, response) => {
     try {
       const order = paymentReview.reject(request.params.id, request.body, request.user);

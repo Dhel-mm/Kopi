@@ -222,3 +222,87 @@ button.close-panel:disabled {
     transition: none;
   }
 }
+
+/* List of order updates, opened from the Order Updates button in My Cart. */
+.bell-panel {
+  position: fixed;
+  inset: 90px auto auto 50%;
+  transform: translateX(-50%);
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(70dvh, 560px);
+  margin: 0;
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid #d5c5ab;
+  border-radius: 16px;
+  background: #fffaf1;
+  color: #3d2b16;
+  font: 500 13px/1.5 "Poppins", Arial, sans-serif;
+  box-shadow: 0 18px 44px rgba(33, 21, 8, 0.28);
+}
+.bell-panel::backdrop { background: rgba(33, 21, 8, 0.25); }
+.bell-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.bell-panel h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.bell-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bell-row { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border: 1px solid #eadfca; border-radius: 12px; background: #fff; }
+.bell-row.is-new { border-color: #d49b43; background: #fff6e4; }
+.bell-row i { font-size: 19px; color: #6d5a3f; }
+.bell-row.is-good i { color: #2f6b34; }
+.bell-row.is-warn i { color: #b5651d; }
+.bell-row.is-bad i { color: #b44b43; }
+.bell-row strong { display: block; overflow-wrap: anywhere; }
+.bell-row p { margin: 2px 0; color: #5b4a35; font-size: 12px; overflow-wrap: anywhere; }
+.bell-row small { color: #8b7a61; font-size: 11px; }
+.bell-empty { padding: 18px 8px; color: #6d5a3f; text-align: center; }
+.bell-all { display: block; margin-top: 12px; color: #8a4b0c; font-weight: 700; text-align: center; text-decoration: underline; }
+@media (max-width: 900px) {
+  .bell-panel { inset: 16px 16px auto; transform: none; width: auto; max-height: calc(100dvh - 120px); }
+}
+
+/* Site confirmation box (KopiNotice.confirm), used instead of the browser's "localhost says" box. */
+.kopi-confirm {
+  width: min(400px, calc(100% - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  color: #211508;
+  font-family: "Poppins", Arial, sans-serif;
+  box-shadow: 0 24px 60px rgba(33, 21, 8, 0.32);
+}
+.kopi-confirm[open] { animation: kopi-confirm-in 220ms cubic-bezier(.22, 1, .36, 1); }
+.kopi-confirm::backdrop { background: rgba(33, 21, 8, 0.45); backdrop-filter: blur(4px); }
+.kopi-confirm-card { display: grid; justify-items: center; gap: 8px; padding: 26px 24px 22px; text-align: center; }
+.kopi-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: #f3ddab;
+  color: #3d2b16;
+  font-size: 24px;
+  font-weight: 800;
+}
+.kopi-confirm.danger .kopi-confirm-icon { background: #fbe3e1; color: #b84c45; }
+.kopi-confirm h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.kopi-confirm-message { margin: 0; color: #5b4a35; font-size: 14px; line-height: 1.55; white-space: pre-line; }
+.kopi-confirm-actions { display: flex; gap: 10px; width: 100%; margin-top: 12px; }
+.kopi-confirm-actions button {
+  flex: 1;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font: 700 14px "Poppins", Arial, sans-serif;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.kopi-confirm-cancel { border: 1.5px solid #d8c9b0; background: #fff; color: #3d2b16; }
+.kopi-confirm-cancel:hover, .kopi-confirm-cancel:focus-visible { border-color: #d49b43; background: #fff8ec; outline: 0; }
+.kopi-confirm-ok { border: 0; background: #3d2b16; color: #fff; }
+.kopi-confirm-ok:hover, .kopi-confirm-ok:focus-visible { background: #211508; outline: 3px solid rgba(212, 155, 67, 0.45); outline-offset: 2px; }
+.kopi-confirm.danger .kopi-confirm-ok { background: #b84c45; }
+.kopi-confirm.danger .kopi-confirm-ok:hover, .kopi-confirm.danger .kopi-confirm-ok:focus-visible { background: #9c3d37; }
+@keyframes kopi-confirm-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kopi-confirm[open] { animation: none; } }

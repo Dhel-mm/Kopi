@@ -130,7 +130,7 @@ window.KopiOrderReview = (() => {
       const dialog = dialogShell("reject-dialog", `Discount not approved for ${order.orderNumber}`);
       dialog.innerHTML = `<form method="dialog">
         <header><h2>Not approve the discount for ${esc(order.orderNumber)}?</h2><button class="close-panel" type="submit" value="cancel" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
-        <p class="review-note">Use this when the ID photo is unclear, the name or ID number does not match, or the card is not valid. <strong>The order is not canceled.</strong> The ${esc(order.specialDiscountType)} discount of ${peso(removed)} is removed, the order goes back to the normal price of <strong>${peso(normal)}</strong>, and the customer is notified.${order.payment === "GCash" ? ` The customer paid by GCash, so ${order.serviceType === "Pickup" ? "the counter" : "the rider"} collects the remaining ${peso(removed)} in cash.` : ""}</p>
+        <p class="review-note">Use this when the ID photo is unclear, the name or ID number does not match, or the card is not valid. <strong>The order is not canceled.</strong> The ${esc(order.specialDiscountType)} discount of ${peso(removed)} is removed, the order goes back to the normal price of <strong>${peso(normal)}</strong>, and the customer is notified.${order.payment === "GCash" ? ` The customer paid by GCash, so the remaining ${peso(removed)} is paid by GCash or in cash ${order.serviceType === "Pickup" ? "at the counter" : "to the rider"}.` : ""}</p>
         <label class="workspace-field">What was wrong? (optional, shown to the customer)<textarea name="note" maxlength="200" rows="2" placeholder="e.g. The name on the ID does not match."></textarea></label>
         <div class="workspace-dialog-actions">
           <button class="workspace-btn secondary" type="submit" value="cancel">Go back</button>
@@ -142,6 +142,48 @@ window.KopiOrderReview = (() => {
         if (event.submitter?.value !== "confirm") return;
         answered = true;
         resolve({note: form.note.value.trim()});
+      });
+      dialog.addEventListener("close", () => { if (!answered) resolve(null); });
+      dialog.showModal();
+    });
+  }
+
+  // The discount was removed, so the customer sends the difference by GCash.
+  function balanceDialog(order) {
+    const amount = "₱" + Number(order.balanceDue || 0).toFixed(2);
+    const qr = /^\/(Admin|Cashier|Staff)\//.test(window.location.pathname) ? "../Customer/HomePic/gcash-payment-qr.jpg" : "HomePic/gcash-payment-qr.jpg";
+    return new Promise(resolve => {
+      const dialog = dialogShell("reject-dialog balance-dialog", `Remaining balance for ${order.orderNumber}`);
+      dialog.innerHTML = `<form method="dialog" novalidate>
+        <header><h2>GCash balance for ${esc(order.orderNumber)}</h2><button class="close-panel" type="submit" value="cancel" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+        <p class="review-note">The discount was not approved, so the customer still owes <strong class="key-value">${amount}</strong>. Ask them to send it using the shop's QR code, then check the shop's GCash account.</p>
+        <p class="balance-qr"><a href="${qr}" target="_blank" rel="noopener"><img src="${qr}" alt="Shop GCash QR code" loading="lazy"></a></p>
+        <label class="workspace-field">GCash reference number<input name="reference" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="13-digit Ref No."></label>
+        <label class="balance-check"><input type="checkbox" name="received"> I saw ${amount} with this reference in the shop's GCash account.</label>
+        <p class="workspace-status" role="status" aria-live="polite"></p>
+        <div class="workspace-dialog-actions">
+          <button class="workspace-btn secondary" type="submit" value="cancel">Go back</button>
+          <button class="workspace-btn" type="submit" value="confirm">Record GCash payment</button>
+        </div></form>`;
+      const form = dialog.querySelector("form");
+      form.reference.addEventListener("input", () => { form.reference.value = form.reference.value.replace(/\D/g, "").slice(0, 13); });
+      let answered = false;
+      form.addEventListener("submit", event => {
+        if (event.submitter?.value !== "confirm") return;
+        const status = form.querySelector("[role=status]");
+        if (!/^[0-9]{13}$/.test(form.reference.value)) {
+          event.preventDefault();
+          KopiNotice.set(status, "Enter the 13-digit GCash reference number.", "error");
+          form.reference.focus();
+          return;
+        }
+        if (!form.received.checked) {
+          event.preventDefault();
+          KopiNotice.set(status, "Check the shop's GCash account, then tick the box.", "error");
+          return;
+        }
+        answered = true;
+        resolve({reference: form.reference.value, confirmedReceived: true});
       });
       dialog.addEventListener("close", () => { if (!answered) resolve(null); });
       dialog.showModal();
@@ -182,5 +224,5 @@ window.KopiOrderReview = (() => {
     });
   }
 
-  return {flagsHtml, waitHtml, showProof, idStatusHtml, rejectDialog, notApproveDialog, highlightedText, confirmDialog};
+  return {flagsHtml, waitHtml, showProof, idStatusHtml, rejectDialog, notApproveDialog, balanceDialog, highlightedText, confirmDialog};
 })();

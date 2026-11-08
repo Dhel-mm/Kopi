@@ -1,9 +1,9 @@
 const express = require("express");
 const { authFor,requireRole } = require("../middleware/auth");
-const { createInventoryService,validateTerms,lowStockLevel,round,stockLevels } = require("../services/inventory");
+const { createInventoryService,addInventoryItem,validateTerms,lowStockLevel,round,stockLevels } = require("../services/inventory");
 const { OrderError } = require("../services/pricing");
 const { sendError } = require("../services/orderWorkflow");
-const { packageLabel, packageDefinition } = require("../services/inventoryPackages");
+const { packageDefinition } = require("../services/inventoryPackages");
 
 function quantity(value,allowZero=true) {
   if (typeof value!=="number" || !Number.isFinite(value) || value<0 ||
@@ -121,21 +121,7 @@ module.exports = function inventoryRouter(db) {
   });
   router.post("/",(req,res)=>{
     try {
-      const b=req.body||{};
-      for (const key of ["sku","productName","category"]) if (typeof b[key]!=="string" || !b[key].trim() || b[key].length>150) throw new OrderError("Complete the product name, SKU and category.");
-      if (!/^[a-z0-9-]+$/.test(b.sku) || !["g","ml","pcs"].includes(b.measurement)) throw new OrderError("Use a lowercase SKU and a stock unit of g, ml, or pcs.");
-      const amount=quantity(b.quantity);
-      const pack=quantity(b.initialQuantity,false);
-      const packageUnit=packageLabel(b.packageUnit ?? "package");
-      const low=lowStockLevel({sku:b.sku,initial_quantity:pack});
-      const id=db.transaction(()=>{
-        if (db.prepare("SELECT id FROM inventory_items WHERE sku=?").get(b.sku)) throw new OrderError("That inventory SKU already exists.",409);
-        const row=db.prepare(`INSERT INTO inventory_items(sku,product_name,category,quantity,measurement,initial_quantity,low_stock_level,package_unit) VALUES(?,?,?,?,?,?,?,?)`)
-          .run(b.sku,b.productName.trim(),b.category.trim(),amount,b.measurement,pack,low,packageUnit);
-        if (amount) db.prepare("INSERT INTO inventory_transactions(inventory_item_id,change_amount,reason) VALUES(?,?,'Opening stock')")
-          .run(row.lastInsertRowid,amount);
-        return row.lastInsertRowid;
-      }).immediate();
+      const id=db.transaction(()=>addInventoryItem(db,req.body||{})).immediate();
       res.status(201).json({id,message:"Inventory product added."});
     } catch(error) { sendError(res,error); }
   });

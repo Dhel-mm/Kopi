@@ -7,14 +7,16 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="Admin.css"><link rel="stylesheet" href="Inventory.css"><link rel="icon" href="../Customer/HomePic/Logo.png">
   <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="../Customer/Notices.js"></script>
   <div class="admin-shell">
     <aside class="admin-sidebar">
       <div class="admin-brand"><img src="../Customer/HomePic/Logo.png" alt="Kopi logo"><span>Kopi;</span></div>
       <nav class="admin-nav">
-        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a><a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a><a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a><a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a><a class="admin-nav-link active" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a><a class="admin-nav-link" href="Menu.html"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a><a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+        <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a><a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a><a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a><a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report</span></a><a class="admin-nav-link active" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a><a class="admin-nav-link" href="Menu.html"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a><a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a><a class="admin-nav-link" href="Activity.html"><i class="bi bi-clock-history"></i><span>User Activity</span></a><a class="admin-nav-link" href="Settings.html"><i class="bi bi-gear-fill"></i><span>Settings</span></a>
       </nav>
     </aside>
     <div class="admin-main">
@@ -42,74 +44,176 @@
           <p>Stock counts full and partly used packages as whole numbers. A package remains counted until empty. Measurement shows the total amount left. Set the full package size in Ingredient unit conversion.</p>
           <p><strong>Low stock parameters.</strong> An ingredient becomes Low Stock when its available amount reaches its <em>reorder level</em>. The reorder level uses four parameters: (1) the package baseline — 25% of one package, or one package for Sugar, Condensed Milk and Sprite; (2) average daily usage from orders in the last 14 days; (3) lead time — days a restock takes to arrive; and (4) safety stock days. Reorder level = the higher of the package baseline and average daily usage × (lead time + safety days). You can also save a manual reorder level per ingredient with the <i class="bi bi-sliders" aria-hidden="true"></i> button. Zero is Out of Stock.</p>
         </section>
-        <dialog id="recipeDialog" class="recipe-dialog">
+        <dialog id="recipeDialog" class="recipe-dialog inv-dialog inv-wide-dialog" aria-labelledby="recipeTitle">
           <form id="recipeForm">
-            <div class="recipe-dialog-heading"><h2>Recipe setup</h2><button class="close-panel" type="button" id="closeRecipes" aria-label="Close recipe setup"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-            <p>Resolve missing ingredients and unit differences using your measured amounts. Changes affect new orders only. Add missing stock products with Add Product first.</p>
-            <label for="recipeSelect">Product, size or modifier</label>
-            <span class="recipe-select"><select id="recipeSelect"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
-            <p id="recipeIssues" role="status"></p>
-            <div class="recipe-lines" id="recipeLines"></div>
-            <div class="recipe-form-actions">
-              <button class="add-product" type="button" id="addRecipeLine">Add ingredient</button>
-              <button class="add-product" type="submit" id="saveRecipe">Save recipe</button>
+            <header class="inv-dialog-head">
+              <span class="inv-dialog-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+              <div><h2 id="recipeTitle">Recipe setup</h2><p>How much of each ingredient one item uses. Changes affect new orders only.</p></div>
+              <button class="close-panel" type="button" id="closeRecipes" aria-label="Close recipe setup"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <div class="inv-dialog-body">
+              <p class="inv-panel-intro">Fix missing ingredients and unit differences using your measured amounts. If an ingredient is not in Inventory yet, add it with Add Product first.</p>
+              <label class="inv-field" for="recipeSelect">Product, size or modifier
+                <span class="recipe-select"><select id="recipeSelect"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
+              <p id="recipeIssues" role="status"></p>
+              <div class="recipe-lines" id="recipeLines"></div>
+              <button class="inv-ghost inv-add-line" type="button" id="addRecipeLine"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add ingredient</button>
             </div>
+            <footer class="inv-dialog-foot">
+              <button class="inv-ghost" type="button" data-close-dialog>Cancel</button>
+              <button class="inv-primary" type="submit" id="saveRecipe">Save recipe</button>
+            </footer>
           </form>
         </dialog>
-        <dialog id="conversionDialog" class="recipe-dialog">
-          <form id="conversionForm">
-            <div class="recipe-dialog-heading"><h2>Ingredient unit conversion</h2><button class="close-panel" type="button" id="closeConversions" aria-label="Close unit conversions"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-            <p>Set the measurement of full packages, for example 1 L = 1 bottle or 500 g = 1 bag. Recipe amount uses the Measurement column; stock amount and stock unit describe the Stock column. Saving updates the package size and label, keeping the remaining measurement unchanged.</p>
-            <label for="conversionIngredient">Ingredient</label>
-            <span class="recipe-select"><select id="conversionIngredient" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
-            <p id="conversionCurrentStock"></p>
-            <div class="conversion-fields">
-              <label>Recipe amount<input id="conversionRecipeAmount" type="number" min="0.001" step="0.001" required></label>
-              <label>Recipe unit<span class="recipe-select"><select id="conversionRecipeUnit"><option value="L">L</option><option value="kg">kg</option><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
-              <label>Equals this stock amount<input id="conversionStockAmount" type="number" min="1" step="1" required></label>
-              <label>Stock unit<input id="conversionStockUnit" type="text" maxlength="40" placeholder="e.g. bottle, bag, pack" required></label>
+        <dialog id="conversionDialog" class="recipe-dialog inv-dialog inv-wide-dialog" aria-labelledby="conversionTitle">
+          <div class="inv-manage">
+            <header class="inv-dialog-head">
+              <span class="inv-dialog-icon"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span>
+              <div><h2 id="conversionTitle">Ingredient unit conversion</h2><p>Tell the system how much is in one package, for example 1 L = 1 bottle or 500 g = 1 bag.</p></div>
+              <button class="close-panel" type="button" id="closeConversions" aria-label="Close unit conversions"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <div class="inv-dialog-body">
+              <form id="conversionForm" class="inv-panel">
+                <p class="inv-panel-intro">The recipe amount uses the Measurement column; the stock amount and unit describe the Stock column. Saving updates the package size and label and keeps the remaining amount the same.</p>
+                <label class="inv-field" for="conversionIngredient">Ingredient
+                  <span class="recipe-select"><select id="conversionIngredient" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
+                <p id="conversionCurrentStock"></p>
+                <div class="inv-fields">
+                  <label class="inv-field">Recipe amount<input id="conversionRecipeAmount" type="number" min="0.001" step="0.001" required></label>
+                  <label class="inv-field">Recipe unit<span class="recipe-select"><select id="conversionRecipeUnit"><option value="L">L</option><option value="kg">kg</option><option value="g">g</option><option value="ml">ml</option><option value="pcs">pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
+                  <label class="inv-field">Equals this stock amount<input id="conversionStockAmount" type="number" min="1" step="1" required></label>
+                  <label class="inv-field">Stock unit<input id="conversionStockUnit" type="text" maxlength="40" placeholder="e.g. bottle, bag, pack" required></label>
+                </div>
+                <label class="conversion-confirm"><input id="conversionMeasured" type="checkbox" required> These amounts describe full packages of this ingredient.</label>
+                <p id="conversionStatus" role="status"></p>
+                <div class="inv-panel-actions"><button class="inv-primary" type="submit" id="saveConversion">Save package conversion</button></div>
+                <h3 class="inv-subhead">Saved package conversions</h3>
+                <ul id="packageConversionList"></ul>
+              </form>
+              <details class="physical-conversions">
+                <summary>Recipe weight, volume and piece conversions</summary>
+                <p class="inv-panel-intro">For recipes that use a different unit, such as ml of cream stocked in grams. These measured amounts are separate from package sizes.</p>
+                <form id="physicalConversionForm" class="inv-panel">
+                  <p id="physicalConversionIngredient"></p>
+                  <div class="inv-fields">
+                    <label class="inv-field">Recipe amount<input id="physicalRecipeAmount" type="number" min="0.001" step="0.001" required></label>
+                    <label class="inv-field">Recipe unit<span class="recipe-select"><select id="physicalRecipeUnit"><option>g</option><option>ml</option><option>pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
+                    <label class="inv-field">Measured equivalent<input id="physicalStockAmount" type="number" min="0.001" step="0.001" required></label>
+                    <label class="inv-field">Measurement unit<input id="physicalStockUnit" readonly></label>
+                  </div>
+                  <label class="conversion-confirm"><input id="physicalMeasured" type="checkbox" required> I measured these equivalent amounts.</label>
+                  <p id="physicalConversionStatus" role="status"></p>
+                  <div class="inv-panel-actions"><button class="inv-primary" id="savePhysicalConversion" type="submit">Save measured equivalent</button></div>
+                </form>
+                <ul id="conversionList"></ul>
+              </details>
             </div>
-            <label class="conversion-confirm"><input id="conversionMeasured" type="checkbox" required> These amounts describe full packages of this ingredient.</label>
-            <p id="conversionStatus" role="status"></p>
-            <button class="add-product" type="submit" id="saveConversion">Save package conversion</button>
-            <h3>Saved package conversions</h3>
-            <ul id="packageConversionList"></ul>
-          </form>
-          <details class="physical-conversions">
-            <summary>Recipe weight, volume and piece conversions</summary>
-            <p>For recipes using a different physical unit, such as ml of cream stocked in grams. These measured relationships are separate from package sizes.</p>
-            <form id="physicalConversionForm">
-              <p id="physicalConversionIngredient"></p>
-              <div class="conversion-fields">
-                <label>Recipe amount<input id="physicalRecipeAmount" type="number" min="0.001" step="0.001" required></label>
-                <label>Recipe unit<span class="recipe-select"><select id="physicalRecipeUnit"><option>g</option><option>ml</option><option>pcs</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
-                <label>Measured equivalent<input id="physicalStockAmount" type="number" min="0.001" step="0.001" required></label>
-                <label>Measurement unit<input id="physicalStockUnit" readonly></label>
+          </div>
+        </dialog>
+        <dialog id="manageDialog" class="inv-dialog" aria-labelledby="manageTitle">
+          <div class="inv-manage">
+            <header class="inv-dialog-head">
+              <span class="inv-dialog-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+              <div><h2 id="manageTitle">Manage stock</h2><p>Add a delivery, correct the count, set the low-stock alert or see the history.</p></div>
+              <button class="close-panel" type="button" data-close-dialog aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <nav class="inv-tabs" role="tablist" aria-label="Manage stock">
+              <button type="button" role="tab" data-tab="add" aria-selected="true"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add stock</button>
+              <button type="button" role="tab" data-tab="set" aria-selected="false"><i class="bi bi-pencil" aria-hidden="true"></i>Correct count</button>
+              <button type="button" role="tab" data-tab="alert" aria-selected="false"><i class="bi bi-bell" aria-hidden="true"></i>Low-stock alert</button>
+              <button type="button" role="tab" data-tab="history" aria-selected="false"><i class="bi bi-clock-history" aria-hidden="true"></i>History</button>
+            </nav>
+            <div class="inv-dialog-body">
+              <dl class="inv-facts" id="stockFacts"></dl>
+
+              <form id="stockForm" class="inv-panel" data-panels="add set" role="tabpanel" novalidate>
+                <p class="inv-panel-intro" id="stockIntro"></p>
+                <div id="addStockFields">
+                  <label class="inv-field inv-wide" for="addPackages"><span id="addPackagesLabel">How many arrived?</span>
+                    <span class="inv-stepper">
+                      <button type="button" data-step="-1" aria-label="One less">−</button>
+                      <input id="addPackages" type="number" min="0.001" step="any" inputmode="decimal">
+                      <button type="button" data-step="1" aria-label="One more">+</button>
+                      <span class="inv-unit" id="addPackagesUnit">packages</span>
+                    </span>
+                  </label>
+                  <div class="inv-quick" role="group" aria-label="Quick amounts"><span class="inv-quick-label">Quick pick:</span><button type="button" data-quick="1">1</button><button type="button" data-quick="2">2</button><button type="button" data-quick="5">5</button><button type="button" data-quick="10">10</button></div>
+                </div>
+                <div id="setStockFields" hidden>
+                  <label class="inv-field inv-wide" for="setAmount">How much is on the shelf right now?
+                    <span class="inv-stepper"><input id="setAmount" type="number" min="0" step="any" inputmode="decimal"><span class="inv-unit" id="setUnit">g</span></span>
+                    <small>Count what is actually on hand. Do not include ingredients already set aside for open orders.</small>
+                  </label>
+                </div>
+                <p class="inv-preview" id="stockPreview" aria-live="polite"></p>
+                <p class="inv-status" id="stockStatus" role="status"></p>
+                <div class="inv-panel-actions"><button class="inv-ghost" type="button" data-close-dialog>Cancel</button><button class="inv-primary" type="submit" id="stockSave">Add stock</button></div>
+              </form>
+
+              <form id="reorderForm" class="inv-panel" data-panels="alert" role="tabpanel" hidden novalidate>
+                <p class="inv-panel-intro">Choose when this item should show as <strong>Low Stock</strong>, so you can reorder in time.</p>
+                <dl class="inv-facts" id="reorderFacts"></dl>
+                <fieldset class="inv-choice">
+                  <legend>How should we warn you?</legend>
+                  <label class="inv-choice-card"><input type="radio" name="reorderMode" value="auto" id="reorderModeAuto">
+                    <span><strong>Automatic</strong><small>Based on how much was used in the last 14 days, the delivery wait and a safety buffer.</small></span></label>
+                  <label class="inv-choice-card"><input type="radio" name="reorderMode" value="manual" id="reorderModeManual">
+                    <span><strong>At an amount I choose</strong><small>Show Low Stock when the amount left reaches a number you set.</small></span></label>
+                </fieldset>
+                <div class="inv-fields" id="reorderAutoFields">
+                  <label class="inv-field">How many days does a delivery take?<input id="reorderLeadTime" type="number" min="0" max="60" step="0.5" required><small>Days from ordering until it arrives.</small></label>
+                  <label class="inv-field">Extra days to keep as a buffer<input id="reorderSafety" type="number" min="0" max="30" step="0.5" required><small>In case orders are busier than usual.</small></label>
+                </div>
+                <div class="inv-fields" id="reorderManualFields" hidden>
+                  <label class="inv-field inv-wide">Warn me when stock reaches <small id="reorderUnit"></small><input id="reorderManual" type="number" min="0" step="0.001" inputmode="decimal"></label>
+                </div>
+                <p class="inv-preview" id="reorderPreview" role="status"></p>
+                <div class="inv-panel-actions"><button class="inv-ghost" type="button" data-close-dialog>Cancel</button><button class="inv-primary" type="submit" id="saveReorder">Save alert</button></div>
+              </form>
+
+              <section class="inv-panel" data-panels="history" role="tabpanel" hidden aria-label="Stock history">
+                <p class="inv-panel-intro">Every change to this item. <strong>−</strong> means used or set aside for an order; <strong>+</strong> means added or returned.</p>
+                <div id="movementList" role="status"></div>
+              </section>
+            </div>
+          </div>
+        </dialog>
+
+
+        <dialog id="productDialog" class="inv-dialog" aria-labelledby="productTitle">
+          <form id="productForm" novalidate>
+            <header class="inv-dialog-head">
+              <span class="inv-dialog-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+              <div><h2 id="productTitle">Add product</h2><p>A new ingredient or supply, for example coffee beans, oat milk, cups or lids.</p></div>
+              <button class="close-panel" type="button" data-close-dialog aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <div class="inv-dialog-body">
+              <div class="inv-fields">
+                <label class="inv-field inv-wide">Product name<input id="newName" maxlength="120" placeholder="e.g. Coffee Beans" required></label>
+                <label class="inv-field">Category<span class="inv-select"><select id="newCategory"></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span></label>
+                <label class="inv-field" id="newCategoryNameField" hidden>New category name<input id="newCategoryName" maxlength="60"></label>
               </div>
-              <label class="conversion-confirm"><input id="physicalMeasured" type="checkbox" required> I measured these equivalent amounts.</label>
-              <p id="physicalConversionStatus" role="status"></p>
-              <button class="add-product" id="savePhysicalConversion" type="submit">Save measured equivalent</button>
-            </form>
-            <ul id="conversionList"></ul>
-          </details>
-        </dialog>
-        <dialog id="reorderDialog" class="recipe-dialog">
-          <form id="reorderForm">
-            <div class="recipe-dialog-heading"><h2 id="reorderTitle">Low-stock settings</h2><button class="close-panel" type="button" id="closeReorder" aria-label="Close low-stock settings"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-            <dl class="reorder-facts" id="reorderFacts"></dl>
-            <div class="conversion-fields">
-              <label>Lead time (days)<input id="reorderLeadTime" type="number" min="0" max="60" step="0.5" required></label>
-              <label>Safety stock (days)<input id="reorderSafety" type="number" min="0" max="30" step="0.5" required></label>
-              <label>Manual reorder level <small id="reorderUnit"></small><input id="reorderManual" type="number" min="0" step="0.001" placeholder="Blank = automatic"></label>
+              <fieldset class="inv-choice inv-units">
+                <legend>How do you measure it?</legend>
+                <label class="inv-choice-card"><input type="radio" name="newUnit" value="g" checked><span><strong>Grams (g)</strong><small>Beans, powders, sugar</small></span></label>
+                <label class="inv-choice-card"><input type="radio" name="newUnit" value="ml"><span><strong>Milliliters (ml)</strong><small>Milk, syrups, sauces</small></span></label>
+                <label class="inv-choice-card"><input type="radio" name="newUnit" value="pcs"><span><strong>Pieces (pcs)</strong><small>Cups, lids, straws</small></span></label>
+              </fieldset>
+              <div class="inv-fields">
+                <label class="inv-field">What do you buy it in?<input id="newPackage" maxlength="30" placeholder="bag, bottle, pack…" value="pack"></label>
+                <label class="inv-field"><span>How much is in one <span data-package-name>pack</span>?</span>
+                  <span class="inv-stepper"><input id="newPackSize" type="number" min="0.001" step="any" inputmode="decimal" placeholder="e.g. 1000"><span class="inv-unit" data-unit-name>g</span></span></label>
+                <label class="inv-field inv-wide"><span>How many <span data-package-name>pack</span>s do you have now?</span>
+                  <span class="inv-stepper"><button type="button" data-new-step="-1" aria-label="One less">−</button><input id="newStartPackages" type="number" min="0" step="any" inputmode="decimal" value="0"><button type="button" data-new-step="1" aria-label="One more">+</button><span class="inv-unit" data-package-plural>packs</span></span></label>
+              </div>
+              <p class="inv-preview" id="productPreview" aria-live="polite"></p>
+              <p class="inv-status" id="productStatus" role="status"></p>
             </div>
-            <p class="reorder-preview" id="reorderPreview" role="status"></p>
-            <button class="add-product" type="submit" id="saveReorder">Save low-stock settings</button>
+            <footer class="inv-dialog-foot">
+              <button class="inv-ghost" type="button" data-close-dialog>Cancel</button>
+              <button class="inv-primary" type="submit" id="productSave">Add product</button>
+            </footer>
           </form>
-        </dialog>
-        <dialog id="movementDialog" class="recipe-dialog">
-          <div class="recipe-dialog-heading"><h2 id="movementTitle">Stock movements</h2><button class="close-panel" type="button" id="closeMovements" aria-label="Close stock movements"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-          <p>Negative amounts are deducted or reserved. Positive amounts are added or returned. Canceling a preparing order does not return consumed ingredients.</p>
-          <div id="movementList" role="status"></div>
         </dialog>
       </main>
     </div>

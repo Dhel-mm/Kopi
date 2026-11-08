@@ -12,8 +12,10 @@
   <link rel="stylesheet" href="Transactions.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
   <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="../Customer/Notices.js"></script>
   <div class="admin-shell">
     <aside class="admin-sidebar">
@@ -22,10 +24,11 @@
         <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
         <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
         <a class="admin-nav-link active" href="Transactions.html" aria-current="page"><i class="bi bi-receipt"></i><span>Transactions</span></a>
-        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a>
+        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report</span></a>
         <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
         <a class="admin-nav-link" href="Menu.html"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a>
         <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+        <a class="admin-nav-link" href="Activity.html"><i class="bi bi-clock-history"></i><span>User Activity</span></a><a class="admin-nav-link" href="Settings.html"><i class="bi bi-gear-fill"></i><span>Settings</span></a>
       </nav>
     </aside>
 
@@ -36,47 +39,44 @@
       </header>
 
       <main class="admin-content transaction-content">
-        <div class="tx-head">
-          <div class="tx-interval">
-            <label for="txInterval">Interval</label>
-            <span class="tx-select"><select id="txInterval">
+        <section class="tx-summary" aria-label="Totals for the chosen interval">
+          <article class="tx-stat"><span>Total Transactions</span><strong id="statCount">0</strong></article>
+          <article class="tx-stat amount"><span>Total Amount</span><strong id="statAmount">₱0.00</strong></article>
+          <article class="tx-stat average"><span>Average Order</span><strong id="statAverage">₱0.00</strong></article>
+          <article class="tx-stat void"><span>Void</span><strong id="statVoid">0</strong></article>
+        </section>
+
+        <form class="tx-toolbar" id="reportFilters" role="search">
+          <label class="transaction-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search transactions</span><input id="transactionSearch" type="search" placeholder="Search order ID, transaction ID or customer…"></label>
+          <div class="tx-tools">
+            <span class="tx-select tx-interval" title="Interval"><i class="bi bi-calendar3" aria-hidden="true"></i><select id="txInterval" aria-label="Interval">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
               <option value="week">This week</option>
-              <option value="month" selected>This month</option>
+              <option value="month">This month</option>
               <option value="year">This year</option>
               <option value="all">All time</option>
               <option value="custom">Custom dates…</option>
             </select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
             <span class="tx-custom" id="txCustom" hidden>
-              <label><span class="visually-hidden">From</span><input type="date" id="reportFrom" aria-label="From date"></label>
+              <input type="date" id="reportFrom" aria-label="From date">
               <span aria-hidden="true">to</span>
-              <label><span class="visually-hidden">To</span><input type="date" id="reportTo" aria-label="To date"></label>
+              <input type="date" id="reportTo" aria-label="To date">
             </span>
-          </div>
-          <div class="tx-export">
-            <button class="tx-export-btn" type="button" id="exportBtn" aria-expanded="false" aria-controls="exportMenu"><i class="bi bi-download" aria-hidden="true"></i>Export Report<i class="bi bi-chevron-down tx-export-chevron" aria-hidden="true"></i></button>
-            <div class="tx-export-menu" id="exportMenu" role="menu" hidden>
-              <button type="button" role="menuitem" data-export="print"><i class="bi bi-printer" aria-hidden="true"></i>Print Report</button>
-              <button type="button" role="menuitem" data-export="preview"><i class="bi bi-eye" aria-hidden="true"></i>Preview Full Report</button>
-              <button type="button" role="menuitem" data-export="report"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>Export Default Format<small>Summary and all transactions, opens in Excel</small></button>
-              <button type="button" role="menuitem" data-export="csv"><i class="bi bi-filetype-csv" aria-hidden="true"></i>Download CSV</button>
-              <button type="button" role="menuitem" data-export="json"><i class="bi bi-filetype-json" aria-hidden="true"></i>Download JSON</button>
+            <span class="tx-select"><select id="reportStatusFilter" aria-label="Status"><option value="All">All Status</option><option>Completed</option><option value="Canceled">Void</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            <span class="tx-select"><select id="reportPayment" aria-label="Payment method"><option value="All">All Payments</option><option>Cash</option><option>GCash</option><option>Other</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            <span class="tx-select"><select id="reportType" aria-label="Order type"><option value="All">All Types</option><option value="Delivery">Online delivery</option><option value="Pickup">Online pickup</option><option>Dine-in</option><option>Takeout</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            <div class="tx-export">
+              <button class="tx-export-btn" type="button" id="exportBtn" aria-expanded="false" aria-controls="exportMenu"><i class="bi bi-download" aria-hidden="true"></i>Export<i class="bi bi-chevron-down tx-export-chevron" aria-hidden="true"></i></button>
+              <div class="tx-export-menu" id="exportMenu" role="menu" hidden>
+                <button type="button" role="menuitem" data-export="print"><i class="bi bi-printer" aria-hidden="true"></i>Print Report</button>
+                <button type="button" role="menuitem" data-export="preview"><i class="bi bi-eye" aria-hidden="true"></i>Preview Full Report</button>
+                <button type="button" role="menuitem" data-export="report"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>Export Default Format<small>Summary and all transactions, opens in Excel</small></button>
+                <button type="button" role="menuitem" data-export="csv"><i class="bi bi-filetype-csv" aria-hidden="true"></i>Download CSV</button>
+                <button type="button" role="menuitem" data-export="json"><i class="bi bi-filetype-json" aria-hidden="true"></i>Download JSON</button>
+              </div>
             </div>
           </div>
-        </div>
-
-        <section class="tx-stats" aria-label="Totals for the chosen interval">
-          <article class="tx-stat"><div><span>Total Transactions</span><strong id="statCount">0</strong><small id="statCountNote">Completed and canceled</small></div><i class="bi bi-receipt" aria-hidden="true"></i></article>
-          <article class="tx-stat"><div><span>Total Amount</span><strong id="statAmount">₱0.00</strong><small>Completed orders only</small></div><i class="bi bi-graph-up-arrow up" aria-hidden="true"></i></article>
-          <article class="tx-stat"><div><span>Average Order</span><strong id="statAverage">₱0.00</strong><small>Per completed order</small></div><i class="bi bi-cart3" aria-hidden="true"></i></article>
-        </section>
-
-        <form class="tx-filters" id="reportFilters" role="search">
-          <label class="transaction-search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Search transactions</span><input id="transactionSearch" type="search" placeholder="Search by order ID, transaction ID or customer…"></label>
-          <span class="tx-select"><select id="reportStatusFilter" aria-label="Status"><option value="All">All Status</option><option>Completed</option><option value="Canceled">Canceled</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
-          <span class="tx-select"><select id="reportPayment" aria-label="Payment method"><option value="All">All Payment Methods</option><option>Cash</option><option>GCash</option><option>Other</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
-          <span class="tx-select"><select id="reportType" aria-label="Order type"><option value="All">All Order Types</option><option value="Delivery">Online delivery</option><option value="Pickup">Online pickup</option><option>Dine-in</option><option>Takeout</option></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
         </form>
         <p id="reportStatus" class="report-status" role="status"></p>
 

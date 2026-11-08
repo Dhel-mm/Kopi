@@ -26,6 +26,7 @@ try {
     if(!recent)warnings.push("No database backup from the last 24 hours. Run npm.cmd run backup and copy it to protected off-machine storage.");
   }finally{db.close();}
 }catch(error){issues.push("Database readiness: "+error.message);}
+if(!require("../services/mailer").createMailer(process.env).configured)warnings.push("Email verification is off in production until email is set up (SMTP_USER and SMTP_PASS, or BREVO_API_KEY and MAIL_FROM). See EMAIL-VERIFICATION.md.");
 const root=path.resolve(__dirname,"../..");
 for(const directory of ["","Admin","Customer"]) {
   const base=path.join(root,directory);

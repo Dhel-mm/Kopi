@@ -16,6 +16,16 @@ function validateAvatar(data) {
   if (!valid || bytes.length>250*1024) throw new OrderError("Invalid image, or image exceeds 250 KB.");
   return data;
 }
+// House/street, barangay, city and province are required; landmark is optional.
+function validateAddress(body) {
+  return {
+    street:accounts.field(body.street,"house number and street",150),
+    barangay:accounts.field(body.barangay,"barangay",80),
+    city:accounts.field(body.city,"city or municipality",80),
+    province:accounts.field(body.province,"province",80),
+    landmark:accounts.field(body.landmark,"landmark",150,true)
+  };
+}
 module.exports=function customerRouter(db) {
   const router=express.Router();
   router.use(authFor(db));
@@ -52,6 +62,18 @@ module.exports=function customerRouter(db) {
     db.prepare("UPDATE users SET avatar_data=NULL WHERE id=?").run(req.user.id);
     res.json({message:"Profile photo removed.",avatar:null});
   });
+  // The delivery address is saved on the account, so it is filled in again on any device.
+  const savedAddress=row=>{try {return row?.delivery_address?JSON.parse(row.delivery_address):null;}catch {return null;}};
+  router.get("/me/address",(req,res)=>{
+    res.json({address:savedAddress(db.prepare("SELECT delivery_address FROM users WHERE id=?").get(req.user.id))});
+  });
+  router.put("/me/address",rateLimit(db,"address",30,15),(req,res)=>{
+    try {
+      const address=validateAddress(req.body||{});
+      db.prepare("UPDATE users SET delivery_address=? WHERE id=?").run(JSON.stringify(address),req.user.id);
+      res.json({message:"Delivery address saved.",address});
+    }catch(error){sendError(res,error);}
+  });
   router.post("/feedback",rateLimit(db,"feedback",5,5),(req,res)=>{
     try {
       const b=req.body||{},rating=Number(b.rating);
@@ -68,3 +90,4 @@ module.exports=function customerRouter(db) {
   return router;
 };
 module.exports.validateAvatar=validateAvatar;
+module.exports.validateAddress=validateAddress;

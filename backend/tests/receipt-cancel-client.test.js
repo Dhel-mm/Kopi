@@ -83,6 +83,8 @@ for(const payment of ["Cash","GCash"]) test(`${payment} cancellation dialog has 
   body.children[1].children[2].children[1].listeners.click();assert.equal(await confirmed,true);
 });
 
-test("recovery help links to the shop without exposing the opener",()=>{
-  assert.match(read("reset.html"),/Never share your password with staff\. <a href="https:\/\/www.facebook.com\/kopiest2021" target="_blank" rel="noopener noreferrer">Click here<\/a>/);
+test("recovery help explains the email code without a Facebook link",()=>{
+  const page=read("reset.html");
+  assert.match(page,/Never share your password with staff\.<\/p>/);
+  assert.doesNotMatch(page,/facebook\.com|Click here/);
 });

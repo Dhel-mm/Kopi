@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --coffee: #3d2b16;
   --coffee-dark: #211508;
   --olive: #5f772f;
@@ -1315,5 +1315,39 @@ a {
   .copyright {
     padding: 2px 0 15px;
     font-size: 9px;
+  }
+}
+
+/* Spacing for the About section on top, then the promo slider, then Our Bestsellers.
+   The gaps between them are even at every screen size. */
+.about {
+  padding: 40px 0 0;
+}
+
+.home-page-slider {
+  margin: 48px auto 20px;
+}
+
+@media (max-width: 900px) {
+  .about {
+    padding: 28px 0 0;
+  }
+
+  .home-page-slider {
+    margin: 32px auto 16px;
+  }
+}
+
+@media (max-width: 500px) {
+  .about {
+    padding: 16px 18px 0;
+  }
+
+  .about-gallery {
+    padding-bottom: 0;
+  }
+
+  .home-page-slider {
+    margin: 20px auto 16px;
   }
 }

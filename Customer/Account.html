@@ -12,8 +12,10 @@
   <link rel="icon" href="HomePic/Logo.png"/>
   <link rel="stylesheet" href="Notices.css">
   <link rel="stylesheet" href="Theme.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="Notices.js"></script>
 
     <header class="site-header">
@@ -42,6 +44,7 @@
           <span class="cart-count" data-cart-count>0</span>
           <span>Cart</span>
         </a>
+        
         <a class="nav-link active" href="Account.html">
           <i class="bi bi-person-fill" aria-hidden="true"></i>
           <span>Account</span>
@@ -113,8 +116,8 @@
               <label class="profile-phone" for="profilePhone">Phone Number<input id="profilePhone" type="tel" name="phone" pattern="09[0-9]{9}" maxlength="11" placeholder="09XX-XXX-XXXX" autocomplete="tel" readonly></label>
               <button class="outline-btn edit-phone" id="editPhone" type="button" aria-controls="profilePhone">Edit phone number</button>
             </div>
-            <fieldset class="password-fields"><legend>Password</legend><label>Current password<input type="password" name="currentPassword" autocomplete="current-password"></label><label>New password<input type="password" name="newPassword" minlength="12" maxlength="72" autocomplete="new-password"></label><label>Confirm new password<input type="password" name="confirmPassword" autocomplete="new-password"></label><button class="outline-btn change-password" type="submit">Save changes</button></fieldset>
-            <p class="profile-help">Enter your current password to change your email or password. New passwords need at least 12 characters.</p>
+            <fieldset class="password-fields"><legend>Password</legend><label>Current password<input type="password" name="currentPassword" autocomplete="current-password"></label><label>New password<input type="password" name="newPassword" minlength="8" maxlength="72" autocomplete="new-password"></label><label>Confirm new password<input type="password" name="confirmPassword" autocomplete="new-password"></label><button class="outline-btn change-password" type="submit">Save changes</button></fieldset>
+            <p class="profile-help">Enter your current password to change your email or password. New passwords need at least 8 characters.</p>
             <p id="profileStatus" role="status" aria-live="polite"></p>
           </form>
         </section>

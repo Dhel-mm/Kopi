@@ -45,9 +45,15 @@ test('Dashboard updates both charts and labels their actual report values',async
   const {charts,nodes,legend}=dashboard();
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(charts.length,2);
+  // Only line and bar graphs: no pie or doughnut charts.
+  assert.deepEqual(charts.map(chart=>chart.type),['line','bar']);
   assert.equal(charts[0].data.datasets[0].data[0],120);
   assert.equal(charts[1].data.datasets[0].data[1],2);
-  assert.equal(legend[1].textContent,'100.0%');
+  // Counts of orders, not percents.
+  assert.equal(legend[1].textContent,'2 orders');
+  assert.equal(legend[0].textContent,'0 orders');
+  assert.equal(charts[1].options.scales.y.suggestedMax,5);
+  assert.equal(charts[0].options.scales.y.grace,'20%');
   assert.match(nodes.get('salesChart')['aria-label'],/120.00/);
   assert.ok(charts.every(chart=>chart.updated));
 });
@@ -57,24 +63,24 @@ test('today sales comparison is red only when sales dropped below yesterday',asy
   const up=dashboard({todaySales:125,yesterdaySales:100});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(down.nodes.get('todaySalesDelta').className,'stat-delta danger');
-  assert.equal(down.nodes.get('todaySalesDelta').textContent,'-25.0% vs yesterday');
+  assert.equal(down.nodes.get('todaySalesDelta').textContent,'− ₱25.00 vs yesterday');
   assert.equal(up.nodes.get('todaySalesDelta').className,'stat-delta positive');
-  assert.equal(up.nodes.get('todaySalesDelta').textContent,'25.0% vs yesterday');
+  assert.equal(up.nodes.get('todaySalesDelta').textContent,'+ ₱25.00 vs yesterday');
 });
 
-test('Empty periods draw a neutral ring and no-sales message without inventing data',async()=>{
+test('Empty periods show a no-sales message without inventing data',async()=>{
   const {charts,legend}=dashboard({empty:true});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(charts[0].options.plugins.emptyState.message,'No completed sales');
   assert.equal(charts[1].options.plugins.emptyState.message,'No orders');
   assert.ok(charts[1].data.datasets[0].data.every(count=>count===0));
-  assert.ok(legend.every(node=>node.textContent==='0%'));
-  let arcs=0,message;
+  assert.ok(legend.every(node=>node.textContent==='0 orders'));
+  let message;
   const chart=charts[1];
-  chart.ctx={save(){},restore(){},beginPath(){},arc(){arcs++;},stroke(){},fillText(text){message=text;}};
+  chart.ctx={save(){},restore(){},beginPath(){},fillText(text){message=text;}};
   chart.chartArea={left:0,right:160,top:0,bottom:160};
   chart.plugins[0].afterDraw(chart,{},chart.options.plugins.emptyState);
-  assert.equal(arcs,1);assert.equal(message,'No orders');
+  assert.equal(message,'No orders');
 });
 
 test('Library failure preserves summaries and API errors replace the loading message',async()=>{

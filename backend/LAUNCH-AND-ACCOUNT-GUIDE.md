@@ -46,7 +46,7 @@ The launch check intentionally returns a failure while unsafe settings remain. P
 
 Customers use Account. Administrators click their name in the header, then open Profile details & password.
 
-Names and an optional 11-digit phone number beginning with 09 can be saved. Changing the email address or password requires the current password. New passwords require at least 12 characters and cannot exceed 72 UTF-8 bytes. Profile changes are saved together: a rejected password/email change does not partially change the name.
+Names and an optional 11-digit phone number beginning with 09 can be saved. Changing the email address or password requires the current password. New passwords require at least 8 characters and cannot exceed 72 UTF-8 bytes. Profile changes are saved together: a rejected password/email change does not partially change the name.
 
 PNG/JPEG profile photos up to 250 KB are stored in the database and included in backups. The Remove control removes the current photo.
 
@@ -56,7 +56,9 @@ Admin > Users can add accounts or manage roles/status. These operations require 
 
 ### Forgotten password
 
-Email delivery is not configured. The site uses staff-assisted recovery and does not claim that an email was sent.
+**By email (self-service):** on Forgot password?, the owner types the email of their account and clicks **Send recovery code**. If an active, verified account uses that email, a single-use 6-digit code is emailed (one email per minute, valid for 15 minutes). The code works only together with the same email, and 5 wrong tries cancel it. If no account uses the email, the page says so. The owner then enters the code and a new password on the same page. This needs email set up in backend/.env (SMTP_USER and SMTP_PASS, or Brevo); without it, local development prints the code in the server window.
+
+**Staff-assisted, when the owner cannot open their email:**
 
 1. Staff independently verify the account owner's identity; knowing an email alone is not enough.
 2. An administrator opens Users > Recovery code for the correct account.

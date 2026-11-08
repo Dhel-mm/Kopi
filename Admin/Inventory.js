@@ -116,23 +116,9 @@ function render() {
       </td>
       <td>
         <div class="inventory-actions">
-          <button
-            class="add-item-stock"
-            type="button"
-            data-add="${item.id}"
-            aria-label="Add stock">
-            <i class="bi bi-plus-lg"></i>
+          <button class="inv-manage-btn" type="button" data-manage="${item.id}" aria-label="Manage ${escapeHtml(item.productName)}: add stock, correct count, low-stock alert, history">
+            <i class="bi bi-sliders2" aria-hidden="true"></i><span>Manage</span>
           </button>
-
-          <button
-            class="set-stock"
-            type="button"
-            data-edit="${item.id}"
-            aria-label="Set stock">
-            <i class="bi bi-pencil-fill"></i>
-          </button>
-          <button type="button" data-reorder="${item.id}" aria-label="Low-stock settings for ${escapeHtml(item.productName)}" title="Low-stock settings"><i class="bi bi-sliders"></i></button>
-          <button type="button" data-movements="${item.id}" aria-label="View stock movements for ${escapeHtml(item.productName)}" title="Stock movement history"><i class="bi bi-clock-history"></i></button>
         </div>
       </td>
     </tr>
@@ -143,20 +129,8 @@ function render() {
     ? `Showing ${visible.length} of ${inventory.length} products`
     : `Showing ${visible.length} ${stockFilter.toLowerCase()} ingredient${visible.length === 1 ? "" : "s"}`;
 
-  rowsEl.querySelectorAll("[data-add]").forEach(button => {
-    button.addEventListener("click", () => {
-      addStock(Number(button.dataset.add));
-    });
-  });
-
-  rowsEl.querySelectorAll("[data-edit]").forEach(button => {
-    button.addEventListener("click", () => {
-      setStock(Number(button.dataset.edit));
-    });
-  });
-
-  rowsEl.querySelectorAll("[data-reorder]").forEach(button => {
-    button.addEventListener("click", () => openReorderSettings(Number(button.dataset.reorder)));
+  rowsEl.querySelectorAll("[data-manage]").forEach(button => {
+    button.addEventListener("click", () => openManage(Number(button.dataset.manage)));
   });
 }
 
@@ -167,12 +141,17 @@ function reorderNote(item) {
 }
 
 /* ---------- Low-stock parameters ---------- */
-const reorderDialog = document.getElementById("reorderDialog");
 let reorderItem = null;
+
+const reorderManualMode = () => document.getElementById("reorderModeManual").checked;
+function syncReorderMode() {
+  document.getElementById("reorderAutoFields").hidden = reorderManualMode();
+  document.getElementById("reorderManualFields").hidden = !reorderManualMode();
+}
 
 function reorderPreviewLevel() {
   if (!reorderItem) return 0;
-  const manual = document.getElementById("reorderManual").value.trim();
+  const manual = reorderManualMode() ? document.getElementById("reorderManual").value.trim() : "";
   if (manual !== "") return Number(manual);
   const lead = Number(document.getElementById("reorderLeadTime").value) || 0;
   const safety = Number(document.getElementById("reorderSafety").value) || 0;
@@ -182,16 +161,14 @@ function reorderPreviewLevel() {
 function paintReorderPreview() {
   const level = reorderPreviewLevel();
   const status = reorderItem.quantity <= 0 ? "Out of Stock" : reorderItem.quantity <= level ? "Low Stock" : "In Stock";
-  document.getElementById("reorderPreview").textContent =
-    `Reorder level: ${displayMeasurement(reorderItem, level)}. With ${displayMeasurement(reorderItem)} available, the status will be ${status}.`;
+  document.getElementById("reorderPreview").innerHTML =
+    `It will show as <strong>Low Stock</strong> at <strong>${escapeHtml(displayMeasurement(reorderItem, level))}</strong>. With ${escapeHtml(displayMeasurement(reorderItem))} now, it is <strong>${escapeHtml(status)}</strong>.`;
 }
 
 function openReorderSettings(id) {
   reorderItem = inventory.find(entry => entry.id === id);
   if (!reorderItem) return;
-  document.getElementById("reorderTitle").textContent = `Low-stock settings · ${reorderItem.productName}`;
   document.getElementById("reorderFacts").innerHTML = [
-    ["Available now", displayMeasurement(reorderItem)],
     ["Package baseline", displayMeasurement(reorderItem, reorderItem.packageLevel)],
     ["Average daily usage (14 days)", reorderItem.averageDailyUsage ? `${displayMeasurement(reorderItem, reorderItem.averageDailyUsage)} / day` : "No order usage yet"],
     ["Estimated days left", reorderItem.daysLeft == null ? "—" : `${reorderItem.daysLeft} days`]
@@ -200,18 +177,20 @@ function openReorderSettings(id) {
   document.getElementById("reorderSafety").value = reorderItem.safetyDays;
   document.getElementById("reorderManual").value = reorderItem.manualReorderLevel ?? "";
   document.getElementById("reorderUnit").textContent = `(${reorderItem.measurement})`;
+  document.getElementById(reorderItem.manualReorderLevel == null ? "reorderModeAuto" : "reorderModeManual").checked = true;
+  syncReorderMode();
   paintReorderPreview();
-  reorderDialog.showModal();
 }
 
+["reorderModeAuto", "reorderModeManual"].forEach(id => document.getElementById(id).addEventListener("change", () => { syncReorderMode(); paintReorderPreview(); }));
 ["reorderLeadTime", "reorderSafety", "reorderManual"].forEach(id =>
   document.getElementById(id).addEventListener("input", paintReorderPreview));
-document.getElementById("closeReorder").addEventListener("click", () => reorderDialog.close());
 document.getElementById("reorderForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!reorderItem) return;
   const button = document.getElementById("saveReorder");
-  const manual = document.getElementById("reorderManual").value.trim();
+  const manual = reorderManualMode() ? document.getElementById("reorderManual").value.trim() : "";
+  if (reorderManualMode() && manual === "") return KopiNotice.set(document.getElementById("reorderPreview"), "Enter the amount, or choose Automatic.", "error");
   button.disabled = true;
   try {
     const result = await KopiApi.request(`/admin/inventory/${reorderItem.id}/reorder-settings`, {
@@ -223,7 +202,7 @@ document.getElementById("reorderForm").addEventListener("submit", async event =>
       })
     });
     KopiNotice.toast(result.message, "success");
-    reorderDialog.close();
+    manageDialog.close();
     refreshInventory();
   } catch (error) {
     KopiNotice.set(document.getElementById("reorderPreview"), error.message, "error");
@@ -247,98 +226,223 @@ async function refreshInventory() {
   }
 }
 
-async function addStock(id) {
-  const item = inventory.find(entry => entry.id === id);
-  if (!item) return;
+/* ---------- Add stock and set stock (one dialog, two modes) ---------- */
+const manageDialog = document.getElementById("manageDialog");
+const unitWords = { g: "grams (g)", ml: "milliliters (ml)", pcs: "pieces (pcs)" };
+const plural = (word, count) => Number(count) === 1 ? word : `${word}s`;
+let stockItem = null, stockMode = "add";
+const round3 = value => Math.round(Number(value) * 1000) / 1000;
 
-  const value = window.prompt(
-    `How many ${item.packageUnit || "package"}(s) of ${item.productName} to add? One = ${displayMeasurement(item,item.initialQuantity)}. Fractions are allowed:`,
-    "1"
-  );
+function stockFacts(item) {
+  const pack = item.packageUnit || "package";
+  document.getElementById("stockFacts").innerHTML = [
+    ["Available now", displayMeasurement(item)],
+    [`One ${pack}`, displayMeasurement(item, item.initialQuantity)],
+    ["Status", item.status]
+  ].map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+}
 
-  if (value === null || !Number.isFinite(Number(value)) || Number(value) <= 0) {
-    return;
-  }
-
-  try {
-    await KopiApi.request(`/admin/inventory/${id}/add-stock`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        amount: Math.round(Number(value) * Number(item.initialQuantity) * 1000) / 1000
-      })
-    });
-
-    refreshInventory();
-  } catch (error) {
-    KopiNotice.toast(error.message, "error");
+function paintStockPreview() {
+  if (!stockItem) return;
+  const preview = document.getElementById("stockPreview");
+  if (stockMode === "add") {
+    const packages = Number(document.getElementById("addPackages").value);
+    if (!Number.isFinite(packages) || packages <= 0) { preview.textContent = "Enter how many arrived."; return; }
+    const added = round3(packages * stockItem.initialQuantity);
+    preview.innerHTML = `Adding <strong>${escapeHtml(displayMeasurement(stockItem, added))}</strong>. After this you will have <strong>${escapeHtml(displayMeasurement(stockItem, round3(stockItem.quantity + added)))}</strong>.`;
+  } else {
+    const amount = Number(document.getElementById("setAmount").value);
+    if (document.getElementById("setAmount").value === "" || !Number.isFinite(amount) || amount < 0) { preview.textContent = "Enter the amount you counted."; return; }
+    const change = round3(amount - stockItem.quantity);
+    preview.innerHTML = change === 0 ? "No change from the current stock."
+      : `New stock: <strong>${escapeHtml(displayMeasurement(stockItem, amount))}</strong> (${change > 0 ? "+" : "−"}${escapeHtml(displayMeasurement(stockItem, Math.abs(change)))} from now).`;
   }
 }
 
-async function setStock(id) {
-  const item = inventory.find(entry => entry.id === id);
-  if (!item) return;
-
-  const value = window.prompt(
-    `Set AVAILABLE stock for ${item.productName} (${item.measurement}). Exclude ingredients already reserved for open orders:`,
-    item.quantity
-  );
-
-  if (value === null || !value.trim() || !Number.isFinite(Number(value)) || Number(value) < 0) {
-    return;
-  }
-
-  try {
-    await KopiApi.request(`/admin/inventory/${id}/set-stock`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        quantity: Number(value)
-      })
-    });
-
-    refreshInventory();
-  } catch (error) {
-    KopiNotice.toast(error.message, "error");
-  }
+function openStockDialog(id, mode) {
+  stockItem = inventory.find(entry => entry.id === id);
+  if (!stockItem) return;
+  stockMode = mode;
+  const pack = stockItem.packageUnit || "package";
+  const adding = mode === "add";
+  document.getElementById("stockIntro").textContent = adding
+    ? `Record a delivery. Enter how many ${plural(pack, 2)} arrived.`
+    : "Use this after counting what is on the shelf, for example after spills or a stock check.";
+  document.getElementById("addStockFields").hidden = !adding;
+  document.getElementById("setStockFields").hidden = adding;
+  document.getElementById("addPackagesLabel").textContent = `How many ${plural(pack, 2)} arrived?`;
+  document.getElementById("addPackagesUnit").textContent = plural(pack, 2);
+  document.getElementById("addPackages").value = 1;
+  document.getElementById("setUnit").textContent = unitWords[stockItem.measurement] || stockItem.measurement;
+  document.getElementById("setAmount").value = stockItem.quantity;
+  document.getElementById("stockSave").textContent = adding ? "Add stock" : "Save count";
+  document.getElementById("stockStatus").textContent = "";
+  paintStockPreview();
 }
 
-async function addProduct() {
-  const productName = window.prompt("Product name:");
-  if (!productName?.trim()) return;
+/* ---------- One Manage dialog: add stock, correct count, low-stock alert, history ---------- */
+let manageItem = null;
+function setManageTab(tab) {
+  manageDialog.querySelectorAll("[data-tab]").forEach(button => {
+    button.setAttribute("aria-selected", String(button.dataset.tab === tab));
+    button.tabIndex = button.dataset.tab === tab ? 0 : -1;
+  });
+  manageDialog.querySelectorAll("[data-panels]").forEach(panel => { panel.hidden = !panel.dataset.panels.split(" ").includes(tab); });
+  if (tab === "add" || tab === "set") openStockDialog(manageItem.id, tab);
+  if (tab === "alert") openReorderSettings(manageItem.id);
+  if (tab === "history") loadMovements(manageItem);
+  const focus = {add: "addPackages", set: "setAmount", alert: "reorderLeadTime"}[tab];
+  if (focus && manageDialog.open) document.getElementById(focus).focus();
+}
+function openManage(id, tab = "add") {
+  manageItem = inventory.find(entry => entry.id === id);
+  if (!manageItem) return;
+  document.getElementById("manageTitle").textContent = manageItem.productName;
+  stockFacts(manageItem);
+  setManageTab(tab);
+  manageDialog.showModal();
+  if (tab === "add") document.getElementById("addPackages").select();
+}
+manageDialog.querySelector(".inv-tabs").addEventListener("click", event => {
+  const tab = event.target.closest("[data-tab]");
+  if (tab && manageItem) setManageTab(tab.dataset.tab);
+});
+manageDialog.querySelector(".inv-tabs").addEventListener("keydown", event => {
+  if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+  const tabs = [...manageDialog.querySelectorAll("[data-tab]")];
+  const index = tabs.findIndex(tab => tab.getAttribute("aria-selected") === "true");
+  const next = tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  setManageTab(next.dataset.tab);
+  next.focus();
+});
 
-  const sku = productName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+async function loadMovements(item) {
+  const list = document.getElementById("movementList");
+  list.textContent = "Loading…";
+  try {
+    const data = await KopiApi.request("/admin/inventory/" + item.id + "/movements");
+    const when = value => new Date(value.includes("T") ? value : value.replace(" ", "T") + "Z").toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" });
+    list.innerHTML = data.movements.length
+      ? '<ul class="stock-movements">' + data.movements.map(row => `<li class="${row.changeAmount > 0 ? "in" : "out"}"><strong>${row.changeAmount > 0 ? "+" : "−"}${escapeHtml(displayMeasurement(item, Math.abs(row.changeAmount)))}</strong><span>${escapeHtml(row.reason)}</span><small>${escapeHtml(row.orderNumber || "Stock adjustment")} · ${escapeHtml(when(row.createdAt))}</small></li>`).join("") + "</ul>"
+      : "No stock changes recorded yet.";
+  } catch (error) { KopiNotice.set(list, error.message, "error"); }
+}
 
-  const category = window.prompt("Category:", "Other") || "Other";
-  const quantity = window.prompt("Starting stock quantity:", "0");
-  const measurement = window.prompt("Measurement (g, ml, pcs):", "pcs") || "pcs";
-  const initialQuantity = window.prompt("Amount in ONE full package, in the same unit (for example 1000 ml in a carton):", quantity || "1");
-  const packageUnit = window.prompt("Stock unit (your own label, for example bottle, bag, pack or sachet):", "package");
+manageDialog.querySelectorAll("[data-step]").forEach(button => button.addEventListener("click", () => {
+  const input = document.getElementById("addPackages");
+  input.value = Math.max(1, round3((Number(input.value) || 0) + Number(button.dataset.step)));
+  paintStockPreview();
+}));
+manageDialog.querySelectorAll("[data-quick]").forEach(button => button.addEventListener("click", () => {
+  document.getElementById("addPackages").value = button.dataset.quick;
+  paintStockPreview();
+}));
+["addPackages", "setAmount"].forEach(id => document.getElementById(id).addEventListener("input", paintStockPreview));
 
-  if (quantity === null || initialQuantity === null || packageUnit === null || !Number.isFinite(Number(quantity))) return;
+document.getElementById("stockForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!stockItem) return;
+  const status = document.getElementById("stockStatus"), button = document.getElementById("stockSave");
+  let path, body;
+  if (stockMode === "add") {
+    const packages = Number(document.getElementById("addPackages").value);
+    if (!Number.isFinite(packages) || packages <= 0) return KopiNotice.set(status, "Enter how many arrived (more than 0).", "error");
+    path = "add-stock"; body = { amount: round3(packages * stockItem.initialQuantity) };
+  } else {
+    const raw = document.getElementById("setAmount").value, amount = Number(raw);
+    if (raw === "" || !Number.isFinite(amount) || amount < 0) return KopiNotice.set(status, "Enter the amount you counted (0 or more).", "error");
+    path = "set-stock"; body = { quantity: amount };
+  }
+  button.disabled = true;
+  try {
+    await KopiApi.request(`/admin/inventory/${stockItem.id}/${path}`, { method: "PATCH", body: JSON.stringify(body) });
+    KopiNotice.toast(`${stockItem.productName}: stock updated.`, "success");
+    manageDialog.close();
+    refreshInventory();
+  } catch (error) {
+    KopiNotice.set(status, error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
+/* ---------- Add product ---------- */
+const productDialog = document.getElementById("productDialog");
+const productForm = document.getElementById("productForm");
+const newUnit = () => productForm.querySelector('[name="newUnit"]:checked')?.value || "g";
+
+function paintProductPreview() {
+  const pack = document.getElementById("newPackage").value.trim() || "package";
+  productForm.querySelectorAll("[data-package-name]").forEach(node => { node.textContent = pack; });
+  const count = Number(document.getElementById("newStartPackages").value) || 0;
+  productForm.querySelector("[data-package-plural]").textContent = plural(pack, count);
+  productForm.querySelector("[data-unit-name]").textContent = newUnit();
+  const size = Number(document.getElementById("newPackSize").value);
+  const preview = document.getElementById("productPreview");
+  if (!Number.isFinite(size) || size <= 0) { preview.textContent = `Enter how much is in one ${pack}.`; return; }
+  const total = round3(count * size);
+  preview.innerHTML = `Starting stock: <strong>${escapeHtml(String(count))} ${escapeHtml(plural(pack, count))}</strong> = <strong>${escapeHtml(total.toLocaleString("en-PH"))} ${escapeHtml(newUnit())}</strong>.`;
+}
+
+function addProduct() {
+  productForm.reset();
+  const select = document.getElementById("newCategory");
+  const categories = [...new Set(inventory.map(item => item.category).filter(Boolean))].sort();
+  select.replaceChildren(...categories.map(name => new Option(name, name)), new Option("+ New category…", "__new"));
+  if (!categories.length) select.value = "__new";
+  document.getElementById("newCategoryNameField").hidden = select.value !== "__new";
+  document.getElementById("productStatus").textContent = "";
+  paintProductPreview();
+  productDialog.showModal();
+  document.getElementById("newName").focus();
+}
+
+document.getElementById("newCategory").addEventListener("change", event => {
+  document.getElementById("newCategoryNameField").hidden = event.target.value !== "__new";
+  if (event.target.value === "__new") document.getElementById("newCategoryName").focus();
+});
+productForm.querySelectorAll("[data-new-step]").forEach(button => button.addEventListener("click", () => {
+  const input = document.getElementById("newStartPackages");
+  input.value = Math.max(0, round3((Number(input.value) || 0) + Number(button.dataset.newStep)));
+  paintProductPreview();
+}));
+productForm.addEventListener("input", paintProductPreview);
+productForm.addEventListener("change", paintProductPreview);
+
+productForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const status = document.getElementById("productStatus"), button = document.getElementById("productSave");
+  const productName = document.getElementById("newName").value.trim();
+  const select = document.getElementById("newCategory");
+  const category = (select.value === "__new" ? document.getElementById("newCategoryName").value : select.value).trim();
+  const packageUnit = document.getElementById("newPackage").value.trim().toLowerCase() || "package";
+  const size = Number(document.getElementById("newPackSize").value);
+  const count = Number(document.getElementById("newStartPackages").value || 0);
+  if (!productName) return KopiNotice.set(status, "Enter the product name.", "error");
+  if (!category) return KopiNotice.set(status, "Choose or enter a category.", "error");
+  if (!Number.isFinite(size) || size <= 0) return KopiNotice.set(status, `Enter how much is in one ${packageUnit}.`, "error");
+  if (!Number.isFinite(count) || count < 0) return KopiNotice.set(status, "Enter how many you have now (0 or more).", "error");
+  const sku = productName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!sku) return KopiNotice.set(status, "Use letters or numbers in the product name.", "error");
+  const quantity = round3(count * size);
+  button.disabled = true;
   try {
     await KopiApi.request("/admin/inventory", {
       method: "POST",
-      body: JSON.stringify({
-        sku,
-        productName: productName.trim(),
-        category: category.trim(),
-        quantity: Number(quantity),
-        initialQuantity: Number(initialQuantity),
-        measurement: measurement.trim(),
-        packageUnit: packageUnit.trim().toLowerCase(),
-        lowStockLevel: Number(quantity) * 0.25
-      })
+      body: JSON.stringify({ sku, productName, category, quantity, initialQuantity: size, measurement: newUnit(),
+        packageUnit, lowStockLevel: quantity * 0.25 })
     });
-
+    KopiNotice.toast(`${productName} was added to inventory.`, "success");
+    productDialog.close();
     refreshInventory();
   } catch (error) {
-    KopiNotice.toast(error.message, "error");
+    KopiNotice.set(status, error.message, "error");
+  } finally {
+    button.disabled = false;
   }
-}
+});
+
+document.querySelectorAll("[data-close-dialog]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
 
 searchEl.addEventListener("input", () => {
   query = searchEl.value.trim().toLowerCase();

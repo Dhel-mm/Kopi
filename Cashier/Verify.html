@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../Admin/Admin.css">
+  <link rel="stylesheet" href="Workspace.css">
+  <link rel="stylesheet" href="../Admin/OrderReview.css">
+  <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="icon" href="../Customer/HomePic/Logo.png">
+  <title>Kopi; Cashier - Verify Payments</title>
+  <link rel="stylesheet" href="/Customer/Loader.css">
+</head>
+<body class="workspace-loading" data-workspace="Cashier" data-page="verify" data-title="Verify Payments" data-subtitle="GCash payments and Senior Citizen / PWD discounts from online orders.">
+<script src="/Customer/Loader.js"></script>
+  <div class="workspace-gate" id="workspaceGate" role="status">Opening your workspace…</div>
+  <div class="admin-shell">
+    <aside class="admin-sidebar" id="workspaceSidebar"></aside>
+    <div class="admin-main">
+      <header class="admin-topbar" id="workspaceHeader"></header>
+      <main class="workspace-content">
+        <section class="workspace-stats" aria-label="Waiting for verification">
+          <div class="workspace-stat"><span>GCash to verify</span><strong id="gcashCount">0</strong></div>
+          <div class="workspace-stat"><span>IDs to verify</span><strong id="idCount">0</strong></div>
+          <div class="workspace-stat"><span>Balances to collect</span><strong id="balanceCount">0</strong></div>
+        </section>
+        <div class="workspace-tools">
+          <label class="workspace-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="verifySearch" placeholder="Search order, customer or reference…" aria-label="Search orders to verify"></label>
+          <button class="workspace-btn secondary" type="button" id="refreshVerify"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh</button>
+        </div>
+        <p class="workspace-status" id="verifyMessage" role="status" aria-live="polite"></p>
+        <section class="workspace-queue" id="verifyQueue" aria-label="Orders to verify"></section>
+        <div class="workspace-empty" id="verifyEmpty" hidden><i class="bi bi-patch-check" aria-hidden="true"></i><h2>All caught up</h2><p>No GCash payment or discount is waiting. New ones will appear here automatically.</p></div>
+        <p class="workspace-status">Updates every 15 seconds while this page is visible. Staff can prepare these orders only after you verify them. A screenshot can be edited, so confirm only after the same reference and amount appear in the shop's own GCash account.</p>
+      </main>
+    </div>
+  </div>
+  <script src="../Customer/Notices.js"></script>
+  <script src="../Customer/Api.js"></script>
+  <script src="Workspace.js"></script>
+  <script src="../Admin/AdminNav.js"></script>
+  <script src="../Admin/OrderAlerts.js"></script>
+  <script src="../Admin/OrderReview.js"></script>
+  <script src="Verify.js"></script>
+</body>
+</html>

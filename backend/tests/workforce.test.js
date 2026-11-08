@@ -25,14 +25,17 @@ async function harness(run) {
 }
 
 test("employee workspaces are served but API access requires stored Cashier/Staff roles",async()=>harness(async({request,base})=>{
-  for(const path of ["/Cashier/Orders.html","/Cashier/History.html","/Staff/Orders.html","/Staff/Inventory.html"]) {
+  for(const path of ["/Cashier/Orders.html","/Cashier/History.html","/Cashier/Verify.html","/Cashier/Inventory.html","/Staff/Orders.html","/Staff/Inventory.html"]) {
     assert.equal((await fetch(base+path)).status,200,path);
   }
   assert.equal((await request("/workforce/orders","GET",undefined,null)).status,401);
   assert.equal((await request("/workforce/orders","GET",undefined,1,{role:"Cashier"})).status,403);
   assert.equal((await request("/workforce/orders","GET",undefined,5)).status,403);
   assert.equal((await request("/workforce/preparation","GET",undefined,4)).status,403);
-  assert.equal((await request("/workforce/stock","GET",undefined,4)).status,403);
+  assert.equal((await request("/workforce/stock","GET",undefined,4)).status,200);
+  assert.equal((await request("/workforce/verifications","GET",undefined,4)).status,200);
+  assert.equal((await request("/workforce/verifications","GET",undefined,5)).status,403);
+  assert.equal((await request("/workforce/verifications","GET",undefined,1)).status,403);
   for (const id of [4,5]) {
     for(const path of ["/admin/orders","/admin/users","/admin/inventory","/admin/dashboard","/admin/vouchers"]) {
       assert.equal((await request(path,"GET",undefined,id,{role:"Admin"})).status,403,path);
@@ -94,16 +97,20 @@ test("Staff receives delivery details and completes verified GCash delivery only
   assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,409);
   assert.equal((await request(path,"PATCH",{status:"Completed"},5)).status,403);
   assert.equal((await request(`/admin/orders/${id}/verify-payment`,"PATCH",{confirmedReceived:true},5)).status,403);
-  // Staff confirm GCash from their own workspace; Cashiers and Customers cannot.
-  const verify=`/workforce/preparation/${id}/verify-payment`;
-  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},4)).status,403);
+  // The Cashier confirms GCash from the verification page; Staff and Customers cannot.
+  const verify=`/workforce/verifications/${id}/verify-payment`;
+  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},5)).status,403);
+  assert.equal((await request(`/workforce/preparation/${id}/verify-payment`,"PATCH",{confirmedReceived:true},5)).status,404);
+  assert.equal((await request(`/workforce/verifications/${id}/payment-proof`,"GET",undefined,5)).status,403);
   assert.equal((await request(verify,"PATCH",{confirmedReceived:true},1)).status,403);
-  assert.equal((await request(verify,"PATCH",{},5)).status,400);
+  assert.equal((await request(verify,"PATCH",{},4)).status,400);
+  assert.equal((await request(`/workforce/verifications/${id}/payment-proof`,"GET",undefined,4)).status,200);
+  assert.ok((await request("/workforce/verifications","GET",undefined,4)).data.orders.some(order=>order.id===id));
   assert.equal(db.prepare("SELECT payment_status FROM orders WHERE id=?").get(id).payment_status,"Pending verification");
-  const verified=await request(verify,"PATCH",{confirmedReceived:true},5);
+  const verified=await request(verify,"PATCH",{confirmedReceived:true},4);
   assert.equal(verified.status,200,JSON.stringify(verified.data));
-  assert.deepEqual({...db.prepare("SELECT payment_status,payment_verified_by FROM orders WHERE id=?").get(id)},{payment_status:"Verified",payment_verified_by:5});
-  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},5)).status,200);
+  assert.deepEqual({...db.prepare("SELECT payment_status,payment_verified_by FROM orders WHERE id=?").get(id)},{payment_status:"Verified",payment_verified_by:4});
+  assert.equal((await request(verify,"PATCH",{confirmedReceived:true},4)).status,200);
   assert.equal((await request(`/admin/orders/${id}/verify-payment`,"PATCH",{confirmedReceived:true},2)).status,200);
   assert.equal((await request(path,"PATCH",{status:"Preparing"},5)).status,200);
   assert.equal((await request(path,"PATCH",{status:"Completed",deliveryConfirmed:true},5)).status,403);
@@ -146,6 +153,14 @@ test("Staff confirms Cash delivery, including older orders already marked Arrive
   }
 }));
 
+test("Cashier sees the same read-only stock as Staff",async()=>harness(async({request})=>{
+  const result=await request("/workforce/stock","GET",undefined,4);
+  assert.equal(result.status,200);
+  assert.ok(result.data.items.length>0);
+  assert.ok(result.data.items.every(row=>row.status&&row.reorderLevel!==undefined));
+  assert.equal((await request("/admin/inventory","GET",undefined,4)).status,403);
+}));
+
 test("Staff stock is read-only, excludes archived products and matches special low-stock rules",async()=>harness(async({db,request})=>{
   db.prepare(`INSERT INTO inventory_items(sku,product_name,category,quantity,measurement,initial_quantity,low_stock_level)
     VALUES('sugar','Sugar','Sweeteners',500,'g',1000,1000)
@@ -160,16 +175,46 @@ test("Staff stock is read-only, excludes archived products and matches special l
   assert.equal((await request(`/admin/inventory/${syrup.id}/set-stock`,"PATCH",{quantity:1000},5)).status,403);
 }));
 
-test("Admin can provision employee accounts and demotion/inactivation revokes employee access",async()=>harness(async({db,request})=>{
+test("Admin can provision employee accounts and demotion/inactivation revokes employee access",async()=>harness(async({db,request,base})=>{
   const password="Isolated-test-password-2026";
   db.prepare("UPDATE users SET password_hash=? WHERE id=2").run(await bcrypt.hash(password,4));
   for(const role of ["Cashier","Staff"]) {
     const created=await request("/admin/users","POST",{firstName:"Demo",lastName:role,
-      email:role.toLowerCase()+".new@test.invalid",password,currentPassword:password,role},2);
+      email:role.toLowerCase()+".new@test.invalid",currentPassword:password,role},2);
     assert.equal(created.status,201,JSON.stringify(created.data));
-    const login=await request("/auth/login","POST",{email:role.toLowerCase()+".new@test.invalid",password},null);
+    // No email service in tests, so the temporary password is shown once to the admin.
+    assert.equal(created.data.emailSent,false);
+    assert.match(created.data.temporaryPassword,/^[A-Za-z2-9]{12}$/);
+    const email=role.toLowerCase()+".new@test.invalid";
+    const login=await request("/auth/login","POST",{email,password:created.data.temporaryPassword},null);
     assert.equal(login.status,200);assert.equal(login.data.user.role,role);
+    assert.equal(login.data.user.mustChangePassword,true);
+    // Nothing else works until the temporary password is replaced.
+    let token=login.data.token;
+    const send=async(path,method,data)=>{
+      const response=await fetch(base+"/api"+path,{method,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},...(data?{body:JSON.stringify(data)}:{})});
+      return {status:response.status,data:await response.json()};
+    };
+    const blocked=await send("/workforce/stock","GET");
+    assert.equal(blocked.status,403);assert.equal(blocked.data.mustChangePassword,true);
+    assert.equal((await send("/me","GET")).data.user.mustChangePassword,true);
+    assert.equal((await send("/me/password","PATCH",{currentPassword:created.data.temporaryPassword,newPassword:created.data.temporaryPassword})).status,400);
+    const changed=await send("/me/password","PATCH",{currentPassword:created.data.temporaryPassword,newPassword:"my-own-pass"});
+    assert.equal(changed.status,200,JSON.stringify(changed.data));
+    assert.equal(changed.data.user.mustChangePassword,false);
+    token=changed.data.token;
+    assert.equal((await send("/workforce/stock","GET")).status,200);
+    assert.equal((await request("/auth/login","POST",{email,password:created.data.temporaryPassword},null)).status,401);
+    // A new temporary password replaces a forgotten one, for employees only.
+    const id=created.data.id;
+    assert.equal((await request(`/admin/users/${id}/temporary-password`,"POST",{currentPassword:"wrong"},2)).status,400);
+    const again=await request(`/admin/users/${id}/temporary-password`,"POST",{currentPassword:password},2);
+    assert.equal(again.status,200);
+    assert.equal((await request("/auth/login","POST",{email,password:"my-own-pass"},null)).status,401);
+    db.prepare("UPDATE users SET temp_password_expires_at=1 WHERE id=?").run(id);
+    assert.match((await request("/auth/login","POST",{email,password:again.data.temporaryPassword},null)).data.message,/expired/);
   }
+  assert.equal((await request("/admin/users/1/temporary-password","POST",{currentPassword:password},2)).status,400);
   assert.equal((await request("/admin/users/4","PATCH",{role:"Staff",status:"Active",currentPassword:password},2)).status,200);
   assert.equal((await request("/workforce/orders")).status,401);
   assert.equal((await request("/workforce/preparation","GET",undefined,4,{ver:1})).status,200);

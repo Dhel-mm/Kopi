@@ -16,8 +16,8 @@ const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character =>
   "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
 }[character]));
 // Database times are UTC ("YYYY-MM-DD HH:MM:SS"); show them in Philippine time.
-// When the customer or rider collects an online order; empty means as soon as possible.
-const formatHandover = iso => iso ? new Date(iso).toLocaleString("en-PH",{timeZone:"Asia/Manila",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "As soon as possible";
+// When the customer or rider collects an online order; empty means priority.
+const formatHandover = (iso, pickup) => iso ? new Date(iso).toLocaleString("en-PH",{timeZone:"Asia/Manila",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : pickup ? "Priority Pickup" : "Priority Delivery";
 const formatOrderTime = value => new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : String(value).replace(" ", "T") + "Z")
   .toLocaleTimeString("en-PH", {hour: "2-digit", minute: "2-digit", timeZone: "Asia/Manila"});
 
@@ -43,6 +43,13 @@ function paymentActionLabel(order) {
   return order.payment === "GCash" && order.paymentStatus !== "Verified" ? "Verify GCash" : "See Details";
 }
 
+// "See Details" is a quiet button; orders waiting for a check get a tan "Verify" button.
+function rowAction(order) {
+  const label = paymentActionLabel(order);
+  const needsCheck = label !== "See Details";
+  return `<button class="row-update${needsCheck ? " needs-check" : ""}" type="button" data-id="${order.id}"><i class="bi ${needsCheck ? "bi-shield-check" : "bi-eye"}" aria-hidden="true"></i>${label}</button>`;
+}
+
 function renderRows() {
   const orders = filteredOrders();
   rowsEl.innerHTML = orders.map((order, index) => `
@@ -54,7 +61,7 @@ function renderRows() {
       <td>${escapeHtml(order.payment)}${order.payment === "GCash" ? `<small class="payment-review-status">${escapeHtml(order.paymentStatus)}</small>` : ""}</td>
       <td><span class="status-badge ${order.status.toLowerCase().replaceAll(" ", "-")}">${escapeHtml(order.status)}</span>${order.status === "New" && order.riskFlags?.length ? `<small class="payment-review-status" title="${escapeHtml(order.riskFlags.map(flag => flag.label).join(", "))}">⚑ ${order.riskFlags.length} check${order.riskFlags.length === 1 ? "" : "s"}</small>` : ""}${order.paymentWait?.overdue ? `<small class="payment-review-status">⏳ GCash ${order.paymentWait.minutes} min</small>` : ""}</td>
       <td>${formatOrderTime(order.createdAt)}</td>
-      <td><button class="row-update" type="button" data-id="${order.id}">${paymentActionLabel(order)}</button></td>
+      <td>${rowAction(order)}</td>
     </tr>`).join("");
   emptyEl.hidden = orders.length !== 0;
   emptyEl.textContent = "No operations match these filters.";
@@ -98,7 +105,7 @@ function selectOrder(id) {
     <p><span>Payment method</span><strong>${escapeHtml(order.payment)}</strong></p>
     ${order.payment === "GCash" ? `<p><span>Reference number</span><strong class="key-value">${escapeHtml(order.paymentReference || "Not provided")}</strong></p><p><span>Payment status</span><strong>${escapeHtml(order.paymentStatus)}</strong></p>` : ""}
     <p><span>Order Time:</span><strong>${formatOrderTime(order.createdAt)}</strong></p>
-    ${order.orderType === "Online" ? `<p><span>${order.serviceType === "Pickup" ? "Pickup time" : "Rider pickup"}</span><strong>${escapeHtml(formatHandover(order.scheduledFor))}</strong></p>` : ""}
+    ${order.orderType === "Online" ? `<p><span>${order.serviceType === "Pickup" ? "Pickup time" : "Rider pickup"}</span><strong>${escapeHtml(formatHandover(order.scheduledFor, order.serviceType === "Pickup"))}</strong></p>` : ""}
     ${orderReview ? orderReview.flagsHtml(order) + orderReview.waitHtml(order) : ""}`;
   // Pickup orders have no address: the customer collects at the store.
   orderAddressEl.textContent = order.serviceType === "Pickup" ? "Pickup at the store (no delivery)" : order.address?.trim() || "Not provided";
@@ -141,12 +148,12 @@ function selectOrder(id) {
       const confirmed = orderReview
         ? await orderReview.confirmDialog(`Confirm GCash for ${order.orderNumber}?`,
           ["Check the shop's GCash account first. Have you received ", {key: amount}, " with reference number ", {key: order.paymentReference || "(none)"}, "? Confirm only if both match."], "Confirm GCash received")
-        : window.confirm(`Check GCash first. Have you received ${amount} with reference ${order.paymentReference}? Confirm only if both match.`);
+        : await KopiNotice.confirm(`Check GCash first. Have you received ${amount} with reference ${order.paymentReference}? Confirm only if both match.`, {title: "Confirm GCash received?", confirmText: "Confirm"});
       if (!confirmed) return;
       await reviewPayment("verify-payment", {confirmedReceived: true});
     });
     rejectButton.addEventListener("click", async () => {
-      if (!window.confirm(`Confirm that the GCash payment of ${peso(order.gcashAmount ?? order.total)} for ${order.orderNumber} was not received. This will cancel the order and notify the customer. Continue?`)) return;
+      if (!await KopiNotice.confirm(`The GCash payment of ${peso(order.gcashAmount ?? order.total)} for ${order.orderNumber} was not received. This will cancel the order and notify the customer.`, {title: "Payment not received?", confirmText: "Cancel order", cancelText: "Go back", danger: true})) return;
       await reviewPayment("reject-payment", {confirmedNotReceived: true});
     });
     selectedPaymentActions.appendChild(verifyButton);
@@ -202,7 +209,7 @@ function selectOrder(id) {
         ? "Preparation has started, so ingredients will stay deducted."
         : "Reserved ingredients will be returned to stock.";
       const refund = order.payment === "GCash" && order.paymentStatus === "Verified" ? " Any GCash refund must be sent separately." : "";
-      if (!window.confirm(`Cancel ${order.orderNumber}? ${warning}${refund}`)) return;
+      if (!await KopiNotice.confirm(`${warning}${refund}`, {title: `Cancel ${order.orderNumber}?`, confirmText: "Cancel order", cancelText: "Go back", danger: true})) return;
       if (paymentUpdating) return;
       paymentUpdating = true;
       cancelButton.disabled = true;
@@ -237,9 +244,34 @@ function renderDiscountBox(order) {
     <p class="discount-id-line"><strong>${escapeHtml(order.specialDiscountName)}</strong> · ${escapeHtml(order.specialDiscountType)} ID ${escapeHtml(order.specialDiscountId)}
     <small>${order.orderType === "In-store" ? "The cashier checked the physical ID at the counter."
       : pending ? "Compare the ID photo with the name and ID number before preparing this order."
-      : order.specialDiscountStatus === "Not approved" ? `Not approved: the ${peso(order.discountRemoved)} discount was removed and the order continues at the normal price of ${peso(order.total)}. The customer was notified.${order.balanceDue ? ` Collect ${peso(order.balanceDue)} in cash ${order.serviceType === "Pickup" ? "at the counter" : "on delivery"} (GCash covered the discounted amount).` : ""}`
+      : order.specialDiscountStatus === "Not approved" ? `Not approved: the ${peso(order.discountRemoved)} discount was removed and the order continues at the normal price of ${peso(order.total)}. The customer was notified.${order.balanceDue ? ` Collect the remaining ${peso(order.balanceDue)} by GCash, or in cash ${order.serviceType === "Pickup" ? "at the counter" : "on delivery"} (GCash covered the discounted amount).` : order.balancePaidAt ? ` The remaining ${peso(order.discountRemoved)} was paid by GCash (reference ${escapeHtml(order.balanceReference)}).` : ""}`
       : order.hasIdProof ? "ID photo verified." : "Checked before ID photos were required."}</small></p>`;
   selectedDiscountActions.appendChild(info);
+  // The card was declined and the discount removed: the customer can pay the
+  // difference by GCash instead of cash.
+  if (order.balanceDue > 0 && order.status !== "Canceled" && orderReview) {
+    const balanceButton = document.createElement("button");
+    balanceButton.type = "button";
+    balanceButton.className = "verify-payment-btn balance-gcash-btn";
+    balanceButton.textContent = `GCash the remaining ${peso(order.balanceDue)}`;
+    balanceButton.addEventListener("click", async () => {
+      const answer = await orderReview.balanceDialog(order);
+      if (!answer || paymentUpdating) return;
+      paymentUpdating = true;
+      balanceButton.disabled = true;
+      try {
+        const result = await KopiApi.request(`/admin/orders/${order.id}/balance-gcash`, {method: "PATCH", body: JSON.stringify(answer)});
+        KopiNotice.toast(result.message, "success");
+      } catch (error) {
+        KopiNotice.toast(error.message, "error");
+      } finally {
+        paymentUpdating = false;
+        balanceButton.disabled = false;
+        await refreshOrders();
+      }
+    });
+    selectedDiscountActions.appendChild(balanceButton);
+  }
   if (order.hasIdProof && orderReview) {
     const viewButton = document.createElement("button");
     viewButton.type = "button";
@@ -273,11 +305,11 @@ function renderDiscountBox(order) {
     }
   }
   verifyButton.addEventListener("click", async () => {
-    if (!window.confirm(`Did you open the ID photo and check that it is a valid ${order.specialDiscountType} ID for ${order.specialDiscountName} with number ${order.specialDiscountId}? Confirm only if they match.`)) return;
+    if (!await KopiNotice.confirm(`Did you open the ID photo and check that it is a valid ${order.specialDiscountType} ID for ${order.specialDiscountName} with number ${order.specialDiscountId}? Confirm only if they match.`, {title: "Verify ID?", confirmText: "Verify ID"})) return;
     await reviewId("verify-id", {confirmedValid: true});
   });
   rejectButton.addEventListener("click", async () => {
-    const answer = orderReview ? await orderReview.notApproveDialog(order) : (window.confirm(`Remove the discount from ${order.orderNumber} and charge the normal price?`) ? {note: ""} : null);
+    const answer = orderReview ? await orderReview.notApproveDialog(order) : (await KopiNotice.confirm(`Remove the discount from ${order.orderNumber} and charge the normal price?`, {title: "Remove discount?", confirmText: "Remove discount", danger: true}) ? {note: ""} : null);
     if (answer) await reviewId("not-approve-id", answer);
   });
   selectedDiscountActions.appendChild(verifyButton);

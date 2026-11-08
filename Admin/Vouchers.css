@@ -33,3 +33,14 @@
 @media (max-width: 600px) {
   .voucher-dialog { padding: 12px; }
 }
+
+/* Voucher dialog in the shared dialog frame. */
+.voucher-dialog.inv-dialog { width:min(600px,calc(100vw - 32px)); max-height:90dvh; padding:0; overflow:hidden; border-radius:18px; background:var(--paper); }
+.voucher-dialog.inv-dialog .inv-dialog-head h2 { font-size:18px; }
+.voucher-dialog.inv-dialog #voucherFields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 14px; min-width:0; margin:0; padding:0; border:0; }
+.voucher-dialog.inv-dialog #voucherFields label { font-size:12.5px; }
+.voucher-dialog.inv-dialog #voucherFields input:not([type="checkbox"]) { height:42px; padding:0 12px; border:1px solid rgba(192,142,66,.45); border-radius:10px; font-size:13px; }
+.voucher-dialog.inv-dialog .voucher-actions { margin:0; }
+.voucher-dialog.inv-dialog .voucher-list { max-height:280px; margin:0; }
+.voucher-dialog.inv-dialog .voucher-status { margin:0; }
+@media (max-width: 560px) { .voucher-dialog.inv-dialog #voucherFields { grid-template-columns:1fr; } }

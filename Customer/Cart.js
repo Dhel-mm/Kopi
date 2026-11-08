@@ -7,7 +7,8 @@ const checkoutTotal = document.getElementById("checkoutTotal");
 const checkoutBarTotal = document.getElementById("checkoutBarTotal");
 const checkoutCount = document.getElementById("checkoutCount");
 const checkoutBtn = document.getElementById("checkoutBtn");
-const clearCartBtn = document.getElementById("clearCartBtn");
+const removeSelectedBtn = document.getElementById("removeSelectedBtn");
+const selectAllCart = document.getElementById("selectAllCart");
 const orderNowBtn = document.getElementById("orderNowBtn");
 const confirmationForm = document.getElementById("confirmationForm");
 const referenceNumber = document.getElementById("referenceNumber");
@@ -15,7 +16,50 @@ const paymentMethodBtn = document.getElementById("paymentMethodBtn");
 const paymentChoices = document.getElementById("paymentChoices");
 const gcashPanel = document.getElementById("gcashPanel");
 const gcashReference = document.getElementById("gcashReference");
-const houseAddress = document.getElementById("houseAddress");
+// Delivery address parts; the order gets them joined as one line.
+const addressFields = {
+  street: document.getElementById("addressStreet"),
+  barangay: document.getElementById("addressBarangay"),
+  city: document.getElementById("addressCity"),
+  province: document.getElementById("addressProvince"),
+  landmark: document.getElementById("addressLandmark")
+};
+const saveAddressBox = document.getElementById("saveAddress");
+
+// Province → city/municipality → barangay, picked from the official list
+// (PhLocations.js). Choosing one fills the next list. Nothing is chosen at first:
+// a new account starts at "Choose province"; a saved address is filled in.
+const locations = globalThis.KopiLocations || [];
+// "City of Calamba", "Calamba" and "Calamba City" all find the same place.
+const placeKey = value => String(value || "").toLowerCase().replace(/^city of /, "").replace(/ city$/, "").replace(/[^a-z0-9ñ]+/g, "");
+function fillChoices(select, names, placeholder, chosen = "") {
+  if (!select || select.tagName !== "SELECT") return;
+  const match = names.find(name => placeKey(name) === placeKey(chosen)) || "";
+  select.replaceChildren(new Option(placeholder, ""), ...names.map(name => new Option(name, name)));
+  select.value = match;
+  select.disabled = !names.length;
+}
+function chosenProvince() {
+  return locations.find(province => province.name === addressFields.province?.value);
+}
+function chosenCity() {
+  return chosenProvince()?.cities.find(city => city.name === addressFields.city?.value);
+}
+function fillCities(chosen = "") {
+  fillChoices(addressFields.city, chosenProvince()?.cities.map(city => city.name) || [], "Choose city or municipality", chosen);
+}
+function fillBarangays(chosen = "") {
+  fillChoices(addressFields.barangay, chosenCity()?.barangays || [], "Choose barangay", chosen);
+}
+// Shows a saved or typed address in the lists. Unknown places leave the list unchosen.
+function setPlace({province = "", city = "", barangay = ""} = {}) {
+  fillChoices(addressFields.province, locations.map(item => item.name), "Choose province", province);
+  fillCities(city);
+  fillBarangays(String(barangay).replace(/^(brgy\.?|barangay)\s+/i, ""));
+}
+addressFields.province?.addEventListener("change", () => { fillCities(); fillBarangays(); });
+addressFields.city?.addEventListener("change", () => fillBarangays());
+setPlace();
 const timeAsap = document.getElementById("timeAsap");
 const timeScheduled = document.getElementById("timeScheduled");
 const timeDate = document.getElementById("timeDate");
@@ -89,10 +133,13 @@ function syncOrderType() {
   const pickup = orderType === "Pickup";
   const addressGroup = document.getElementById("addressGroup");
   if (addressGroup) addressGroup.hidden = pickup;
-  if (houseAddress) houseAddress.required = !pickup;
+  // Hidden address fields must not block a pickup order.
+  ["street", "barangay", "city", "province"].forEach(key => { if (addressFields[key]) addressFields[key].required = !pickup; });
   // Pickup has no rider, so the Lalamove delivery fee line is hidden.
   const feeLine = document.getElementById("deliveryFeeLine");
   if (feeLine) feeLine.hidden = pickup;
+  const feeNote = document.getElementById("deliveryFeeNote");
+  if (feeNote) feeNote.hidden = pickup;
   const pickupNote = document.getElementById("pickupNote");
   if (pickupNote) pickupNote.hidden = !pickup;
   const cashName = document.getElementById("cashChoiceName");
@@ -103,8 +150,8 @@ function syncOrderType() {
   renderTimeSlots();
 }
 
-// Pickup or rider handover time: as soon as possible, or a date and time the
-// customer types. Only opening hours are accepted, and the server checks again.
+// Pickup or rider handover time: priority, or a date and time the customer
+// types. Only opening hours are accepted, and the server checks again.
 function typedTime() {
   return timeDate?.value && timeClock?.value ? `${timeDate.value}T${timeClock.value}:00+08:00` : "";
 }
@@ -131,6 +178,8 @@ function checkTypedTime() {
 function renderTimeSlots() {
   const label = document.getElementById("timeSlotLabel");
   if (label) label.textContent = orderType === "Pickup" ? "Pickup time" : "Rider pickup time";
+  const priorityLabel = document.getElementById("timeAsapLabel");
+  if (priorityLabel) priorityLabel.textContent = priorityName(orderType);
   if (!timeAsap || !scheduleOptions) return;
   timeAsap.disabled = !scheduleOptions.asap;
   if (!scheduleOptions.asap) timeScheduled.checked = true;
@@ -272,7 +321,7 @@ if (gcashProofInput) {
       gcashProofData = await shrinkImage(file);
       document.getElementById("gcashProofImage").src = gcashProofData;
       document.getElementById("gcashProofPreview").hidden = false;
-      status.textContent = "Screenshot attached. Staff still confirm the payment in the shop's GCash account.";
+      status.textContent = "Screenshot attached. Our cashier still confirms the payment in the shop's GCash account.";
     } catch (error) {
       gcashProofInput.value = "";
       KopiNotice.set(status, error.message, "error");
@@ -282,10 +331,16 @@ if (gcashProofInput) {
     gcashProofData = "";
     gcashProofInput.value = "";
     document.getElementById("gcashProofPreview").hidden = true;
-    document.getElementById("gcashProofStatus").textContent = "Helps our staff find your payment faster.";
+    document.getElementById("gcashProofStatus").textContent = "Upload the screenshot of your GCash receipt. You cannot order by GCash without it.";
     gcashProofInput.focus();
   });
 }
+
+// Phone number: numbers only, up to 11 digits.
+referenceNumber.addEventListener("input", () => {
+  const digits = referenceNumber.value.replace(/\D/g, "").slice(0, 11);
+  if (digits !== referenceNumber.value) referenceNumber.value = digits;
+});
 
 document.addEventListener("click", event => {
   if (!event.target.closest(".payment-picker")) closePaymentChoices();
@@ -297,30 +352,58 @@ document.addEventListener("keydown", event => {
   }
 });
 
-document.getElementById("copyGcashNumber").addEventListener("click", async () => {
-  const status = document.getElementById("gcashCopyStatus");
-  try {
-    await navigator.clipboard.writeText("+639551778760");
-    status.textContent = "GCash number copied.";
-  } catch {
-    status.textContent = "Please copy the number above: +639551778760";
-  }
-});
-
 confirmationForm.addEventListener("submit", event => {
   event.preventDefault();
   if (!orderNowBtn.disabled) orderNowBtn.click();
 });
 
-checkoutBtn.addEventListener("click", () => {
-  const cart = KopiStore.getCart();
-  if (!cart.length) return;
-  KopiStore.setCheckout(cart);
+function selectedCartItems() {
+  const selected = new Set(KopiStore.getSelected());
+  return KopiStore.getCart().filter(item => selected.has(item.cartId));
+}
+
+// Only the ticked items go to checkout. If the shop no longer has enough
+// ingredients for them, the customer stays in the cart and sees why.
+checkoutBtn.addEventListener("click", async () => {
+  const items = selectedCartItems();
+  if (!items.length) {
+    KopiNotice.toast("Tick the items you want to check out.", "warning");
+    return;
+  }
+  checkoutBtn.disabled = true;
+  try {
+    if (KopiApi.getSession()) {
+      await KopiApi.request("/orders/quote", {method: "POST", body: JSON.stringify({items, serviceType: "Delivery"})});
+    }
+  } catch (error) {
+    if (error.status === 409) {
+      KopiNotice.toast(`Not enough ingredients. ${error.message} Please lower the quantity or untick the item.`, "warning");
+      checkoutBtn.disabled = false;
+      return;
+    }
+    if (error.status === 400) {
+      KopiNotice.toast(error.message, "warning");
+      checkoutBtn.disabled = false;
+      return;
+    }
+    // Network trouble: the checkout page checks again before ordering.
+  }
+  KopiStore.setCheckout(items);
   window.location.href = "Cart.html?checkout=1";
 });
 
-clearCartBtn.addEventListener("click", () => {
-  KopiStore.clearCart();
+removeSelectedBtn.addEventListener("click", async () => {
+  const items = selectedCartItems();
+  if (!items.length) return;
+  const names = items.map(item => `${item.quantity} × ${item.name}`).join("\n");
+  if (!await KopiNotice.confirm(names, {title: `Remove ${items.length === 1 ? "this item" : "these items"} from your cart?`, confirmText: "Remove", danger: true})) return;
+  items.forEach(item => KopiStore.deleteCartItem(item.cartId));
+  KopiStore.setSelected([]);
+  renderCart();
+});
+
+selectAllCart.addEventListener("change", () => {
+  KopiStore.setSelected(selectAllCart.checked ? KopiStore.getCart().map(item => item.cartId) : []);
   renderCart();
 });
 
@@ -445,6 +528,7 @@ if (specialDiscountToggle) {
       return;
     }
     const button = event.currentTarget;
+    if (!await KopiNotice.confirm(`${details.type} discount for ${details.name}, ID ${details.idNumber}.\nOur staff will check your ID photo. If it cannot be verified, the discount is removed and the order continues at the normal price.`, {title: "Are you sure you want to apply this discount?", confirmText: "Apply discount", cancelText: "Go back"})) return;
     button.disabled = true;
     result.hidden = true;
     try {
@@ -484,12 +568,22 @@ if (orderNowBtn) {
       return;
     }
 
+    if (selectedPayment === "GCash" && !gcashProofData) {
+      KopiNotice.set(document.getElementById("gcashProofStatus"), "Attach the screenshot of your GCash receipt before ordering.", "error");
+      KopiNotice.toast("Attach the screenshot of your GCash receipt before ordering.", "error");
+      document.getElementById("gcashProof")?.focus();
+      return;
+    }
+
+    if (!await KopiNotice.confirm(orderSummaryText(), {title: "Are you sure you want to order these?", confirmText: "Yes, place order", cancelText: "Go back"})) return;
+    if (placedOrder || orderNowBtn.disabled || !quoteReady) return;
+
     try {
       orderNowBtn.disabled = true;
       confirmationForm.inert = true;
       paymentMethodBtn.disabled = true;
       gcashReference.readOnly = true;
-      if (orderType === "Delivery") KopiStore.setAddress(houseAddress.value.trim());
+      if (orderType === "Delivery" && saveAddressBox?.checked) saveAccountAddress();
 
       const result = await KopiApi.placeOrder("/orders", {
           items: activeCheckoutItems,
@@ -497,7 +591,7 @@ if (orderNowBtn) {
           paymentReference: selectedPayment === "GCash" ? gcashReference.value.trim() : "",
           serviceType: orderType,
           timeSlot: timeScheduled?.checked ? typedTime() : "ASAP",
-          address: orderType === "Pickup" ? "" : houseAddress.value.trim(),
+          address: orderType === "Pickup" ? "" : fullAddress(),
           phone: referenceNumber.value.trim(),
           voucher: voucherCode.value.trim().toUpperCase(),
           specialDiscount: specialDiscountApplied,
@@ -530,6 +624,50 @@ if (closeReceiptBtn) {
   });
 }
 
+// What the customer is asked to confirm: items, discounts, total and how they pay.
+function orderSummaryText() {
+  const lines = activeCheckoutItems.map(item => `${item.quantity} × ${item.name} — ₱ ${formatMoney(item.price * item.quantity)}`);
+  if (voucherDiscount > 0) lines.push(`Voucher: − ₱ ${formatMoney(voucherDiscount)}`);
+  if (activeSpecialDiscount) {
+    lines.push(`${activeSpecialDiscount.type} discount and VAT exemption: − ₱ ${formatMoney(activeSpecialDiscount.deduction)}`);
+  }
+  lines.push(`Total: ₱ ${formatMoney(activeTotals.total)}`);
+  lines.push(`Payment: ${paymentLabel()}`);
+  lines.push(orderType === "Pickup" ? "Pickup at the store" : "Delivery · delivery fee is paid separately");
+  return lines.join("\n");
+}
+
+function addressValues() {
+  return Object.fromEntries(Object.entries(addressFields).map(([key, input]) => [key, input?.value.trim() || ""]));
+}
+
+// For example "72 Camia St., Brgy. Lingga, Calamba City, Laguna (Landmark: blue gate)".
+function fullAddress() {
+  const {street, barangay, city, province, landmark} = addressValues();
+  const brgy = barangay && !/^(brgy|barangay)/i.test(barangay) ? "Brgy. " + barangay : barangay;
+  return [street, brgy, city, province].filter(Boolean).join(", ") + (landmark ? " (Landmark: " + landmark + ")" : "");
+}
+
+// Fill the address saved on the account, so it is there again after logging in on any device.
+async function loadSavedAddress() {
+  const phone = KopiApi.getSession()?.user?.phone;
+  if (phone && referenceNumber && !referenceNumber.value) referenceNumber.value = phone;
+  if (!KopiApi.getSession() || !addressFields.street) return;
+  try {
+    const {address} = await KopiApi.request("/me/address");
+    if (!address || addressFields.street.value.trim()) return;
+    addressFields.street.value = address.street || "";
+    if (addressFields.landmark) addressFields.landmark.value = address.landmark || "";
+    setPlace(address);
+    document.getElementById("addressSavedNote").hidden = false;
+  } catch { /* The customer can still type the address. */ }
+}
+
+async function saveAccountAddress() {
+  try { await KopiApi.request("/me/address", {method: "PUT", body: JSON.stringify(addressValues())}); }
+  catch { /* The order is placed even if the address could not be saved. */ }
+}
+
 function renderCart() {
   const cart = KopiStore.getCart();
   const cartCount = KopiStore.cartCount(cart);
@@ -539,15 +677,26 @@ function renderCart() {
 
   if (!cart.length) {
     cartList.innerHTML = emptyCartTemplate.innerHTML;
-    checkoutBtn.disabled = true;
   } else {
     cartList.innerHTML = cart.map(renderCartItem).join("");
-    checkoutBtn.disabled = false;
   }
 
-  cartTotal.textContent = `₱ ${formatWhole(KopiStore.cartTotal(cart))}`;
   bindItemActions(cartList);
+  syncCartSelection();
   KopiStore.updateCartCount();
+}
+
+// The total, Checkout and Remove Selected only count the ticked items.
+function syncCartSelection() {
+  const cart = KopiStore.getCart();
+  const items = selectedCartItems();
+  cartTotal.textContent = `₱ ${formatWhole(KopiStore.cartTotal(items))}`;
+  checkoutBtn.disabled = !items.length;
+  checkoutBtn.textContent = items.length ? `Checkout (${items.length})` : "Checkout";
+  removeSelectedBtn.disabled = !items.length;
+  selectAllCart.disabled = !cart.length;
+  selectAllCart.checked = cart.length > 0 && items.length === cart.length;
+  selectAllCart.indeterminate = items.length > 0 && items.length < cart.length;
 }
 
 function showCheckout() {
@@ -556,7 +705,7 @@ function showCheckout() {
   checkoutCartSnapshot = structuredClone(activeCheckoutItems);
   cartView.hidden = true;
   checkoutView.hidden = false;
-  if (houseAddress) houseAddress.value = KopiStore.getAddress();
+  loadSavedAddress();
 
   checkoutList.innerHTML = activeCheckoutItems.length
     ? activeCheckoutItems.map(renderCheckoutItem).join("")
@@ -675,6 +824,9 @@ function renderCartItem(item) {
   const editButton = itemNode.querySelector("[data-action='edit']");
 
   itemNode.dataset.cartId = item.cartId;
+  const checkbox = itemNode.querySelector("[data-action='select']");
+  checkbox.setAttribute("aria-label", `Select ${item.name}`);
+  if (KopiStore.getSelected().includes(item.cartId)) checkbox.setAttribute("checked", "");
   image.src = item.image;
   image.alt = item.name;
   itemNode.querySelector("[data-cart-name]").textContent = item.name;
@@ -685,9 +837,12 @@ function renderCartItem(item) {
   const increase = itemNode.querySelector("[data-action='increase']");
   decrease.setAttribute("aria-label", `Decrease ${item.name} quantity`);
   increase.setAttribute("aria-label", `Increase ${item.name} quantity`);
-  // One cart line accepts 1 to 100 (the backend limit). Use Remove to delete it.
+  // One cart line accepts 1 to 100 (the backend limit). Tick it and use Remove Selected to delete it.
   if (item.quantity <= 1) decrease.setAttribute("disabled", "");
-  if (item.quantity >= MAX_LINE_QUANTITY) increase.setAttribute("disabled", "");
+  if (item.quantity >= MAX_LINE_QUANTITY || (KopiStore.room && item.quantity >= KopiStore.room(item.productId, item.cartId).left)) {
+    increase.setAttribute("disabled", "");
+    increase.title = KopiStore.limitMessage ? KopiStore.limitMessage(KopiStore.room(item.productId, item.cartId).kind) : "";
+  }
 
   details.forEach(detail => {
     const detailLine = document.createElement("p");
@@ -767,21 +922,65 @@ function showReceipt() {
   receiptModal.hidden = false;
 }
 
+// What the customer sees for an order with no chosen time.
+function priorityName(serviceType) {
+  return serviceType === "Pickup" ? "Priority Pickup" : "Priority Delivery";
+}
+
 // Receipt wording for the pickup or rider handover time.
 function formatSchedule(iso) {
-  if (!iso) return "As soon as possible";
+  if (!iso) return priorityName(placedOrder?.serviceType);
   return new Date(iso).toLocaleString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function bindItemActions(root) {
+  root.querySelectorAll("[data-action='select']").forEach(checkbox => {
+    checkbox.addEventListener("change", () => {
+      const cartId = checkbox.closest("[data-cart-id]").dataset.cartId;
+      const selected = new Set(KopiStore.getSelected());
+      if (checkbox.checked) selected.add(cartId);
+      else selected.delete(cartId);
+      KopiStore.setSelected([...selected]);
+      syncCartSelection();
+    });
+  });
+
   root.querySelectorAll("[data-action='increase'], [data-action='decrease']").forEach(button => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const cartId = button.closest("[data-cart-id]").dataset.cartId;
       const item = KopiStore.getCart().find(entry => entry.cartId === cartId);
       if (!item) return;
       const step = button.dataset.action === "increase" ? 1 : -1;
       const quantity = Math.min(MAX_LINE_QUANTITY, Math.max(1, item.quantity + step));
       if (quantity === item.quantity) return;
+      const room = KopiStore.room(item.productId, cartId);
+      if (step > 0 && quantity > room.left) {
+        KopiNotice.toast(KopiStore.limitMessage(room.kind), "warning");
+        return;
+      }
+      // Adding one more stops when the shop does not have enough ingredients.
+      if (step > 0 && KopiApi.getSession()) {
+        button.disabled = true;
+        try {
+          const others = KopiStore.getCart().filter(entry => entry.cartId !== cartId)
+            .map(entry => ({productId: entry.productId, quantity: entry.quantity, options: entry.options || {}}));
+          const result = await KopiApi.request("/orders/stock-check", {method: "POST", body: JSON.stringify({
+            item: {productId: item.productId, quantity, options: item.options || {}}, others})});
+          if (!result.ok) {
+            KopiNotice.toast(result.message, "warning");
+            button.disabled = false;
+            return;
+          }
+        } catch (error) {
+          if (error.status === 409) {
+            KopiNotice.toast(error.message, "warning");
+            button.disabled = false;
+            return;
+          }
+          // Network trouble: the checkout page checks the stock again.
+        }
+        button.disabled = false;
+      }
       KopiStore.updateCartItem(cartId, { quantity });
       renderCart();
       // Keep keyboard focus on the same control after the list re-renders.
@@ -793,24 +992,12 @@ function bindItemActions(root) {
 
   root.querySelectorAll("[data-action='edit']").forEach(button => {
     button.addEventListener("click", () => {
+      // Edit opens on this page, so closing it keeps the customer in the cart.
       const cartId = button.closest("[data-cart-id]").dataset.cartId;
-      window.location.href = `Menu.html?edit=${encodeURIComponent(cartId)}`;
+      KopiCartEdit.open(cartId, renderCart);
     });
   });
 
-  root.querySelectorAll("[data-action='delete']").forEach(button => {
-    button.addEventListener("click", () => {
-      const cartId = button.closest("[data-cart-id]").dataset.cartId;
-      KopiStore.deleteCartItem(cartId);
-
-      if (checkoutView.hidden) {
-        renderCart();
-      } else {
-        KopiStore.setCheckout(KopiStore.getCheckout().filter(item => item.cartId !== cartId));
-        showCheckout();
-      }
-    });
-  });
 }
 
 function formatMoney(value) {
@@ -820,3 +1007,129 @@ function formatMoney(value) {
 function formatWhole(value) {
   return Math.round(Number(value)).toLocaleString("en-US");
 }
+
+// Edit a cart item right on the Cart page. Closing it keeps the customer in the cart.
+const KopiCartEdit = (() => {
+  let dialog = null;
+  let state = null;
+  let onSaved = () => {};
+  // Sizes, choices and add-ons that cannot be made right now, by product.
+  let soldChoices = {};
+
+  const text = value => String(value ?? "").replace(/[&<>'"]/g, character => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"}[character]));
+  const isSoldOut = (label, value) => (soldChoices[state.product.id]?.[label] || []).includes(value);
+
+  function build() {
+    dialog = document.createElement("dialog");
+    dialog.className = "cart-edit";
+    dialog.setAttribute("aria-labelledby", "cartEditTitle");
+    dialog.innerHTML = `
+      <form class="cart-edit-card" method="dialog" novalidate>
+        <button class="cart-edit-close close-panel" type="button" data-edit-close aria-label="Close and go back to cart"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        <div class="cart-edit-head">
+          <img class="cart-edit-img" alt="">
+          <div>
+            <p class="cart-edit-kicker">Edit item</p>
+            <h2 id="cartEditTitle"></h2>
+            <p class="cart-edit-desc"></p>
+          </div>
+        </div>
+        <div class="cart-edit-options"></div>
+        <footer class="cart-edit-foot">
+          <div class="cart-edit-price"><span data-edit-price-label>Price</span><strong data-edit-price>₱ 0</strong></div>
+          <div class="cart-edit-actions">
+            <button class="cart-edit-cancel" type="button" data-edit-close>Cancel</button>
+            <button class="dark-btn cart-edit-save" type="submit">Save</button>
+          </div>
+        </footer>
+      </form>`;
+    document.body.append(dialog);
+    dialog.querySelectorAll("[data-edit-close]").forEach(button => button.addEventListener("click", close));
+    dialog.addEventListener("click", event => { if (event.target === dialog) close(); });
+    dialog.querySelector("form").addEventListener("submit", event => { event.preventDefault(); save(); });
+    dialog.querySelector(".cart-edit-options").addEventListener("click", event => {
+      const pill = event.target.closest(".cart-edit-pill:not([disabled])");
+      if (!pill) return;
+      const { key, value } = pill.dataset;
+      // Add-ons can be turned off by tapping them again.
+      state.choices[key] = key === "addons" && state.choices[key] === value ? null : value;
+      render();
+    });
+  }
+
+  function open(cartId, savedCallback) {
+    const cartItem = KopiStore.getCart().find(item => item.cartId === cartId);
+    const product = cartItem && KopiStore.findProduct(cartItem.productId);
+    if (!product) { KopiNotice.toast("This item is no longer on the menu.", "warning"); return; }
+    if (!dialog) build();
+    onSaved = savedCallback || (() => {});
+    state = { product, cartId, quantity: cartItem.quantity, choices: {} };
+    product.options.forEach(option => {
+      const saved = cartItem.options?.[option.label] ?? cartItem.options?.[option.key];
+      state.choices[option.key] = option.key === "addons"
+        ? saved ?? null
+        : saved ?? option.defaultValue ?? (option.values.length === 1 ? option.values[0] : null);
+    });
+    const image = dialog.querySelector(".cart-edit-img");
+    image.src = product.image;
+    image.alt = product.name;
+    dialog.querySelector("#cartEditTitle").textContent = product.name;
+    dialog.querySelector(".cart-edit-desc").textContent = product.description || "";
+    render();
+    dialog.showModal();
+    refreshAvailability();
+  }
+
+  function close() {
+    dialog?.close();
+  }
+
+  // Check which choices ran out so they show as sold out.
+  async function refreshAvailability() {
+    try {
+      const { products } = await KopiApi.request("/menu/availability");
+      soldChoices = Object.fromEntries(products.map(item => [item.productId, item.unavailable || {}]));
+      if (dialog.open) render();
+    } catch {}
+  }
+
+  function render() {
+    const { product } = state;
+    dialog.querySelector(".cart-edit-options").innerHTML = product.options.map(option => `
+      <fieldset class="cart-edit-group"><legend>${text(option.label)}</legend><div class="cart-edit-pills">
+        ${option.values.map(value => {
+          const chosen = state.choices[option.key] === value;
+          // A choice already in the cart stays selectable even if it ran out after it was added.
+          if (isSoldOut(option.label, value) && !chosen) return `<button class="cart-edit-pill sold-out" type="button" disabled>${text(value)} · Sold out</button>`;
+          const price = option.priceKey && product.prices[value] != null ? ` · ₱${product.prices[value]}`
+            : option.addOnPrice ? ` · +₱${option.addOnPrice}` : "";
+          return `<button class="cart-edit-pill${chosen ? " active" : ""}" type="button" data-key="${text(option.key)}" data-value="${text(value)}" aria-pressed="${chosen}">${text(value)}${price}</button>`;
+        }).join("")}
+      </div></fieldset>`).join("");
+    // Quantity is changed in My Cart, so the price here covers the quantity already there.
+    dialog.querySelector("[data-edit-price-label]").textContent = state.quantity > 1 ? `Price (${state.quantity} pcs)` : "Price";
+    dialog.querySelector("[data-edit-price]").textContent = `₱ ${(unitPrice() * state.quantity).toLocaleString("en-US")}`;
+  }
+
+  function unitPrice() {
+    const { product, choices } = state;
+    const sizeOption = product.options.find(option => option.priceKey);
+    const price = sizeOption ? product.prices[choices[sizeOption.key]] : null;
+    const addOns = product.options.reduce((total, option) => total + (option.addOnPrice && choices[option.key] ? option.addOnPrice : 0), 0);
+    return (price ?? Object.values(product.prices)[0]) + addOns;
+  }
+
+  function save() {
+    const { product, choices } = state;
+    const missing = product.options.find(option => option.priceKey && !choices[option.key]);
+    if (missing) { KopiNotice.toast(`Please select ${missing.label.toLowerCase()} first.`); return; }
+    const options = {};
+    product.options.forEach(option => { if (choices[option.key] != null) options[option.label] = choices[option.key]; });
+    KopiStore.updateCartItem(state.cartId, { options, price: unitPrice() });
+    close();
+    KopiNotice.toast(`${product.name} updated.`, "success");
+    onSaved();
+  }
+
+  return { open, close };
+})();

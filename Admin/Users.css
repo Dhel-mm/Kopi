@@ -119,6 +119,18 @@
 .user-presence::before { content:""; width:6px; height:6px; flex-shrink:0; border-radius:50%; background:currentColor; }
 .user-presence.is-online { color:#216438; background:#eaf5e9; }
 .user-presence.is-offline { color:#756957; background:#f2eee8; }
+.user-presence.is-archived { color:#8f3a22; background:#fdf0ea; }
+.activity-tools { flex-wrap:wrap; margin-bottom:16px; }
+.activity-date { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; }
+.activity-date input { padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fff; font:inherit; font-weight:400; }
+.users-temp-note { margin:0; padding:10px 12px; border:1px solid #e3cfa9; border-radius:10px; background:#fffaf0; color:#5c4210; font-size:12px; font-weight:500; line-height:1.5; }
+.users-temp-note[hidden] { display:none; }
+/* Archive / Restore sits inside Manage, on the left of the dialog buttons. */
+.users-archive-btn { display:inline-flex; align-items:center; gap:6px; margin-right:auto; border-color:#e7bdb7; color:#a33e36; }
+.users-archive-btn:hover:not(:disabled) { border-color:#a33e36; background:#fff4f2; }
+.users-archive-btn.is-restore { border-color:#b9dcb9; color:#24592c; }
+.users-archive-btn.is-restore:hover:not(:disabled) { border-color:#24592c; background:#eef8ee; }
+.users-archive-btn[hidden] { display:none; }
 .manage-user-btn:disabled { opacity: .5; cursor: not-allowed; }
 .admin-dialog .recovery-confirm { display: flex; align-items: flex-start; gap: 10px; }
 .admin-dialog .recovery-confirm[hidden] { display: none; }

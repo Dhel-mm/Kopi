@@ -175,6 +175,34 @@ function createReports(db,clock=()=>new Date()) {
       const row=grouped.find(entry=>entry.bucket===day);
       series.push({label:day,orders:row?.orders||0,total:row?.total||0});
     }
+    // More about the period: items sold, busiest hour and day, vouchers, customers and categories.
+    const items=db.prepare(`SELECT COALESCE(SUM(i.quantity),0) AS quantity FROM order_items i JOIN orders o ON o.id=i.order_id WHERE ${completed}`).get(start,through).quantity;
+    const vouchersUsed=db.prepare(`SELECT COUNT(*) AS n FROM orders o WHERE ${completed} AND o.voucher_discount>0`).get(start,through).n;
+    const hour=db.prepare(`SELECT CAST(strftime('%H',o.completed_at,'+8 hours') AS INTEGER) AS hour,COUNT(*) AS orders,ROUND(SUM(o.total),2) AS total
+      FROM orders o WHERE ${completed} GROUP BY hour ORDER BY orders DESC,total DESC LIMIT 1`).get(start,through);
+    const weekday=db.prepare(`SELECT CAST(strftime('%w',o.completed_at,'+8 hours') AS INTEGER) AS day,COUNT(*) AS orders,ROUND(SUM(o.total),2) AS total
+      FROM orders o WHERE ${completed} GROUP BY day ORDER BY total DESC,orders DESC LIMIT 1`).get(start,through);
+    const customers=db.prepare(`SELECT COUNT(DISTINCT o.user_id) AS online,
+      COUNT(DISTINCT CASE WHEN EXISTS(SELECT 1 FROM orders e WHERE e.user_id=o.user_id AND e.order_type='Online' AND e.status='Completed'
+        AND DATE(e.completed_at,'+8 hours')<?) THEN o.user_id END) AS returningCount
+      FROM orders o WHERE ${completed} AND o.order_type='Online'`).get(start,start,through);
+    const categoryNames=new Map(catalog.categories.map(group=>[group.id,group.name]));
+    const productCategory=new Map(catalog.products.map(product=>[product.id,product.category]));
+    const categoryTotals=new Map();
+    for (const row of db.prepare(`SELECT i.product_id AS productId,SUM(i.quantity) AS quantity,ROUND(SUM(i.quantity*i.price),2) AS sales
+      FROM order_items i JOIN orders o ON o.id=i.order_id WHERE ${completed} GROUP BY i.product_id`).all(start,through)) {
+      const name=categoryNames.get(productCategory.get(row.productId))||"Other items";
+      const entry=categoryTotals.get(name)||{category:name,quantity:0,sales:0};
+      entry.quantity+=row.quantity;entry.sales=Math.round((entry.sales+row.sales)*100)/100;
+      categoryTotals.set(name,entry);
+    }
+    const byCategory=[...categoryTotals.values()].sort((a,b)=>b.sales-a.sales);
+    const clock12=value=>`${value%12||12}:00 ${value<12?"AM":"PM"}`;
+    const weekdays=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const insights={itemsSold:items,itemsPerOrder:current.orders?Math.round(items/current.orders*10)/10:0,vouchersUsed,
+      peakHour:hour?{label:`${clock12(hour.hour)} – ${clock12((hour.hour+1)%24)}`,orders:hour.orders,total:hour.total}:null,
+      busiestDay:weekday&&kind!=="day"?{label:weekdays[weekday.day],orders:weekday.orders,total:weekday.total}:null,
+      onlineCustomers:customers.online||0,returningCustomers:customers.returningCount||0};
     const change=(now,then)=>then?Math.round((now-then)/then*1000)/10:null;
     return {period:kind,start,end,through,timezone:"Asia/Manila",
       ...current,seniorOrders:current.seniorOrders||0,pwdOrders:current.pwdOrders||0,
@@ -182,7 +210,7 @@ function createReports(db,clock=()=>new Date()) {
       canceledOrders:canceled.n,canceledValue:canceled.value,transactions:current.orders+canceled.n,
       previous:{start:previous.start,end:previous.end,orders:before.orders,netSales:before.netSales,
         change:change(current.netSales,before.netSales)},
-      byPayment,byType,topItems,series};
+      byPayment,byType,topItems,byCategory,insights,series};
   }
   return {summary,dashboard,transactions,salesSummary};
 }
@@ -237,6 +265,11 @@ function summaryCsv(data) {
     ["Payment","Orders","Net sales (PHP)"],...data.byPayment.map(row=>[row.payment,row.orders,peso(row.total)]),[],
     ["Order type","Orders","Net sales (PHP)"],...data.byType.map(row=>[row.type,row.orders,peso(row.total)]),[],
     ["Top item","Quantity","Item sales (PHP)"],...data.topItems.map(row=>[row.name,row.quantity,peso(row.sales)]),[],
+    ...(data.insights?[["Items sold",data.insights.itemsSold],["Items per order",data.insights.itemsPerOrder],["Vouchers used",data.insights.vouchersUsed],
+      ["Busiest hour",data.insights.peakHour?`${data.insights.peakHour.label} (${data.insights.peakHour.orders} orders)`:"—"],
+      ["Busiest day",data.insights.busiestDay?`${data.insights.busiestDay.label} (${peso(data.insights.busiestDay.total)})`:"—"],
+      ["Online customers",data.insights.onlineCustomers],["Returning online customers",data.insights.returningCustomers],[]]:[]),
+    ...(data.byCategory?[["Category","Items sold","Item sales (PHP)"],...data.byCategory.map(row=>[row.category,row.quantity,peso(row.sales)]),[]]:[]),
     [{day:"Hour",week:"Date",month:"Date",year:"Month"}[data.period],"Orders","Net sales (PHP)"],...data.series.map(row=>[row.label,row.orders,peso(row.total)])
   ];
   return "\uFEFF"+rows.map(row=>row.map(cell).join(",")).join("\r\n");

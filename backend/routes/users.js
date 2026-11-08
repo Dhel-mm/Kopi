@@ -6,9 +6,20 @@ const {rateLimit}=require("../middleware/rateLimit");
 const accounts=require("../services/accounts");
 const {OrderError}=require("../services/pricing");
 const {sendError}=require("../services/orderWorkflow");
+const {createMailer}=require("../services/mailer");
 
-module.exports=function usersRouter(db) {
+module.exports=function usersRouter(db,settings={}) {
   const router=express.Router();
+  const mailer=settings.mailer||createMailer(process.env);
+  const temporaryExpiry=()=>Date.now()+accounts.TEMPORARY_PASSWORD_HOURS*3600000;
+  // The password is only returned when the email could not be delivered, so the
+  // administrator can hand it over privately. It is never saved in plain text.
+  async function deliverTemporary(user,temporary) {
+    const emailSent=await accounts.sendTemporaryPassword(mailer,user,temporary);
+    return emailSent
+      ? {emailSent,message:"A temporary password was emailed to "+user.email+"."}
+      : {emailSent,temporaryPassword:temporary,message:"The email could not be sent. Give this temporary password to the employee privately. It is shown only once."};
+  }
   router.use(authFor(db),requireRole("Admin"));
   router.get("/",(req,res)=>{
     const users=db.prepare(`SELECT id,first_name AS firstName,last_name AS lastName,
@@ -24,22 +35,46 @@ module.exports=function usersRouter(db) {
     try {
       const b=req.body||{};
       const actor=await accounts.verifyPassword(db,req.user.id,b.currentPassword);
-      const first=accounts.field(b.firstName,"first name"),last=accounts.field(b.lastName,"last name");
-      const email=accounts.email(b.email),password=accounts.password(b.password);
+      const first=accounts.personName(b.firstName,"first name"),last=accounts.personName(b.lastName,"last name");
+      const email=accounts.email(b.email);
       const phone=b.phone?accounts.phone(b.phone):null;
-      if (!["Admin","Customer","Cashier","Staff"].includes(b.role)) throw new OrderError("Choose Customer, Cashier, Staff, or Admin.");
-      const hash=await bcrypt.hash(password,12);
+      // Customers create their own accounts with Sign up, so admins add employees only.
+      if (!["Admin","Cashier","Staff"].includes(b.role)) throw new OrderError("Choose Cashier, Staff, or Admin. Customers sign up on the website.");
+      const temporary=accounts.temporaryPassword();
+      const hash=await bcrypt.hash(temporary,12);
       const id=db.transaction(()=>{
         accounts.assertAdmin(db,actor);
         if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) throw new OrderError("That email is already used.",409);
-        const id=db.prepare("INSERT INTO users(first_name,last_name,email,password_hash,phone,role) VALUES(?,?,?,?,?,?)")
-          .run(first,last,email,hash,phone,b.role).lastInsertRowid;
+        const id=db.prepare("INSERT INTO users(first_name,last_name,email,password_hash,phone,role,must_change_password,temp_password_expires_at) VALUES(?,?,?,?,?,?,1,?)")
+          .run(first,last,email,hash,phone,b.role,temporaryExpiry()).lastInsertRowid;
         accounts.audit(db,req.user.id,id,"Account created: "+b.role);
         return id;
       }).immediate();
-      res.status(201).json({id,message:"Account created."});
+      const delivery=await deliverTemporary({email,first_name:first},temporary);
+      res.status(201).json({id,...delivery,message:"Account created. "+delivery.message});
     }catch(error){sendError(res,error);}
   });
+  // Sends a new temporary password when an employee forgets theirs.
+  router.post("/:id/temporary-password",async(req,res)=>{
+    try {
+      const actor=await accounts.verifyPassword(db,req.user.id,req.body?.currentPassword);
+      const user=db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
+      if (!user || user.status!=="Active") throw new OrderError("An active account is required.",404);
+      if (!["Cashier","Staff"].includes(user.role)) throw new OrderError("Temporary passwords are for Staff and Cashier accounts. Use a recovery code for this account.");
+      const temporary=accounts.temporaryPassword();
+      const hash=await bcrypt.hash(temporary,12);
+      db.transaction(()=>{
+        accounts.assertAdmin(db,actor);
+        db.prepare(`UPDATE users SET password_hash=?,must_change_password=1,temp_password_expires_at=?,
+          auth_version=auth_version+1,last_seen_at=NULL WHERE id=?`).run(hash,temporaryExpiry(),user.id);
+        db.prepare("DELETE FROM password_resets WHERE user_id=?").run(user.id);
+        accounts.audit(db,req.user.id,user.id,"Temporary password issued");
+      }).immediate();
+      res.json(await deliverTemporary(user,temporary));
+    }catch(error){sendError(res,error);}
+  });
+  // Accounts are never deleted: setting one to Inactive archives it. Its orders and
+  // history stay, it cannot sign in, and it can be restored at any time.
   router.patch("/:id",async(req,res)=>{
     try {
       const b=req.body||{};
@@ -55,34 +90,7 @@ module.exports=function usersRouter(db) {
         db.prepare("UPDATE users SET role=?,status=?,auth_version=auth_version+1,last_seen_at=NULL WHERE id=?").run(b.role,b.status,user.id);
         accounts.audit(db,req.user.id,user.id,"Access changed: "+b.role+" / "+b.status);
       }).immediate();
-      res.json({message:"Account access updated. Previous sessions were revoked."});
-    }catch(error){sendError(res,error);}
-  });
-  router.delete("/:id",async(req,res)=>{
-    try {
-      const b=req.body||{};
-      const actor=await accounts.verifyPassword(db,req.user.id,b.currentPassword);
-      if (b.confirmDelete!==true) throw new OrderError("Confirm permanent account deletion.");
-      db.transaction(()=>{
-        accounts.assertAdmin(db,actor);
-        const user=db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
-        if (!user) throw new OrderError("Account not found.",404);
-        if (user.id===req.user.id) throw new OrderError("You cannot delete your own administrator account.");
-        if (user.role==="Admin" && user.status==="Active" && db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='Admin' AND status='Active'").get().n<=1) {
-          throw new OrderError("Keep at least one active administrator.");
-        }
-        const orderCount=db.prepare(`SELECT COUNT(*) AS n FROM orders
-          WHERE user_id=? OR payment_verified_by=? OR delivery_sent_by=? OR payment_rejected_by=?`).get(user.id,user.id,user.id,user.id).n;
-        if (orderCount) throw new OrderError("This user has order history. Set the account to Inactive instead so records remain accurate.",409);
-        db.prepare("DELETE FROM feedback WHERE user_id=?").run(user.id);
-        db.prepare("DELETE FROM password_resets WHERE user_id=? OR issued_by=?").run(user.id,user.id);
-        db.prepare("UPDATE account_audit SET actor_id=NULL WHERE actor_id=?").run(user.id);
-        db.prepare("UPDATE account_audit SET subject_id=NULL WHERE subject_id=?").run(user.id);
-        db.prepare("UPDATE menu_recipes SET updated_by=NULL WHERE updated_by=?").run(user.id);
-        db.prepare("UPDATE inventory_unit_conversions SET updated_by=NULL WHERE updated_by=?").run(user.id);
-        db.prepare("DELETE FROM users WHERE id=?").run(user.id);
-      }).immediate();
-      res.json({message:"User deleted permanently."});
+      res.json({message:b.status==="Inactive"?"Account archived. It can no longer sign in, and its records were kept.":"Account access updated. Previous sessions were revoked."});
     }catch(error){sendError(res,error);}
   });
   router.post("/:id/recovery-code",async(req,res)=>{

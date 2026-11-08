@@ -1,18 +1,31 @@
 // Pop-up and sound when an order needs attention, so the team hears it even
-// away from the screen. Staff: new online orders. Admin: GCash payments and
-// Senior Citizen / PWD IDs to verify. The chime repeats until someone responds.
+// away from the screen. Staff: new online orders. Cashier and Admin: GCash payments
+// and Senior Citizen / PWD IDs to verify. The chime repeats until someone responds.
 (() => {
   const role = KopiApi.getSession()?.user?.role;
-  const handover = iso => iso ? new Date(iso).toLocaleString("en-PH", {timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) : "As soon as possible";
+  const handover = (iso, pickup) => iso ? new Date(iso).toLocaleString("en-PH", {timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) : pickup ? "Priority Pickup" : "Priority Delivery";
   const config = {
     Staff: {
       url: "/workforce/alerts", page: "/Staff/Orders.html", open: "View orders",
       title: count => count === 1 ? "New order" : `${count} new orders`,
-      items: data => data.orders.map(order => ({
+      items: data => data.orders.map(order => order.orderType === "In-store" ? {
+        key: `order:${order.id}:${order.createdAt}`,
+        title: `${order.orderNumber} · Walk-in ${order.serviceType || "order"}`,
+        detail: `${order.customer} · from the cashier`
+      } : {
         key: `order:${order.id}:${order.createdAt}`,
         title: `${order.orderNumber} · ${order.serviceType === "Pickup" ? "Pickup" : "Delivery"}`,
-        detail: `${order.customer} · ${order.serviceType === "Pickup" ? "Pickup" : "Rider pickup"}: ${handover(order.scheduledFor)}`
-      }))
+        detail: `${order.customer} · ${order.serviceType === "Pickup" ? "Pickup" : "Rider pickup"}: ${handover(order.scheduledFor, order.serviceType === "Pickup")}`
+      })
+    },
+    Cashier: {
+      url: "/workforce/verification-alerts", page: "/Cashier/Verify.html", open: "Open Verify payments",
+      title: count => count === 1 ? "Needs verification" : `${count} items need verification`,
+      items: data => data.orders.flatMap(order => order.needs.map(need => ({
+        key: `${need}:${order.id}:${order.createdAt}`,
+        title: `${order.orderNumber} · Verify ${need}`,
+        detail: `${order.customer} · ₱${Number(order.total).toFixed(2)}`
+      })))
     },
     Admin: {
       url: "/admin/alerts", page: "/Admin/Operation.html", open: "Open Operations",
@@ -37,6 +50,35 @@
   let repeatTimer = null;
   let panel = null;
 
+  // ---------- Alert sounds (chosen in Settings > Order alerts > Alert sound) ----------
+  // Built-in sounds are made by the browser, so no files are needed.
+  // Each note is [pitch in Hz, start in seconds, length in seconds].
+  const TONES = {
+    chime: {label: "Chime (default)", wave: "sine", notes: [[880, 0, 0.5], [1175, 0.18, 0.5], [1568, 0.36, 0.5]]},
+    bell: {label: "Counter bell", wave: "triangle", notes: [[1319, 0, 1.2], [1976, 0, 0.9], [2637, 0, 0.5]]},
+    dingdong: {label: "Ding-dong", wave: "sine", notes: [[988, 0, 0.6], [784, 0.35, 0.9]]},
+    beep: {label: "Double beep", wave: "square", notes: [[1000, 0, 0.12], [1000, 0.2, 0.12]], loudness: 0.5},
+    pop: {label: "Soft pop", wave: "sine", notes: [[660, 0, 0.15], [990, 0.12, 0.25]]},
+    rise: {label: "Rising tones", wave: "triangle", notes: [[523, 0, 0.25], [659, 0.15, 0.25], [784, 0.3, 0.25], [1047, 0.45, 0.45]]}
+  };
+  // Your own sound files: put the file in Admin/sounds/ and add a line here,
+  // for example {id: "shop-bell", label: "Shop bell", src: "/Admin/sounds/shop-bell.mp3"}.
+  const SOUND_FILES = [
+  ];
+  const SOUNDS = {...TONES};
+  SOUND_FILES.forEach(file => { SOUNDS[file.id] = {label: file.label, src: file.src}; });
+
+  // Choices saved on this device in Settings: sound, which sound, volume, repeating and desktop notifications.
+  const PREFS_KEY = "kopi_alert_prefs";
+  function prefs() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch {}
+    const volume = Number(saved.volume);
+    return {sound: saved.sound !== false, tone: SOUNDS[saved.tone] ? saved.tone : "chime",
+      volume: Number.isFinite(volume) ? Math.min(1, Math.max(0.05, volume)) : 0.35,
+      repeat: saved.repeat !== false, desktop: saved.desktop !== false};
+  }
+
   function remember() {
     try { localStorage.setItem(seenKey, JSON.stringify([...seen].slice(-300))); } catch {}
   }
@@ -50,40 +92,39 @@
   }
   function unlock() {
     const context = audioContext();
-    context?.resume?.().then(syncSoundButton).catch(() => {});
+    context?.resume?.().catch(() => {});
   }
-  function chime() {
+  function chime(force = false, soundId = null) {
+    const settings = prefs();
+    if (!force && !settings.sound) return;
+    const sound = SOUNDS[soundId] || SOUNDS[settings.tone] || SOUNDS.chime;
+    // A sound file plays through an audio element at the chosen volume.
+    if (sound.src) {
+      const player = new Audio(sound.src);
+      player.volume = settings.volume;
+      player.play().catch(() => {});
+      return;
+    }
     const context = audioContext();
     if (!context || context.state !== "running") return;
     const start = context.currentTime;
-    [880, 1175, 1568].forEach((frequency, index) => {
+    const peak = Math.max(0.0002, settings.volume * (sound.loudness || 1));
+    sound.notes.forEach(([frequency, offset, length]) => {
       const tone = context.createOscillator();
       const volume = context.createGain();
-      tone.type = "sine";
+      tone.type = sound.wave;
       tone.frequency.value = frequency;
-      const at = start + index * 0.18;
+      const at = start + offset;
       volume.gain.setValueAtTime(0.0001, at);
-      volume.gain.exponentialRampToValueAtTime(0.35, at + 0.02);
-      volume.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+      volume.gain.exponentialRampToValueAtTime(peak, at + 0.02);
+      volume.gain.exponentialRampToValueAtTime(0.0001, at + length);
       tone.connect(volume).connect(context.destination);
       tone.start(at);
-      tone.stop(at + 0.55);
+      tone.stop(at + length + 0.05);
     });
   }
 
-  // A small button stays visible until sound is allowed on this page.
-  const soundButton = document.createElement("button");
-  soundButton.type = "button";
-  soundButton.className = "order-alert-sound";
-  soundButton.innerHTML = '<i class="bi bi-volume-up-fill" aria-hidden="true"></i><span>Turn on order sounds</span>';
-  soundButton.addEventListener("click", () => {
-    unlock();
-    setTimeout(chime, 150);
-    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
-  });
-  function syncSoundButton() {
-    soundButton.hidden = audio?.state === "running";
-  }
+  // Sound is switched on and off in Settings. Browsers allow it after the first click or key press on the page.
   ["pointerdown", "keydown"].forEach(type => document.addEventListener(type, unlock, {capture: true}));
 
   function close(markSeen) {
@@ -131,8 +172,8 @@
     render();
     chime();
     clearInterval(repeatTimer);
-    repeatTimer = setInterval(chime, REPEAT_MS);
-    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+    if (prefs().repeat) repeatTimer = setInterval(chime, REPEAT_MS);
+    if (prefs().desktop && document.hidden && "Notification" in window && Notification.permission === "granted") {
       try { new Notification(config.title(showing.size), {body: items.map(item => item.title).join("\n"), tag: seenKey}); } catch {}
     }
   }
@@ -150,12 +191,14 @@
     } catch {}
   }
 
-  function showSoundButton() {
-    document.body.append(soundButton);
-    syncSoundButton();
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showSoundButton);
-  else showSoundButton();
+  // Used by the Settings page to test the sound and apply changes right away.
+  window.KopiOrderAlerts = {
+    prefsKey: PREFS_KEY,
+    prefs,
+    sounds: Object.entries(SOUNDS).map(([id, sound]) => ({id, label: sound.label})),
+    test(soundId) { unlock(); setTimeout(() => chime(true, soundId), 150); },
+    applied() { if (!prefs().repeat) { clearInterval(repeatTimer); repeatTimer = null; } }
+  };
   check();
   // Keep checking while the tab is in the background so the chime still plays.
   setInterval(check, POLL_MS);

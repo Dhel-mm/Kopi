@@ -277,6 +277,10 @@ body { overflow-x: hidden; overflow-y: auto; }
 .recovery-back:hover { color: #30291f; text-decoration: underline; }
 .recovery-back:focus-visible { outline: 2px solid #9a743f; outline-offset: 5px; border-radius: 4px; }
 .recovery-page .bg-image, .recovery-page .overlay { position: fixed; }
+.recovery-email { margin-bottom: 8px; padding-bottom: 18px; border-bottom: 1px dashed #d8c9b0; }
+.recovery-email .input-group { margin-bottom: 14px; }
+.recovery-email .recovery-send { background: #8a5b22; }
+.recovery-step { margin: 14px 0 18px; color: #30291f; font-size: 14px; font-weight: 600; }
 @media (max-width: 450px) {
   .login-card { min-height: 460px; }
   .login-card.recovery-card { width: calc(100% - 32px); min-height: 0; margin: 24px 16px; padding: 64px 24px 28px; }
@@ -354,4 +358,28 @@ body { overflow-x: hidden; overflow-y: auto; }
     font-size: 12px;
   }
 
+}
+
+/* Verify email page */
+.verify-card { text-align: left; }
+.verify-icon {
+  display: grid; place-items: center; width: 54px; height: 54px; margin: 0 auto 12px;
+  border-radius: 16px; background: #f4e7cf; color: #8a4b0c; font-size: 26px;
+}
+.verify-card .verify-code {
+  font-size: 26px; font-weight: 700; letter-spacing: 12px; text-align: center; padding-left: 22px;
+}
+.verify-card .verify-code::placeholder { letter-spacing: 12px; color: #c9b99f; }
+.verify-help { margin-top: 18px; color: #6e6254; font-size: 13px; line-height: 1.6; text-align: center; }
+.verify-help p { margin: 0 0 8px; }
+.verify-resend {
+  margin: 4px 0 12px; padding: 9px 18px; border: 1px solid #c9a878; border-radius: 999px;
+  background: #fff; color: #5a3a12; font: 600 13px Poppins, sans-serif; cursor: pointer;
+}
+.verify-resend:hover:not(:disabled) { background: #f8eedc; }
+.verify-resend:disabled { cursor: default; opacity: .6; }
+.verify-resend:focus-visible { outline: 2px solid #9a743f; outline-offset: 3px; }
+.verify-wrong a { color: #8a4b0c; font-weight: 600; }
+@media (max-width: 450px) {
+  .verify-card .verify-code { font-size: 22px; letter-spacing: 8px; padding-left: 14px; }
 }

@@ -1,4 +1,4 @@
-/* Sales Report & Analytics: daily, weekly, monthly and yearly sales in plain numbers. */
+/* Sales Report: daily, weekly, monthly and yearly sales in plain numbers. */
 (() => {
   "use strict";
   const peso = value => "₱" + Number(value || 0).toLocaleString("en-PH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -11,32 +11,37 @@
   const longDate = value => new Date(value + "T00:00:00Z").toLocaleDateString("en-PH", {timeZone: "UTC", dateStyle: "long"});
   const longMonth = value => new Date(value + "-01T00:00:00Z").toLocaleDateString("en-PH", {timeZone: "UTC", month: "long", year: "numeric"});
 
+  const intervalEl = document.getElementById("reportInterval");
   const dateInput = document.getElementById("summaryDate");
   const monthInput = document.getElementById("summaryMonth");
-  const monthLabel = document.getElementById("summaryMonthLabel");
-  const yearInput = document.getElementById("summaryYear");
-  const yearLabel = document.getElementById("summaryYearLabel");
   const status = document.getElementById("salesSummaryStatus");
   const today = manilaToday();
+  const shiftDay = (day, by) => new Date(Date.parse(day + "T00:00:00Z") + by * 86400000).toISOString().slice(0, 10);
   dateInput.value = today; dateInput.max = today;
   monthInput.value = today.slice(0, 7); monthInput.max = today.slice(0, 7);
-  // Kopi; Calamba opened in 2021.
-  for (let year = Number(today.slice(0, 4)); year >= 2021; year--) yearInput.add(new Option(String(year), String(year)));
-  let period = "day", version = 0, lastQuery = "";
+  let version = 0, lastQuery = "", lastData = null;
 
+  // Each interval maps to the server's daily, weekly, monthly or yearly summary.
   function query() {
-    if (period === "year") return new URLSearchParams({period, year: yearInput.value || today.slice(0, 4)});
-    return new URLSearchParams(["day", "week"].includes(period) ? {period, date: dateInput.value || today} : {period, month: monthInput.value || today.slice(0, 7)});
+    const kind = intervalEl.value, month = today.slice(0, 7), year = Number(today.slice(0, 4));
+    const choice = {
+      today: {period: "day", date: today},
+      yesterday: {period: "day", date: shiftDay(today, -1)},
+      week: {period: "week", date: today},
+      lastweek: {period: "week", date: shiftDay(today, -7)},
+      month: {period: "month", month},
+      lastmonth: {period: "month", month: shiftMonth(month, -1)},
+      year: {period: "year", year: String(year)},
+      lastyear: {period: "year", year: String(year - 1)},
+      pickday: {period: "day", date: dateInput.value || today},
+      pickmonth: {period: "month", month: monthInput.value || month}
+    }[kind] || {period: "day", date: today};
+    return new URLSearchParams(choice);
   }
 
-  function setPeriod(next) {
-    period = next;
-    document.querySelectorAll("[data-summary-period]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.summaryPeriod === period)));
-    // Weekly uses the date picker too: any day picks its Monday-to-Sunday week.
-    dateInput.closest("label").hidden = !["day", "week"].includes(period);
-    dateInput.title = period === "week" ? "Pick any day in the week (Monday to Sunday)" : "";
-    monthLabel.hidden = period !== "month";
-    yearLabel.hidden = period !== "year";
+  function syncPickers() {
+    document.getElementById("summaryDateLabel").hidden = intervalEl.value !== "pickday";
+    document.getElementById("summaryMonthLabel").hidden = intervalEl.value !== "pickmonth";
   }
 
   function kpi(icon, label, value, note = "", tone = "") {
@@ -63,6 +68,7 @@
   }
 
   function render(data) {
+    lastData = data;
     const unit = data.period;
     const label = data.period === "day" ? longDate(data.start)
       : data.period === "week" ? `Week of ${longDate(data.start)} – ${longDate(data.end)}`
@@ -112,6 +118,22 @@
         <div class="sales-meter" role="img" aria-label="${pct}% of net sales"><span style="width:${pct}%"></span></div>
         <small>${pct}% of sales · ${plural(row.orders, "order")}</small></li>`;
     }).join("") : `<li class="sales-empty">No sales yet.</li>`;
+    const insights = data.insights || {};
+    const insight = (icon, label, value, note) => `<article class="sales-insight"><i class="bi ${icon}" aria-hidden="true"></i><div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(note)}</small></div></article>`;
+    document.getElementById("salesInsights").innerHTML = [
+      insight("bi-cup-straw", "Items sold", String(insights.itemsSold || 0), data.orders ? `About ${insights.itemsPerOrder} per order` : "No orders yet"),
+      insight("bi-clock", "Busiest hour", insights.peakHour?.label || "—", insights.peakHour ? plural(insights.peakHour.orders, "order") : "No orders yet"),
+      ...(data.period === "day" ? [] : [insight("bi-calendar-week", "Busiest day", insights.busiestDay?.label || "—", insights.busiestDay ? `${peso(insights.busiestDay.total)} in sales` : "No orders yet")]),
+      insight("bi-ticket-perforated", "Vouchers used", String(insights.vouchersUsed || 0), insights.vouchersUsed ? `${peso(data.voucherDiscounts)} off in total` : "No vouchers used"),
+      insight("bi-people", "Online customers", String(insights.onlineCustomers || 0), insights.onlineCustomers ? `${insights.returningCustomers || 0} came back from before` : "No online orders yet")
+    ].join("");
+    const categoryTotal = (data.byCategory || []).reduce((sum, row) => sum + row.sales, 0);
+    document.getElementById("salesCategories").innerHTML = (data.byCategory || []).length ? data.byCategory.map(row => {
+      const pct = percent(row.sales, categoryTotal);
+      return `<li><div class="sales-share-row"><span>${escapeHtml(row.category)}</span><strong>${peso(row.sales)}</strong></div>
+        <div class="sales-meter" role="img" aria-label="${pct}% of item sales"><span style="width:${pct}%"></span></div>
+        <small>${pct}% of item sales · ${row.quantity} sold</small></li>`;
+    }).join("") : `<li class="sales-empty">No items sold yet.</li>`;
     document.getElementById("salesPayments").innerHTML = share(data.byPayment, "payment");
     document.getElementById("salesTypes").innerHTML = share(data.byType, "type");
     const mostSold = Math.max(...data.topItems.map(row => row.quantity), 0);
@@ -136,26 +158,51 @@
     }
   }
 
-  document.querySelectorAll("[data-summary-period]").forEach(button => button.addEventListener("click", () => {
-    setPeriod(button.dataset.summaryPeriod);
+  intervalEl.addEventListener("change", () => {
+    syncPickers();
+    try { localStorage.setItem("kopi_report_interval", intervalEl.value); } catch {}
     refresh();
-  }));
+  });
   dateInput.addEventListener("change", refresh);
   monthInput.addEventListener("change", refresh);
-  yearInput.addEventListener("change", refresh);
-  document.getElementById("downloadSummary").addEventListener("click", async event => {
-    const button = event.currentTarget;
-    button.disabled = true;
-    try { await KopiApi.download("/admin/reports/summary/export?" + query(), "kopi-sales-summary.csv"); }
+
+  const exportBtn = document.getElementById("exportBtn"), exportMenu = document.getElementById("exportMenu");
+  function setExportMenu(open) {
+    exportMenu.hidden = !open;
+    exportBtn.setAttribute("aria-expanded", String(open));
+    if (open) exportMenu.querySelector("button").focus();
+  }
+  exportBtn.addEventListener("click", () => setExportMenu(exportMenu.hidden));
+  document.addEventListener("click", event => { if (!exportMenu.hidden && !event.target.closest(".tx-export")) setExportMenu(false); });
+  document.addEventListener("keydown", event => { if (event.key === "Escape" && !exportMenu.hidden) { setExportMenu(false); exportBtn.focus(); } });
+  exportMenu.addEventListener("click", async event => {
+    const item = event.target.closest("[data-export]");
+    if (!item) return;
+    setExportMenu(false);
+    if (item.dataset.export === "print") {
+      document.body.classList.add("printing-summary");
+      window.print();
+      return;
+    }
+    if (item.dataset.export === "json") {
+      if (!lastData) return KopiNotice.set(status, "The report is still loading.", "error");
+      const file = new Blob([JSON.stringify({generatedAt: new Date().toISOString(), ...lastData}, null, 2)], {type: "application/json"});
+      const link = Object.assign(document.createElement("a"), {href: URL.createObjectURL(file), download: `kopi-sales-${lastData.start}.json`});
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      return;
+    }
+    exportBtn.disabled = true;
+    try { await KopiApi.download("/admin/reports/summary/export?" + query(), "kopi-sales-summary.csv"); KopiNotice.toast("Report downloaded.", "success"); }
     catch (error) { KopiNotice.set(status, error.message, "error"); }
-    finally { button.disabled = false; }
-  });
-  document.getElementById("printSummary").addEventListener("click", () => {
-    document.body.classList.add("printing-summary");
-    window.print();
+    finally { exportBtn.disabled = false; }
   });
   window.addEventListener("afterprint", () => document.body.classList.remove("printing-summary"));
   window.addEventListener("focus", () => { if (query().toString() === lastQuery) refresh(); });
-  setPeriod("day");
+  try {
+    const saved = localStorage.getItem("kopi_report_interval");
+    if (saved && [...intervalEl.options].some(option => option.value === saved)) intervalEl.value = saved;
+  } catch {}
+  syncPickers();
   refresh();
 })();

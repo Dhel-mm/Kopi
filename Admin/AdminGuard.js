@@ -8,6 +8,7 @@
   if(session.user?.role!=="Admin"){window.location.replace(KopiApi.homeForRole(session.user?.role));return;}
   KopiApi.request("/me").then(({user})=>{
     if(user.role!=="Admin")window.location.replace(KopiApi.homeForRole(user.role));
+    else if(user.mustChangePassword)window.location.replace("/change-password.html");
   }).catch(error=>{
     if(error.status===401||error.status===403){KopiApi.clearSession();window.location.replace("../login.html");}
     else {

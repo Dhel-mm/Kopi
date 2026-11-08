@@ -23,7 +23,7 @@ const KopiProfile = (() => {
   async function save(form) {
     const data=Object.fromEntries(new FormData(form));
     if (data.newPassword!==data.confirmPassword) throw new Error("The new passwords do not match.");
-    if (data.newPassword && data.newPassword.length<12) throw new Error("Use at least 12 characters for your new password.");
+    if (data.newPassword && data.newPassword.length<8) throw new Error("Use at least 8 characters for your new password.");
     const result=await KopiApi.request("/me",{method:"PUT",body:JSON.stringify(data)});
     KopiApi.saveSession(result);
     for(const name of ["currentPassword","newPassword","confirmPassword"]) if(form.elements[name])form.elements[name].value="";

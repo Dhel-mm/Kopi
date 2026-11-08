@@ -1,4 +1,4 @@
-/* Shared, text-only feedback. Destructive actions keep their native confirmations. */
+/* Shared, text-only feedback, and the site's own confirmation box (instead of the browser's). */
 const KopiNotice = (() => {
   const kinds = new Set(["success", "error", "warning", "loading", "info"]);
   function kindFor(message) {
@@ -70,9 +70,38 @@ const KopiNotice = (() => {
       paint(element, kind);
     });
   }
+  // Asks a yes/no question in the middle of the screen. Resolves true only when the
+  // confirm button is pressed; Cancel, Esc and clicking outside resolve false.
+  function confirm(message, {title = "Please confirm", confirmText = "Confirm", cancelText = "Cancel", danger = false} = {}) {
+    return new Promise(resolve => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "kopi-confirm";
+      dialog.setAttribute("aria-labelledby", "kopiConfirmTitle");
+      dialog.innerHTML = `<form method="dialog" class="kopi-confirm-card">
+        <span class="kopi-confirm-icon" aria-hidden="true">${danger ? "!" : "?"}</span>
+        <h2 id="kopiConfirmTitle"></h2>
+        <p class="kopi-confirm-message"></p>
+        <div class="kopi-confirm-actions">
+          <button type="submit" value="cancel" class="kopi-confirm-cancel"></button>
+          <button type="submit" value="confirm" class="kopi-confirm-ok"></button>
+        </div></form>`;
+      if (danger) dialog.classList.add("danger");
+      dialog.querySelector("h2").textContent = title;
+      dialog.querySelector(".kopi-confirm-message").textContent = String(message || "");
+      dialog.querySelector(".kopi-confirm-cancel").textContent = cancelText;
+      dialog.querySelector(".kopi-confirm-ok").textContent = confirmText;
+      let answer = false;
+      dialog.querySelector("form").addEventListener("submit", event => { answer = event.submitter?.value === "confirm"; });
+      dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+      dialog.addEventListener("close", () => { dialog.remove(); resolve(answer); });
+      document.body.append(dialog);
+      dialog.showModal();
+      dialog.querySelector(".kopi-confirm-ok").focus();
+    });
+  }
   const observer = new MutationObserver(refresh);
   observer.observe(document.body, {childList:true, subtree:true, characterData:true});
   refresh();
-  return {set, toast, kindFor};
+  return {set, toast, kindFor, confirm};
 })();
 window.KopiNotice = KopiNotice;

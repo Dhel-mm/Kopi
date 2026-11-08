@@ -12,8 +12,10 @@
   <link rel="stylesheet" href="Menu.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
   <link rel="stylesheet" href="../Customer/Notices.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="../Customer/Notices.js"></script>
   <div class="admin-shell">
     <aside class="admin-sidebar">
@@ -22,10 +24,11 @@
         <a class="admin-nav-link" href="Dashboard.html"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
         <a class="admin-nav-link" href="Operation.html"><i class="bi bi-display"></i><span>Operation</span></a>
         <a class="admin-nav-link" href="Transactions.html"><i class="bi bi-receipt"></i><span>Transactions</span></a>
-        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report &amp; Analytics</span></a>
+        <a class="admin-nav-link" href="Reports.html"><i class="bi bi-graph-up-arrow"></i><span>Sales Report</span></a>
         <a class="admin-nav-link" href="Inventory.html"><i class="bi bi-box-seam-fill"></i><span>Inventory</span></a>
         <a class="admin-nav-link active" href="Menu.html" aria-current="page"><i class="bi bi-cup-hot-fill"></i><span>Menu Management</span></a>
         <a class="admin-nav-link" href="Users.html"><i class="bi bi-people-fill"></i><span>Users</span></a>
+        <a class="admin-nav-link" href="Activity.html"><i class="bi bi-clock-history"></i><span>User Activity</span></a><a class="admin-nav-link" href="Settings.html"><i class="bi bi-gear-fill"></i><span>Settings</span></a>
       </nav>
     </aside>
 
@@ -39,6 +42,7 @@
         <div class="menu-toolbar">
           <label class="menu-search"><i class="bi bi-search" aria-hidden="true"></i><input id="menuSearch" type="search" placeholder="Search menu items…" aria-label="Search menu items"></label>
           <div class="menu-toolbar-actions">
+            <button class="menu-archived-btn" type="button" id="addCategory"><i class="bi bi-folder-plus" aria-hidden="true"></i>Add category</button>
             <button class="menu-archived-btn" type="button" id="openArchived"><i class="bi bi-archive" aria-hidden="true"></i>Archived <span class="menu-count" id="archivedCount">0</span></button>
             <button class="menu-add-btn" type="button" id="addItem"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add New Item</button>
           </div>
@@ -107,12 +111,35 @@
           </div>
         </section>
 
-        <p class="menu-recipe-note"><i class="bi bi-info-circle" aria-hidden="true"></i>New items and new sizes can be ordered only after their ingredients are set in <a href="Inventory.html">Inventory → Recipe setup</a>, so stock stays correct.</p>
+        <section class="menu-section" aria-labelledby="ingredientsTitle">
+          <div class="menu-section-head"><h3 id="ingredientsTitle">Ingredients</h3><button class="menu-link-btn" type="button" id="addIngredient"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add ingredient</button></div>
+          <p class="menu-hint">Enter how much each size uses. Stock goes down by these amounts on every order. Choose “+ New ingredient” to add one to Inventory from here.</p>
+          <div class="menu-rows" id="ingredientRows"></div>
+          <datalist id="ingredientCategories"></datalist>
+        </section>
         <p class="menu-form-status" id="itemStatus" role="status"></p>
       </div>
       <footer class="menu-dialog-foot">
         <button class="menu-ghost-btn" type="button" data-close>Cancel</button>
         <button class="menu-add-btn" type="submit" id="saveItem">Save item</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="menu-dialog menu-category-dialog" id="categoryDialog" aria-labelledby="categoryTitle">
+    <form id="categoryForm" novalidate>
+      <header class="menu-dialog-head">
+        <h2 id="categoryTitle">Add category</h2>
+        <button class="close-panel" type="button" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </header>
+      <div class="menu-dialog-body">
+        <p class="menu-hint">A new tab on the customer menu, for example "Seasonal Specials". It appears on the menu once it has at least one item.</p>
+        <label class="menu-field">Category name<input id="categoryName" maxlength="40" required placeholder="e.g. Seasonal Specials"></label>
+        <p class="menu-form-status" id="categoryStatus" role="status"></p>
+      </div>
+      <footer class="menu-dialog-foot">
+        <button class="menu-ghost-btn" type="button" data-close>Cancel</button>
+        <button class="menu-add-btn" type="submit" id="saveCategory">Add category</button>
       </footer>
     </form>
   </dialog>

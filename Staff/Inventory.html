@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="../Customer/Notices.css">
   <link rel="icon" href="../Customer/HomePic/Logo.png">
   <title>Kopi; Staff - Stock Availability</title>
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body class="workspace-loading" data-workspace="Staff" data-page="stock" data-title="Stock Availability" data-subtitle="Know what is running low before the next order.">
+<script src="/Customer/Loader.js"></script>
   <div class="workspace-gate" id="workspaceGate" role="status">Opening your workspace…</div>
   <div class="admin-shell">
     <aside class="admin-sidebar" id="workspaceSidebar"></aside>
@@ -20,6 +22,11 @@
       <header class="admin-topbar" id="workspaceHeader"></header>
       <main class="workspace-content">
         <p class="workspace-intro">Read-only ingredient stock. Contact the administrator for restocking or corrections.</p>
+        <section class="workspace-stats" aria-label="Stock summary">
+          <div class="workspace-stat"><span>Low stock</span><strong id="stockLowCount">0</strong></div>
+          <div class="workspace-stat stock-out-stat"><span>Out of stock</span><strong id="stockOutCount">0</strong></div>
+          <div class="workspace-stat"><span>All ingredients</span><strong id="stockTotalCount">0</strong></div>
+        </section>
         <div class="workspace-tools">
           <label class="workspace-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="stockSearch" placeholder="Search ingredient…" aria-label="Search ingredients"></label>
           <select class="workspace-select" id="stockStatus" aria-label="Filter stock status"><option value="">All stock</option><option>In Stock</option><option>Low Stock</option><option>Out of Stock</option></select>
@@ -27,7 +34,7 @@
         </div>
         <p id="stockMessage" class="workspace-status" role="status" aria-live="polite"></p>
         <section class="workspace-table-card" aria-label="Ingredient availability"><div class="workspace-table-scroll">
-          <table class="workspace-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Available quantity</th><th>Status</th></tr></thead><tbody id="stockRows"></tbody></table>
+          <table class="workspace-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Available quantity</th><th>Low-stock level</th><th>Status</th></tr></thead><tbody id="stockRows"></tbody></table>
         </div><p class="workspace-empty" id="stockEmpty" hidden>No ingredients match this view.</p></section>
       </main>
     </div>

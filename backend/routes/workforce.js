@@ -16,6 +16,9 @@ module.exports = function workforceRouter(db) {
   const rowFor = db.prepare("SELECT * FROM orders WHERE id=?");
   const cashier = requireRole("Cashier");
   const staff = requireRole("Admin", "Staff");
+  // GCash payments and Senior Citizen / PWD discounts are verified by the Cashier, never by Staff.
+  const verifier = requireRole("Admin", "Cashier");
+  const anyEmployee = requireRole("Admin", "Cashier", "Staff");
   router.use(authFor(db), requireRole("Admin", "Cashier", "Staff"));
 
   const itemsFor = db.prepare(`SELECT product_name AS name,quantity,price,options_json
@@ -126,35 +129,62 @@ module.exports = function workforceRouter(db) {
       res.json(result);
     } catch (error) {sendError(res, error);}
   });
-  router.patch("/preparation/:id/verify-payment", staff, (req, res) => {
-    try {res.json(paymentReview.verify(req.params.id, req.body || {}, req.user));}
-    catch (error) {sendError(res, error);}
-  });
   router.patch("/preparation/:id/reject", staff, (req, res) => {
     try {res.json({...safety.reject(req.params.id, req.body || {}, req.user, workflow), message:"Order rejected. Reserved ingredients were returned and the customer will be notified."});}
     catch (error) {sendError(res, error);}
   });
-  router.get("/preparation/:id/payment-proof", staff, (req, res) => {
+  // ---- Verification desk: GCash payments and Senior Citizen / PWD discounts ----
+  router.get("/verification-alerts", verifier, (req, res) => {
+    res.json(require("../services/alerts").createAlertService(db).admin());
+  });
+  router.get("/verifications", verifier, (req, res) => {
+    const orders = db.prepare(`SELECT o.id,o.order_number AS orderNumber,o.order_type AS orderType,
+      o.service_type AS serviceType,o.status,o.payment,o.payment_status AS paymentStatus,
+      o.payment_reference AS paymentReference,o.phone,o.subtotal,o.total,o.created_at AS createdAt,
+      o.special_discount_type AS specialDiscountType,o.special_discount_id AS specialDiscountId,
+      o.special_discount_name AS specialDiscountName,o.special_discount AS specialDiscount,o.vat_exempt AS vatExempt,
+      COALESCE(NULLIF(o.customer_name,''),u.first_name || ' ' || u.last_name) AS customer
+      FROM orders o JOIN users u ON u.id=o.user_id
+      WHERE o.order_type='Online' AND o.status<>'Canceled' AND (
+        (o.status IN ('New','Preparing') AND ((o.payment='GCash' AND o.payment_status='Pending verification') OR o.special_discount_status='Pending verification'))
+        OR (o.status<>'Completed' AND o.payment='GCash' AND o.special_discount_removed>0 AND o.balance_paid_at IS NULL))
+      ORDER BY o.id`).all();
+    res.json({orders:orders.map(order => ({...order,items:items(order.id),...safety.describe(rowFor.get(order.id))}))});
+  });
+  router.get("/verifications/:id/payment-proof", verifier, (req, res) => {
     try {res.json(safety.proof(req.params.id));}
     catch (error) {sendError(res, error);}
   });
-  router.get("/preparation/:id/id-proof", staff, (req, res) => {
+  router.get("/verifications/:id/id-proof", verifier, (req, res) => {
     try {res.json(safety.idProof(req.params.id));}
     catch (error) {sendError(res, error);}
   });
-  router.patch("/preparation/:id/verify-id", staff, (req, res) => {
+  router.patch("/verifications/:id/verify-payment", verifier, (req, res) => {
+    try {res.json(paymentReview.verify(req.params.id, req.body || {}, req.user));}
+    catch (error) {sendError(res, error);}
+  });
+  router.patch("/verifications/:id/reject-payment", verifier, (req, res) => {
+    try {res.json({...paymentReview.reject(req.params.id, req.body || {}, req.user), message:"Order canceled. The customer will receive a payment-not-received notice."});}
+    catch (error) {sendError(res, error);}
+  });
+  router.patch("/verifications/:id/verify-id", verifier, (req, res) => {
     try {res.json(safety.verifyId(req.params.id, req.body || {}, req.user));}
     catch (error) {sendError(res, error);}
   });
-  router.patch("/preparation/:id/not-approve-id", staff, (req, res) => {
+  router.patch("/verifications/:id/not-approve-id", verifier, (req, res) => {
     try {res.json({...safety.disapproveId(req.params.id, req.body || {}, req.user, workflow), message:"Discount not approved. The order continues at the normal price and the customer will be notified."});}
+    catch (error) {sendError(res, error);}
+  });
+  router.patch("/verifications/:id/balance-gcash", verifier, (req, res) => {
+    try {res.json(safety.payBalanceByGcash(req.params.id, req.body || {}, req.user));}
     catch (error) {sendError(res, error);}
   });
   router.put("/preparation/:id/delivery", staff, (req, res) => {
     try {res.json({delivery:delivery.save(req.params.id, req.body || {}, req.user)});}
     catch (error) {sendError(res, error);}
   });
-  router.get("/stock", staff, (req, res) => {
+  // Read-only ingredient stock for Staff and Cashier; only the Admin can change it.
+  router.get("/stock", anyEmployee, (req, res) => {
     const items = stockLevels(db).map(({item, level}) => ({
         id:item.id,productName:item.product_name,category:item.category,
         quantity:level.quantity,measurement:item.measurement,reorderLevel:level.reorderLevel,

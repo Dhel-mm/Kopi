@@ -197,6 +197,39 @@ function createMenuService(db) {
         ON CONFLICT(id) DO UPDATE SET label=excluded.label`).run(`${id}|${variant}`, `${product.name} — ${variant}`);
     }
   }
+  // Ingredients entered while adding or editing the item, so nobody has to go to
+  // Inventory first. Each row names an existing ingredient or a new one, with the
+  // amount each size uses. New ingredients are added to Inventory here.
+  function saveIngredients(id, product, rows, user) {
+    if (rows == null) return;
+    const { addInventoryItem, validateTerms } = require("./inventory");
+    if (!Array.isArray(rows) || !rows.length || rows.length > 40) throw new OrderError("Add 1 to 40 ingredients.");
+    const seen = new Set();
+    const resolved = rows.map(row => {
+      if (!row || typeof row !== "object" || !row.amounts || typeof row.amounts !== "object") throw new OrderError("Complete each ingredient row.");
+      if (row.newIngredient) {
+        const fresh = row.newIngredient;
+        const name = text(fresh.name, "the new ingredient's name", 100);
+        const base = slug(name) || "ingredient";
+        let sku = base;
+        for (let n = 2; db.prepare("SELECT 1 FROM inventory_items WHERE sku=?").get(sku); n++) sku = `${base}-${n}`;
+        addInventoryItem(db, { sku, productName: name, category: text(fresh.category, "the new ingredient's category", 100),
+          measurement: fresh.measurement, quantity: fresh.quantity, initialQuantity: fresh.packageQuantity, packageUnit: "package" });
+        return { sku, unit: fresh.measurement, amounts: row.amounts };
+      }
+      const key = `${row.sku}|${row.unit}`;
+      if (seen.has(key)) throw new OrderError("The same ingredient is listed twice. Keep one row for each ingredient.");
+      seen.add(key);
+      return { sku: row.sku, unit: row.unit, amounts: row.amounts };
+    });
+    for (const variant of Object.keys(product.prices)) {
+      const terms = resolved.filter(row => row.amounts[variant] != null && row.amounts[variant] !== "" && row.amounts[variant] !== 0)
+        .map(row => ({ sku: row.sku, unit: row.unit, amount: row.amounts[variant] }));
+      if (!terms.length) throw new OrderError(`Enter at least one ingredient amount for ${variant}.`);
+      db.prepare("UPDATE menu_recipes SET terms_json=?,updated_at=CURRENT_TIMESTAMP,updated_by=? WHERE id=?")
+        .run(JSON.stringify(validateTerms(terms, db)), user.id, `${id}|${variant}`);
+    }
+  }
   function create(input, user) {
     const product = productFromInput(input);
     return db.transaction(() => {
@@ -208,6 +241,7 @@ function createMenuService(db) {
       db.prepare("INSERT INTO menu_products(id,category_id,position,data_json,available,updated_by) VALUES(?,?,?,?,?,?)")
         .run(id, categoryId, position, JSON.stringify(product), input.available === false ? 0 : 1, user.id);
       ensureRecipes(id, product);
+      saveIngredients(id, product, input.ingredients, user);
       load(db);
       return { id, ...product, category: categoryId, available: input.available !== false };
     }).immediate();
@@ -224,6 +258,7 @@ function createMenuService(db) {
       db.prepare(`UPDATE menu_products SET category_id=?,position=?,data_json=?,available=?,updated_at=CURRENT_TIMESTAMP,updated_by=? WHERE id=?`)
         .run(categoryId, position, JSON.stringify(product), input.available === false ? 0 : 1, user.id, id);
       ensureRecipes(id, product);
+      saveIngredients(id, product, input.ingredients, user);
       load(db);
       return { id, ...product, category: categoryId, available: input.available !== false };
     }).immediate();
@@ -249,7 +284,16 @@ function createMenuService(db) {
   function imageFile(id) {
     return db.prepare("SELECT mime,data FROM menu_images WHERE id=?").get(Number(id)) || null;
   }
-  return { list, create, update, setAvailable, archive, imageFile };
+  // A new, empty category; items are added to it with Add New Item.
+  function addCategory(input) {
+    if (!input?.name) throw new OrderError("Enter a category name.");
+    const existing = db.prepare("SELECT id FROM menu_categories WHERE lower(name)=lower(?)").get(String(input.name).trim());
+    if (existing) throw new OrderError("That category already exists.", 409);
+    const id = db.transaction(() => category({ newCategory: input.name })).immediate();
+    load(db);
+    return db.prepare("SELECT id,name FROM menu_categories WHERE id=?").get(id);
+  }
+  return { list, create, update, setAvailable, archive, addCategory, imageFile };
 }
 
 module.exports = { current: () => current, load, reset, migrateMenu, createMenuService, productFromInput };

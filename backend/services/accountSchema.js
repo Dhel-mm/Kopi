@@ -1,7 +1,8 @@
 function migrateAccounts(db) {
   db.transaction(() => {
     for (const [table, additions] of Object.entries({
-      users: {auth_version:"INTEGER NOT NULL DEFAULT 0",avatar_data:"TEXT",last_seen_at:"INTEGER"},
+      users: {auth_version:"INTEGER NOT NULL DEFAULT 0",avatar_data:"TEXT",last_seen_at:"INTEGER",delivery_address:"TEXT",
+        must_change_password:"INTEGER NOT NULL DEFAULT 0",temp_password_expires_at:"INTEGER"},
       feedback: {additional_comment:"TEXT NOT NULL DEFAULT ''"}
     })) {
       const columns = new Set(db.prepare("PRAGMA table_info("+table+")").all().map(row=>row.name));
@@ -25,6 +26,11 @@ function migrateAccounts(db) {
       CREATE INDEX IF NOT EXISTS orders_completed_report ON orders(status,completed_at);
       CREATE INDEX IF NOT EXISTS orders_user_report ON orders(user_id,created_at);
     `);
+    // Wrong tries on an emailed 6-digit recovery code.
+    if (!db.prepare("PRAGMA table_info(password_resets)").all().some(row => row.name === "attempts")) {
+      db.exec("ALTER TABLE password_resets ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0");
+    }
+    require("./emailVerification").migrateEmailVerification(db);
   })();
 }
 module.exports={migrateAccounts};

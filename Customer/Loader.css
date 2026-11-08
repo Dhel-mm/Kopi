@@ -1,0 +1,69 @@
+/* Page loader: a cup of coffee with rising steam (Loader.js). */
+.kopi-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  /* See-through cream over a blurred page. */
+  background: rgba(251, 243, 231, 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #3d2b16;
+  font-family: "Poppins", Arial, sans-serif;
+  opacity: 0;
+  /* Fast pages finish before the loader ever appears. */
+  animation: kopi-loader-in 240ms ease 200ms forwards;
+}
+.kopi-loader.is-done {
+  animation: none;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+.kopi-loader-cup { width: 140px; height: 140px; }
+.kopi-loader-cup svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.kopi-loader .cup { fill: #fffdf9; stroke: #3d2b16; stroke-width: 4; stroke-linejoin: round; }
+.kopi-loader .handle { fill: none; stroke: #3d2b16; stroke-width: 4; stroke-linecap: round; }
+.kopi-loader .coffee { fill: #6b4423; }
+.kopi-loader .crema { fill: #b9782a; opacity: 0.55; }
+.kopi-loader .saucer { fill: #d49b43; opacity: 0.45; }
+.kopi-loader .steam path {
+  fill: none;
+  stroke: #b9a58a;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: kopi-steam 2.2s ease-in-out infinite;
+}
+.kopi-loader .steam path:nth-child(2) { animation-delay: 0.45s; }
+.kopi-loader .steam path:nth-child(3) { animation-delay: 0.9s; }
+.kopi-loader .cup-group { transform-origin: 60px 104px; animation: kopi-cup 2.2s ease-in-out infinite; }
+.kopi-loader-text { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; }
+.kopi-loader-text span { display: inline-block; animation: kopi-dot 1.2s ease-in-out infinite; }
+.kopi-loader-text span:nth-child(2) { animation-delay: 0.15s; }
+.kopi-loader-text span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes kopi-loader-in { to { opacity: 1; } }
+@keyframes kopi-steam {
+  0% { opacity: 0; transform: translateY(8px) scaleY(0.7); }
+  30% { opacity: 0.9; }
+  70% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-14px) scaleY(1.1); }
+}
+@keyframes kopi-cup { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-2deg); } }
+@keyframes kopi-dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .kopi-loader .steam path { animation: none; opacity: 0.6; }
+  .kopi-loader .cup-group, .kopi-loader-text span { animation: none; }
+}
+
+/* Browsers without blur get a solid background instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .kopi-loader { background: #fbf3e7; }
+}

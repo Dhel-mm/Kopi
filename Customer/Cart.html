@@ -12,8 +12,10 @@
   <link rel="icon" href="HomePic/Logo.png"/>
   <link rel="stylesheet" href="Notices.css">
   <link rel="stylesheet" href="Theme.css">
+  <link rel="stylesheet" href="/Customer/Loader.css">
 </head>
 <body>
+<script src="/Customer/Loader.js"></script>
 <script src="Notices.js"></script>
   <header class="site-header">
     <nav class="navbar" aria-label="Main navigation">
@@ -42,6 +44,7 @@
           <span class="cart-count" data-cart-count>0</span>
           <span>Cart</span>
         </a>
+        
         <a class="nav-link" href="Account.html">
           <i class="bi bi-person-fill" aria-hidden="true"></i>
           <span>Account</span>
@@ -55,9 +58,10 @@
       <div class="cart-shell">
         <div class="cart-heading">
           <h1>My Cart</h1>
-          <button class="clear-btn" type="button" id="clearCartBtn">
+          <button class="cart-updates-btn" type="button" id="orderBell" aria-label="Order updates" hidden><i class="bi bi-bell-fill" aria-hidden="true"></i><span>Order Updates</span><span class="cart-updates-count" id="orderBellCount" hidden>0</span></button>
+          <button class="clear-btn" type="button" id="removeSelectedBtn" disabled>
             <i class="bi bi-trash3"></i>
-            Clear Order
+            Remove Selected
           </button>
         </div>
 
@@ -65,6 +69,7 @@
 
         <template id="cartItemTemplate">
           <article class="cart-item" data-cart-id="">
+            <label class="cart-check"><input type="checkbox" data-action="select"><span class="cart-check-box" aria-hidden="true"><i class="bi bi-check-lg"></i></span></label>
             <img class="item-img" src="" alt="">
             <div class="item-info">
               <h3 data-cart-name>Drink name</h3>
@@ -78,7 +83,6 @@
                 <span data-cart-quantity aria-live="polite">1</span>
                 <button type="button" data-action="increase" aria-label="Increase quantity"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
               </div>
-              <button class="delete-btn" type="button" data-action="delete">Remove</button>
             </div>
           </article>
         </template>
@@ -88,7 +92,8 @@
         </template>
 
         <div class="cart-total-bar">
-          <strong>Total: </strong>
+          <label class="cart-check cart-select-all"><input type="checkbox" id="selectAllCart"><span class="cart-check-box" aria-hidden="true"><i class="bi bi-check-lg"></i></span><span>Select all</span></label>
+          <strong class="cart-total-label">Total: </strong>
           <strong id="cartTotal">PHP 0</strong>
           <button class="dark-btn" type="button" id="checkoutBtn">Checkout</button>
         </div>
@@ -117,12 +122,13 @@
               <span><strong>Pickup</strong><small>Get it at our store and pay there</small></span>
             </label>
           </div>
+          <p class="delivery-fee-note" id="deliveryFeeNote"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><span><strong>Note:</strong> Delivery fee is paid separately.</span></p>
           <p class="pickup-note" id="pickupNote" hidden><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>Pick up at <strong>Kopi; Calamba</strong>, 72 Villanueva Subdivision, Camia Street, Brgy. Lingga, Calamba · Open <strong>Tuesday to Sunday, 4:00 PM to 11:00 PM</strong>. We will tell you here on the website when your order is ready. Pay at the counter, or prepay by GCash.</span></p>
         </fieldset>
         <fieldset class="field-group time-slot-group" id="timeSlotGroup">
           <legend id="timeSlotLabel">Rider pickup time</legend>
           <div class="time-choice">
-            <label class="time-choice-option" for="timeAsap"><input type="radio" id="timeAsap" name="timeChoice" value="ASAP" checked><span>As soon as possible</span></label>
+            <label class="time-choice-option" for="timeAsap"><input type="radio" id="timeAsap" name="timeChoice" value="ASAP" checked><span id="timeAsapLabel">Priority Delivery</span></label>
             <label class="time-choice-option" for="timeScheduled"><input type="radio" id="timeScheduled" name="timeChoice" value="Scheduled"><span>Choose date and time</span></label>
           </div>
           <div class="time-inputs" id="timeInputs" hidden>
@@ -147,7 +153,7 @@
               </button>
               <button type="button" data-payment="GCash" aria-pressed="false">
                 <img class="gcash-logo" src="HomePic/gcash.png" alt="" width="32" height="32">
-                <span><strong>GCash</strong><small>Pay using our number or QR</small></span>
+                <span><strong>GCash</strong><small>Pay by scanning our QR code</small></span>
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
               </button>
             </div>
@@ -156,13 +162,32 @@
 
         <div class="field-group">
           <label for="referenceNumber">Phone Number</label>
-          <input id="referenceNumber" type="tel" inputmode="numeric" placeholder="09XX-XXX-XXXX" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter an 11-digit mobile number beginning with 09" required>
+          <input id="referenceNumber" type="tel" inputmode="numeric" placeholder="09XXXXXXXXX" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Numbers only: an 11-digit mobile number beginning with 09" required>
         </div>
 
-        <div class="field-group" id="addressGroup">
-          <label for="houseAddress">Full Address</label>
-          <input id="houseAddress" type="text" placeholder="House No., Street, Subdivision, Barangay, City/Municipality, Province" required>
-        </div>
+        <fieldset class="field-group address-group" id="addressGroup">
+          <legend>Delivery Address</legend>
+          <p class="address-hint">Choose your province, then your city or municipality, then your barangay. You only type your house number and street.</p>
+          <div class="address-fields">
+            <label for="addressProvince">Province
+              <span class="address-select"><select id="addressProvince" autocomplete="address-level1" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            </label>
+            <label for="addressCity">City / Municipality
+              <span class="address-select"><select id="addressCity" autocomplete="address-level2" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            </label>
+            <label class="address-wide" for="addressBarangay">Barangay
+              <span class="address-select"><select id="addressBarangay" required></select><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+            </label>
+            <label for="addressStreet">House No., Street, Subdivision
+              <input id="addressStreet" type="text" maxlength="150" autocomplete="address-line1" placeholder="e.g. 72 Camia St., Villanueva Subd." required>
+            </label>
+            <label for="addressLandmark">Landmark (optional)
+              <input id="addressLandmark" type="text" maxlength="150" placeholder="e.g. Blue gate near the chapel">
+            </label>
+          </div>
+          <label class="address-save" for="saveAddress"><input id="saveAddress" type="checkbox" checked><span>Save this address to my account for next time</span></label>
+          <p class="address-saved-note" id="addressSavedNote" hidden><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Filled in from your saved address.</p>
+        </fieldset>
 
         <div class="field-group">
           <label for="voucherCode">Voucher Code</label>
@@ -220,7 +245,7 @@
         <section class="gcash-panel" id="gcashPanel" aria-labelledby="gcashTitle" hidden>
           <div class="gcash-panel-heading">
             <img class="gcash-logo" src="HomePic/gcash.png" alt="" width="32" height="32">
-            <div><h2 id="gcashTitle">Pay with GCash</h2><p>Scan, send, then enter your reference number.</p></div>
+            <div><h2 id="gcashTitle">Pay with GCash</h2><p>Scan, send, then enter your reference number and receipt.</p></div>
             <span class="manual-payment-tag">Manual payment</span>
           </div>
           <figure class="gcash-qr">
@@ -232,28 +257,25 @@
           <div class="gcash-instructions">
             <div class="gcash-amount"><span>Amount to send</span><strong id="gcashAmount">₱ 0.00</strong></div>
             <div class="gcash-recipient">
-              <span>GCash number</span>
-              <div><strong id="gcashNumber">+639551778760</strong><button type="button" id="copyGcashNumber" aria-label="Copy GCash number"><i class="bi bi-copy" aria-hidden="true"></i> Copy</button></div>
               <small>Account name: MA***E M.</small>
-              <small id="gcashCopyStatus" role="status"></small>
             </div>
             <ol>
-              <li>Scan or upload this QR in GCash, or send to the number above.</li>
+              <li>Scan or upload this QR in GCash.</li>
               <li>Check the recipient and amount before confirming your payment.</li>
-              <li>Enter the reference number from your GCash receipt, then click Order Now.</li>
+              <li>Enter the reference number and attach the screenshot of your GCash receipt, then click Order Now.</li>
             </ol>
             <div class="field-group">
               <label for="gcashReference">GCash Reference Number</label>
               <input id="gcashReference" name="gcashReference" type="text" inputmode="numeric" autocomplete="off" placeholder="13-digit Ref No. from your GCash receipt" pattern="[0-9]{13}" minlength="13" maxlength="13" title="Enter the 13-digit reference number (numbers only) from your GCash receipt." aria-describedby="gcashVerificationNote" disabled>
             </div>
             <div class="field-group gcash-proof">
-              <label for="gcashProof">Receipt screenshot <span class="optional-tag">optional</span></label>
+              <label for="gcashProof">Receipt screenshot <span class="required-tag">required</span></label>
               <input id="gcashProof" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="gcashProofStatus">
               <div class="gcash-proof-preview" id="gcashProofPreview" hidden>
                 <img id="gcashProofImage" alt="Your GCash receipt screenshot">
                 <button type="button" id="removeGcashProof"><i class="bi bi-x-lg" aria-hidden="true"></i> Remove</button>
               </div>
-              <small id="gcashProofStatus" role="status">Helps our staff find your payment faster.</small>
+              <small id="gcashProofStatus" role="status">Upload the screenshot of your GCash receipt. You cannot order by GCash without it.</small>
             </div>
             <p class="gcash-notice" id="gcashVerificationNote"><i class="bi bi-info-circle" aria-hidden="true"></i> Your payment will be checked by our staff in the shop's GCash account. A reference number or screenshot does not automatically confirm payment. If GCash is delayed, your order simply waits as "Pending verification" — do not send the payment again. If you change the order or apply a discount, check the amount again before sending.</p>
           </div>
@@ -313,7 +335,7 @@
           <div class="receipt-meta">
             <p><strong>ORDER NO.</strong> <span id="receiptOrderNo">#0000</span></p>
             <p id="receiptDate">TODAY</p>
-            <p><strong id="receiptTimeLabel">RIDER PICKUP:</strong> <span id="receiptTime">As soon as possible</span></p>
+            <p><strong id="receiptTimeLabel">RIDER PICKUP:</strong> <span id="receiptTime">Priority Delivery</span></p>
             <p><strong>PAYMENT:</strong> <span id="receiptPayment">Cash</span></p>
             <p id="receiptReferenceRow" hidden><strong>REFERENCE:</strong> <span id="receiptReference"></span></p>
             <p class="receipt-payment-status" id="receiptPaymentStatus"></p>
@@ -354,7 +376,9 @@
   <script src="DeliveryInfo.js"></script>
   <script src="DeliveryNotifications.js"></script>
   <script src="Catalog.js"></script>
+  <script src="PhLocations.js"></script>
   <script src="Store.js"></script>
   <script src="Cart.js"></script>
+  <script src="OrderBell.js"></script>
 </body>
 </html>

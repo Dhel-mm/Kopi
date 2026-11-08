@@ -52,6 +52,11 @@
 .review-link-btn.verify { border-color: #9cc79e; color: #24592c; }
 .review-link-btn.verify:hover { background: #eef8ee; }
 .review-link-btn:disabled { opacity: .6; cursor: wait; }
+/* Remaining balance paid by GCash, after a discount was not approved. */
+.balance-qr { margin: 0 0 8px; text-align: center; }
+.balance-qr img { width: 150px; max-width: 100%; border: 1px solid #e3d6bf; border-radius: 10px; }
+.balance-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: 13px; line-height: 1.4; }
+.review-dialog .workspace-field input { width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid #cdbfa8; border-radius: 9px; font: inherit; font-size: 13px; }
 /* Values staff must check (GCash reference number), bold and gold. */
 .key-value { color: #8a4b0c; font-weight: 700; }
 .confirm-dialog .confirm-message { font-size: 14px; line-height: 1.6; }

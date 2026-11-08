@@ -32,17 +32,17 @@
         <div class="name-row">
           <div class="input-group">
             <label>First Name</label>
-            <input type="text" name="firstName" placeholder="Juan" required>
+            <input type="text" name="firstName" placeholder="Juan" pattern="[^0-9]+" title="Letters only. Numbers are not allowed." maxlength="100" autocomplete="given-name" required>
           </div>
           <div class="input-group">
             <label>Last Name</label>
-            <input type="text" name="lastName" placeholder="Dela Cruz" required>
+            <input type="text" name="lastName" placeholder="Dela Cruz" pattern="[^0-9]+" title="Letters only. Numbers are not allowed." maxlength="100" autocomplete="family-name" required>
           </div>
         </div>
 
         <div class="input-group">
           <label>Middle Name <span class="optional">(optional)</span></label>
-          <input type="text" name="middleName" placeholder="Santos">
+          <input type="text" name="middleName" placeholder="Santos" pattern="[^0-9]*" title="Letters only. Numbers are not allowed." maxlength="100" autocomplete="additional-name">
         </div>
 
         <div class="input-group">
@@ -51,9 +51,9 @@
         </div>
 
         <div class="input-group">
-          <label>Password</label>
+          <label>Password <span class="optional">(at least 8 characters)</span></label>
           <div class="password-wrapper">
-            <input type="password" id="passwordInput" name="password" minlength="12" maxlength="72" autocomplete="new-password" placeholder="••••••••••••••" required>
+            <input type="password" id="passwordInput" name="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="••••••••" required>
             <span class="toggle-password" data-toggle-password="passwordInput" role="button" tabindex="0" aria-label="Show or hide password">
               <i class="bi bi-eye-slash"></i>
             </span>
@@ -63,7 +63,7 @@
         <div class="input-group">
           <label>Confirm Password</label>
           <div class="password-wrapper">
-            <input type="password" id="confirmPasswordInput" name="confirmPassword" placeholder="••••••••••••••" required>
+            <input type="password" id="confirmPasswordInput" name="confirmPassword" placeholder="••••••••" required>
             <span class="toggle-password" data-toggle-password="confirmPasswordInput" role="button" tabindex="0" aria-label="Show or hide password">
               <i class="bi bi-eye-slash"></i>
             </span>

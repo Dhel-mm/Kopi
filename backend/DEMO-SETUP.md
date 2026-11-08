@@ -11,7 +11,7 @@ variables on the existing Render web service:
 
 - `DEMO_SETUP_ENABLED=true`
 - `DEMO_CUSTOMER_EMAIL`: an unused email for the demo customer
-- `DEMO_CUSTOMER_PASSWORD`: a password of at least 12 characters (maximum 72 UTF-8 bytes)
+- `DEMO_CUSTOMER_PASSWORD`: a password of at least 8 characters (maximum 72 UTF-8 bytes)
 
 Save the variables and deploy the latest commit. The startup log confirms when
 demo initialization succeeds, without printing the email or password.

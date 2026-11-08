@@ -17,15 +17,24 @@
     <main class="login-card recovery-card">
       <a class="recovery-back" href="login.html" aria-label="Back to login"><span aria-hidden="true">❮</span><span>Back to login</span></a>
       <h1 class="card-title">Recover your account</h1>
-      <p class="recovery-description">Contact Kopi; Calamba staff to verify your identity and receive a single-use recovery code. Codes expire after 15 minutes. Never share your password with staff. <a href="https://www.facebook.com/kopiest2021" target="_blank" rel="noopener noreferrer">Click here</a>.</p>
+      <p class="recovery-description">Enter the email of your account and we will send you a single-use recovery code. You can also contact Kopi; Calamba staff to verify your identity and receive a code. Codes expire after 15 minutes. Never share your password with staff.</p>
+      <form id="recoveryEmailForm" class="recovery-email" novalidate>
+        <div class="input-group">
+          <label for="recoveryEmail">Email of your account</label>
+          <input id="recoveryEmail" name="email" type="email" required autocomplete="email" maxlength="254" placeholder="kopi@example.com">
+        </div>
+        <button class="login-btn recovery-send" type="submit">Send recovery code</button>
+        <p id="recoveryEmailStatus" role="status" aria-live="polite"></p>
+      </form>
+      <p class="recovery-step">Then enter the code from your email and choose a new password.</p>
       <form id="resetForm">
         <div class="input-group">
           <label for="recoveryCode">Recovery code</label>
-          <input id="recoveryCode" name="code" required autocomplete="off" maxlength="100">
+          <input id="recoveryCode" name="code" required autocomplete="one-time-code" maxlength="100" placeholder="6-digit code, e.g. 123456">
         </div>
         <div class="input-group">
           <label for="newPassword">New password</label>
-          <input id="newPassword" name="password" type="password" minlength="12" maxlength="72" required autocomplete="new-password">
+          <input id="newPassword" name="password" type="password" minlength="8" maxlength="72" required autocomplete="new-password">
         </div>
         <div class="input-group">
           <label for="confirmPassword">Confirm password</label>

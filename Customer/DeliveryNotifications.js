@@ -45,7 +45,7 @@
       });
     } else if (discount) {
       // Bold, gold key points: the discount removed and what to pay the rider.
-      const key = /(\(the ₱[\d,.]+ discount was removed\)|[Pp]lease pay (?:the remaining )?₱[\d,.]+ (?:in cash )?to the rider\.)/;
+      const key = /(\(the ₱[\d,.]+ discount was removed\)|[Pp]lease pay (?:the remaining )?₱[\d,.]+ (?:in cash )?to the rider[.,])/;
       String(notification.message || "").split(key).forEach((text, index) => {
         if (!text) return;
         const part = document.createElement("span");

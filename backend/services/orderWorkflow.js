@@ -1,5 +1,5 @@
 const { createHash } = require("node:crypto");
-const { quote, money, OrderError } = require("./pricing");
+const { quote, money, priceItems, OrderError } = require("./pricing");
 const { createInventoryService } = require("./inventory");
 const { parseManualPayment } = require("./manualPayment");
 const { createVoucherService } = require("./vouchers");
@@ -84,6 +84,22 @@ function createOrderWorkflow(db, {now = () => new Date()} = {}) {
     const serviceType = service(body,inStore);
     stock.check(priced.items,serviceType!=="Dine-in");
     return { ...priced,serviceType,...(inStore?{}:{cashOnDelivery:cashOnDelivery(priced,serviceType)}) };
+  }
+  // Checks one line before it goes into the customer's cart. Online orders are
+  // always packed to go. Customers are told the ingredients ran short, never which
+  // ingredient or how much is left.
+  function stockCheck(body) {
+    const [line] = priceItems([body.item]);
+    const others = Array.isArray(body.others) && body.others.length ? priceItems(body.others) : [];
+    let maxQuantity = 0;
+    try {
+      maxQuantity = stock.maxQuantity(others,line,true);
+    } catch (error) {
+      if (!(error instanceof OrderError) || error.status!==409) throw error;
+    }
+    const ok = line.quantity <= maxQuantity;
+    return {ok,maxQuantity,requested:line.quantity,
+      message:ok ? "" : `Not enough ingredients for ${line.name}. ${maxQuantity ? `You can only add up to ${maxQuantity}.` : "No more can be added right now."}`};
   }
   function result(id) {
     const row = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
@@ -194,11 +210,11 @@ function createOrderWorkflow(db, {now = () => new Date()} = {}) {
     if (!order) throw new OrderError("No saved order was found for this checkout request.",404);
     return result(order.id);
   }
-  // asShop: Admin or Staff rejecting a New online order (see orderSafety.js).
+  // asShop: Admin, Cashier or Staff rejecting a New online order (see orderSafety.js).
   function cancel(id, user, {asShop = false} = {}) {
     return db.transaction(() => {
       const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
-      const shopRejection = asShop && ["Admin","Staff"].includes(user.role);
+      const shopRejection = asShop && ["Admin","Cashier","Staff"].includes(user.role);
       if (!order || (user.role!=="Admin" && !shopRejection && order.user_id!==user.id)) throw new OrderError("Order was not found.",404);
       if (order.status==="Canceled") return result(id);
       // An administrator may also cancel a pickup order the customer never collected.
@@ -242,7 +258,7 @@ function createOrderWorkflow(db, {now = () => new Date()} = {}) {
       return result(id);
     }).immediate();
   }
-  return {prepareQuote,create,cancel,advance,result,recover};
+  return {prepareQuote,stockCheck,create,cancel,advance,result,recover};
 }
 function sendError(response,error,customerFacing = false) {
   if (error.code==="SQLITE_CONSTRAINT_UNIQUE" && error.message.includes("payment_reference")) {

@@ -1,14 +1,15 @@
 // What the Staff and Admin pages should pop up (with a sound) about.
-// Staff: online orders that have just arrived. Admin: orders waiting for a
+// Staff: online orders that have just arrived and walk-in orders from the
+// cashier (they start as Preparing). Admin: orders waiting for a
 // GCash payment or a Senior Citizen / PWD ID to be verified.
 function createAlertService(db) {
   function staff() {
     const orders = db.prepare(`
-      SELECT o.id,o.order_number AS orderNumber,o.service_type AS serviceType,o.scheduled_for AS scheduledFor,
+      SELECT o.id,o.order_number AS orderNumber,o.order_type AS orderType,o.service_type AS serviceType,o.scheduled_for AS scheduledFor,
         o.payment,o.total,o.created_at AS createdAt,
         COALESCE(NULLIF(o.customer_name,''),u.first_name || ' ' || u.last_name) AS customer
       FROM orders o JOIN users u ON u.id=o.user_id
-      WHERE o.order_type='Online' AND o.status='New'
+      WHERE (o.order_type='Online' AND o.status='New') OR (o.order_type='In-store' AND o.status='Preparing')
       ORDER BY o.id LIMIT 50
     `).all();
     return {orders};

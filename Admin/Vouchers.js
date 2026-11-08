@@ -56,7 +56,7 @@
       edit.addEventListener("click", async () => {
         if (busy) return;
         if (voucher.used) {
-          if (!window.confirm(`Remove used voucher ${voucher.code} from the list? Its order history will be kept, and the code cannot be reused.`)) return;
+          if (!await KopiNotice.confirm(`Its order history will be kept, and the code cannot be reused.`, {title: `Remove voucher ${voucher.code}?`, confirmText: "Remove", danger: true})) return;
           busy = true;
           fields.disabled = close.disabled = edit.disabled = true;
           try {
