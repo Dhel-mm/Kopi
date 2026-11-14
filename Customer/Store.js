@@ -210,6 +210,14 @@ const KopiStore = (() => {
 
 document.addEventListener("DOMContentLoaded", KopiStore.updateCartCount);
 
+// Every customer page asks visitors who are not logged in to log in or sign up first.
+document.addEventListener("DOMContentLoaded", () => {
+  let session = null;
+  try { session = JSON.parse(sessionStorage.getItem("kopi_api_session") || localStorage.getItem("kopi_api_session") || "null"); }
+  catch { session = null; }
+  if (!session?.token && typeof KopiNotice !== "undefined" && KopiNotice.loginRequired) KopiNotice.loginRequired();
+});
+
 // The header and phone navigation share a highlight below their link content.
 (() => {
   if (typeof window === "undefined" || typeof document === "undefined") return;

@@ -306,3 +306,42 @@ button.close-panel:disabled {
 .kopi-confirm.danger .kopi-confirm-ok:hover, .kopi-confirm.danger .kopi-confirm-ok:focus-visible { background: #9c3d37; }
 @keyframes kopi-confirm-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .kopi-confirm[open] { animation: none; } }
+
+/* "Please log in first" notice (KopiNotice.loginRequired), on every page for visitors who are not logged in. */
+body.needs-login > :not(dialog):not(script):not(.kopi-toast) { filter: blur(6px); pointer-events: none; user-select: none; }
+.login-notice {
+  width: min(400px, calc(100% - 32px));
+  padding: 0;
+  border: 1.8px solid #3d2b16;
+  border-radius: 22px;
+  background: #fff;
+  color: #211508;
+  font-family: "Poppins", Arial, sans-serif;
+  box-shadow: 0 24px 60px rgba(33, 21, 8, 0.32);
+}
+.login-notice[open] { animation: login-notice-in 260ms cubic-bezier(.22, 1, .36, 1); }
+.login-notice::backdrop { background: rgba(33, 21, 8, 0.4); backdrop-filter: blur(3px); }
+.login-notice-card { display: grid; justify-items: center; gap: 8px; padding: 28px 26px 22px; text-align: center; }
+.login-notice-logo { width: 72px; height: 72px; margin-bottom: 4px; border-radius: 50%; }
+.login-notice h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.login-notice p { margin: 0; color: #5b4a35; font-size: 14px; line-height: 1.55; }
+.login-notice-actions { display: flex; gap: 10px; width: 100%; margin-top: 12px; }
+.login-notice-btn {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.login-notice-btn.solid { background: #3d2b16; color: #fff; }
+.login-notice-btn.solid:hover, .login-notice-btn.solid:focus-visible { background: #211508; transform: translateY(-1px); outline: 0; }
+.login-notice-btn.outline { border: 2px solid #3d2b16; color: #3d2b16; }
+.login-notice-btn.outline:hover, .login-notice-btn.outline:focus-visible { background: #f3ddab; transform: translateY(-1px); outline: 0; }
+.login-notice-home { margin-top: 6px; color: #5b4a35; font-size: 13px; font-weight: 600; }
+.login-notice-home:hover, .login-notice-home:focus-visible { color: #211508; }
+@keyframes login-notice-in { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .login-notice[open] { animation: none; } }

@@ -99,9 +99,38 @@ const KopiNotice = (() => {
       dialog.querySelector(".kopi-confirm-ok").focus();
     });
   }
+  // "Please log in first" in the middle of the screen, for anyone who opens a page
+  // without being logged in. The page behind it is blurred and cannot be used, and
+  // the notice cannot be closed: the visitor logs in, signs up, or goes back.
+  // staff: true is for Admin, Cashier and Staff pages (no Sign up, since the owner makes those accounts).
+  function loginRequired({staff = false} = {}) {
+    if (document.querySelector("dialog.login-notice")) return true;
+    const notice = document.createElement("dialog");
+    notice.className = "login-notice";
+    notice.setAttribute("aria-labelledby", "loginNoticeTitle");
+    notice.innerHTML = `
+      <div class="login-notice-card">
+        <img src="../Customer/HomePic/Logo.png" alt="" class="login-notice-logo">
+        <h2 id="loginNoticeTitle">Please log in first</h2>
+        <p>${staff
+          ? "This page is for the Kopi; Calamba team. Log in with the account the owner gave you."
+          : "Please log in or create a free account first, so you can order and track your coffee."}</p>
+        <div class="login-notice-actions">
+          <a class="login-notice-btn solid" href="../login.html">Log in</a>
+          ${staff ? "" : `<a class="login-notice-btn outline" href="../signup.html">Create an account</a>`}
+        </div>
+        <a class="login-notice-home" href="../splash.html">Back to start</a>
+      </div>`;
+    notice.addEventListener("cancel", event => event.preventDefault());
+    document.body.classList.add("needs-login");
+    document.body.append(notice);
+    notice.showModal();
+    notice.querySelector(".login-notice-btn").focus();
+    return true;
+  }
   const observer = new MutationObserver(refresh);
   observer.observe(document.body, {childList:true, subtree:true, characterData:true});
   refresh();
-  return {set, toast, kindFor, confirm};
+  return {set, toast, kindFor, confirm, loginRequired};
 })();
 window.KopiNotice = KopiNotice;

@@ -35,7 +35,11 @@ window.KopiWorkplace = (() => {
     setTimeout(() => window.location.replace("../login.html"), 1200);
   });
   const ready = (async () => {
-    if (!KopiApi.getSession()?.token) {window.location.replace("../login.html");return null;}
+    if (!KopiApi.getSession()?.token) {
+      if (window.KopiNotice?.loginRequired?.({staff:true})) document.getElementById("workspaceGate").hidden = true;
+      else window.location.replace("../login.html");
+      return null;
+    }
     try {
       const {user} = await KopiApi.request("/me");
       if (![role,"Admin"].includes(user.role)) {window.location.replace(KopiApi.homeForRole(user.role));return null;}

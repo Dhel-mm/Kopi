@@ -4,7 +4,7 @@
     return;
   }
   const session=KopiApi.getSession();
-  if(!session?.token){window.location.replace("../login.html");return;}
+  if(!session?.token){if(!window.KopiNotice?.loginRequired?.({staff:true}))window.location.replace("../login.html");return;}
   if(session.user?.role!=="Admin"){window.location.replace(KopiApi.homeForRole(session.user?.role));return;}
   KopiApi.request("/me").then(({user})=>{
     if(user.role!=="Admin")window.location.replace(KopiApi.homeForRole(user.role));

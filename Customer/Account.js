@@ -77,6 +77,7 @@ async function loadProfile() {
 }
 
 async function loadMyOrders() {
+  if (!KopiApi.getSession()) return;
   const target = document.getElementById("customerOrders");
 
   if (!target) return;
@@ -324,8 +325,10 @@ const initialPanel = window.location.hash
   : "profile";
 
 showPanel(initialPanel);
-loadProfile();
-loadMyOrders();
+if (KopiApi.getSession()) {
+  loadProfile();
+  loadMyOrders();
+}
 
 window.addEventListener("focus", () => {
   // Do not replace unsaved profile fields when returning from another window.

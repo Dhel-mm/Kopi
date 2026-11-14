@@ -262,3 +262,34 @@ test("an emailed recovery code stops working after 5 wrong tries",()=>server(asy
     assert.equal((await post("/auth/reset-password",{code:"123456789012",newPassword:"from-the-shop"})).status,200);
   } finally {await new Promise(resolve=>listening.close(resolve));}
 }));
+
+test("every page asks visitors who are not logged in to log in first",()=>{
+  const vm=require("node:vm");
+  // The shared notice: Log in and Create an account for customers, Log in only for the team.
+  const appended=[];
+  const body={classList:{add(name){body.added=name;}},append(node){appended.push(node);}};
+  const make=()=>({className:"",innerHTML:"",listeners:{},setAttribute(){},addEventListener(name,fn){this.listeners[name]=fn;},
+    showModal(){this.open=true;},querySelector:()=>({focus(){}})});
+  const context={document:{body,createElement:make,querySelector:()=>null,querySelectorAll:()=>[]},
+    MutationObserver:class{observe(){}},window:{},requestAnimationFrame(){}};
+  vm.createContext(context);
+  vm.runInContext(read("Customer/Notices.js"),context);
+  context.window.KopiNotice.loginRequired();
+  const notice=appended[0];
+  assert.equal(notice.open,true);
+  assert.equal(body.added,"needs-login");
+  assert.match(notice.innerHTML,/Please log in first/);
+  assert.match(notice.innerHTML,/href="..\/login.html"/);
+  assert.match(notice.innerHTML,/href="..\/signup.html"/);
+  let blocked=false;notice.listeners.cancel({preventDefault(){blocked=true;}});
+  assert.equal(blocked,true,"Esc does not close it");
+  appended.length=0;context.document.querySelector=()=>null;
+  context.window.KopiNotice.loginRequired({staff:true});
+  assert.doesNotMatch(appended[0].innerHTML,/signup\.html/);
+  // Customer pages (all load Store.js), Admin pages and Cashier/Staff pages use it.
+  assert.match(read("Customer/Store.js"),/KopiNotice\.loginRequired\(\)/);
+  for (const page of ["Homepage","Menu","Cart","Account"]) assert.match(read(`Customer/${page}.html`),/Store\.js/,page);
+  assert.match(read("Admin/AdminGuard.js"),/loginRequired\?\.\(\{staff:true\}\)/);
+  assert.match(read("Cashier/Workspace.js"),/loginRequired\?\.\(\{staff:true\}\)/);
+  assert.doesNotMatch(read("Customer/Menu.js"),/function requireLogin/);
+});

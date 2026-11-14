@@ -25,7 +25,7 @@ function accountHarness(orders = []) {
     querySelector(selector){if(!selectors.has(selector))selectors.set(selector,element());return selectors.get(selector);},
     querySelectorAll(selector){return selector===".star"?stars:selector===".account-panel"?panels:[];}
   };
-  const KopiApi={request:async(url,options)=>{
+  const KopiApi={getSession:()=>({token:"test",user:{role:"Customer"}}),request:async(url,options)=>{
     calls.push({url,options});
     if(url==="/me")return {user:{firstName:"Saved",lastName:"Customer",email:"test@example.invalid"}};
     if(url==="/orders/my")return {orders};

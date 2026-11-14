@@ -26,31 +26,7 @@ bindEvents();
 openEditorFromUrl();
 // Api.js loads after this script, so the first check waits for the page to finish loading.
 document.addEventListener("DOMContentLoaded", refreshStockAvailability);
-document.addEventListener("DOMContentLoaded", requireLogin);
 
-// Visitors who are not logged in see a notice in the middle of the screen before the menu.
-function requireLogin() {
-  if (KopiApi.getSession()) return;
-  const notice = document.createElement("dialog");
-  notice.className = "login-notice";
-  notice.setAttribute("aria-labelledby", "loginNoticeTitle");
-  notice.innerHTML = `
-    <div class="login-notice-card">
-      <img src="HomePic/Logo.png" alt="" class="login-notice-logo">
-      <h2 id="loginNoticeTitle">Log in to see our menu</h2>
-      <p>Please log in or create a free account first, so you can order and track your coffee.</p>
-      <div class="login-notice-actions">
-        <a class="login-notice-btn solid" href="../login.html">Log in</a>
-        <a class="login-notice-btn outline" href="../signup.html">Sign up</a>
-      </div>
-      <a class="login-notice-home" href="Homepage.html">Back to Home</a>
-    </div>`;
-  // The menu stays hidden behind the notice; Esc does not close it.
-  notice.addEventListener("cancel", event => event.preventDefault());
-  document.body.classList.add("needs-login");
-  document.body.append(notice);
-  notice.showModal();
-}
 setInterval(refreshStockAvailability, 60000);
 window.addEventListener("focus", refreshStockAvailability);
 
